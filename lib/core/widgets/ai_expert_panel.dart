@@ -348,10 +348,10 @@ class _AiExpertPanelState extends State<AiExpertPanel> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.shield_outlined, color: widget.accentColor, size: 14),
+                Icon(Icons.verified_user_rounded, color: widget.accentColor, size: 14),
                 const SizedBox(width: 4),
                 Text(
-                  'SafeSignal Intelligence Engine',
+                  'Umar Farooque',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,

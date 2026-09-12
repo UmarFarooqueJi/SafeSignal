@@ -159,5 +159,5 @@ SafeSignal is licensed under the **MIT License**. See the [LICENSE](LICENSE) fil
 ---
 
 <div align="center">
-  <sub>Built with ❤️ for a safer digital world.</sub>
+  <sub>Engineered with ❤️ by <b><a href="https://github.com/umarfarooqueji-byte">Umar Farooque</a></b> for a safer digital world.</sub>
 </div>
