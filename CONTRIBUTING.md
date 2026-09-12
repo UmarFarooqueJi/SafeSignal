@@ -1,4 +1,4 @@
-﻿# Contributing to SafeSignal
+# Contributing to SafeSignal
 
 Thank you for your interest in contributing to **SafeSignal**! We welcome contributions from developers, security researchers, and designers worldwide to help build the best open-source anti-fraud and mobile security platform.
 
@@ -14,7 +14,7 @@ Thank you for your interest in contributing to **SafeSignal**! We welcome contri
 
 ### 2. Fork & Clone
 ```bash
-git clone https://github.com/umarfarooqueji-byte/SafeSignal.git
+git clone https://github.com/UmarFarooqueJi/SafeSignal.git
 cd SafeSignal/safesignal
 ```
 

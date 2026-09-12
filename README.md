@@ -104,7 +104,7 @@ SafeSignal is designed with modularity, privacy, and low battery consumption in 
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/umarfarooqueji-byte/SafeSignal.git
+git clone https://github.com/UmarFarooqueJi/SafeSignal.git
 cd SafeSignal/safesignal
 ```
 
@@ -159,5 +159,5 @@ SafeSignal is licensed under the **MIT License**. See the [LICENSE](LICENSE) fil
 ---
 
 <div align="center">
-  <sub>Engineered with ❤️ by <b><a href="https://github.com/umarfarooqueji-byte">Umar Farooque</a></b> for a safer digital world.</sub>
+  <sub>Engineered with ❤️ by <b><a href="https://github.com/UmarFarooqueJi">Umar Farooque</a></b> for a safer digital world.</sub>
 </div>
