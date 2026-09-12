@@ -12,7 +12,14 @@ class CrowdIntelService {
   factory CrowdIntelService() => _instance;
   CrowdIntelService._internal();
 
-  final _supabase = Supabase.instance.client;
+  SupabaseClient? get _supabase {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static const _cacheKey = 'crowd_blocklist_cache';
   static const _cacheTimestampKey = 'crowd_blocklist_timestamp';
   static const _cacheMaxAge = Duration(hours: 6);
@@ -45,6 +52,9 @@ class CrowdIntelService {
   }
 
   void _syncBlocklistInBackground() async {
+    final client = _supabase;
+    if (client == null) return;
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final tsString = prefs.getString(_cacheTimestampKey);
@@ -56,7 +66,7 @@ class CrowdIntelService {
         }
       }
 
-      final response = await _supabase
+      final response = await client
           .from('blocklist')
           .select('value_hash')
           .gte('confidence', 0.7);
@@ -85,13 +95,16 @@ class CrowdIntelService {
 
   /// Returns threat details if known, null otherwise
   Future<ThreatReport?> lookup(String rawValue) async {
+    final client = _supabase;
+    if (client == null) return null;
+
     final hash = ThreatReport.hashValue(rawValue);
 
     // Check local cache first
     if (!_localBlocklist.contains(hash)) return null;
 
     try {
-      final response = await _supabase
+      final response = await client
           .from('threat_reports')
           .select()
           .eq('value_hash', hash)
@@ -114,10 +127,13 @@ class CrowdIntelService {
     required String type,
     required String verdict,
   }) async {
+    final client = _supabase;
+    if (client == null) return false;
+
     final hash = ThreatReport.hashValue(rawValue);
     try {
       // Direct upsert — works without stored procedures
-      await _supabase.from('threat_reports').upsert(
+      await client.from('threat_reports').upsert(
         {
           'type': type,
           'value_hash': hash,
@@ -155,8 +171,13 @@ class CrowdIntelService {
 
   // ─── Stats for home screen ───────────────────────────────────────────────
   Future<Map<String, int>> getStats() async {
+    final client = _supabase;
+    if (client == null) {
+      return {'total': 0, 'scams': 0, 'cachedThreats': _localBlocklist.length};
+    }
+
     try {
-      final response = await _supabase
+      final response = await client
           .from('threat_reports')
           .select('verdict')
           .limit(AppConstants.feedPageSize * 5);

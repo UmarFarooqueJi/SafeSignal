@@ -194,7 +194,7 @@ Always mention: the India-specific fraud type, what data the scammer wants, and 
   Future<String> _callGemini(String systemPrompt, String userContent) async {
     final response = await _dio.post(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
-      queryParameters: {'key': AppConstants.meshApiKey},
+      queryParameters: {'key': AppConstants.geminiApiKey},
       data: {
         'system_instruction': {
           'parts': [{'text': systemPrompt}]

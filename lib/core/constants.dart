@@ -4,7 +4,6 @@ class AppConstants {
   // API
   static const String apiBaseUrl = 'http://10.0.2.2:8000'; // Android emulator → localhost
   static const String apiBaseUrlRelease = 'https://your-backend.onrender.com';
-  static String get meshApiKey => dotenv.env['MESH_API_KEY'] ?? '';
   static String get newsDataApiKey => dotenv.env['NEWS_DATA_API_KEY'] ?? '';
 
   // Supabase
@@ -15,6 +14,7 @@ class AppConstants {
   static String get grokApiKey => dotenv.env['GROK_API_KEY'] ?? '';
   static String get deepSeekApiKey => dotenv.env['DEEPSEEK_API_KEY'] ?? '';
   static String get openRouterApiKey => dotenv.env['OPENROUTER_API_KEY'] ?? '';
+  static String get geminiApiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
 
   // Have I Been Pwned (Phase 3)
   static String get hibpApiKey => dotenv.env['HIBP_API_KEY'] ?? '';

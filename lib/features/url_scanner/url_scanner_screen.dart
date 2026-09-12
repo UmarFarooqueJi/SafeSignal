@@ -673,7 +673,7 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
                 child: const Text('Security Rating Breakdown', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
               ),
               const SizedBox(height: 24),
-              _buildRow('Phishing Check', result.verdict == UrlVerdict.dangerous ? 'Failed' : 'Passed (Mesh API)', valueColor: result.verdict == UrlVerdict.dangerous ? const Color(0xFFFF8A65) : const Color(0xFF4CAF50), isDark: isDark),
+              _buildRow('Phishing Check', result.verdict == UrlVerdict.dangerous ? 'Failed' : 'Passed', valueColor: result.verdict == UrlVerdict.dangerous ? const Color(0xFFFF8A65) : const Color(0xFF4CAF50), isDark: isDark),
               _divider(),
               _buildRow('Malware Scan', result.verdict == UrlVerdict.dangerous ? 'Threat Found' : 'Clean', valueColor: result.verdict == UrlVerdict.dangerous ? const Color(0xFFFF8A65) : const Color(0xFF4CAF50), isDark: isDark),
               _divider(),

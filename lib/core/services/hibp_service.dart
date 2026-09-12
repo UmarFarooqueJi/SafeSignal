@@ -52,10 +52,14 @@ class HibpService {
             final breachesArray = data['breaches'] as List;
             if (breachesArray.isNotEmpty && breachesArray.first is List) {
               final List<dynamic> breachNames = breachesArray.first;
-              return breachNames.map((name) => BreachInfo(
-                title: name.toString(),
-                domain: name.toString().toLowerCase() + '.com',
-                breachDate: 'Unknown',
+                final strName = name.toString().trim();
+                final domain = strName.contains('.')
+                    ? strName
+                    : '${strName.replaceAll(RegExp(r'\s+'), '').toLowerCase()}.com';
+                return BreachInfo(
+                  title: strName,
+                  domain: domain,
+                  breachDate: 'Historical Leak',
                 pwnCount: 0,
                 description: 'Your data was exposed in the $name data breach. We strongly advise changing your password.',
                 dataClasses: ['Email addresses', 'Passwords'],

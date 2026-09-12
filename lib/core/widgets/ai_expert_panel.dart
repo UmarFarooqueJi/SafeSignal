@@ -348,10 +348,10 @@ class _AiExpertPanelState extends State<AiExpertPanel> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.bolt, color: widget.accentColor, size: 14),
+                Icon(Icons.shield_outlined, color: widget.accentColor, size: 14),
                 const SizedBox(width: 4),
                 Text(
-                  'Powered by Mesh API',
+                  'SafeSignal Intelligence Engine',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,

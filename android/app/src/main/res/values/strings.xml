@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">SafeSignal Live Link Shield monitors your screen to protect you from malicious URLs and phishing links in real-time.</string>
+</resources>

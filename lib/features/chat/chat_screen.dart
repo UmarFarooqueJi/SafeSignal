@@ -88,13 +88,17 @@ class ChatNotifier extends Notifier<List<ChatMessage>> {
     // Use OpenRouter as primary — key is always available
     final apiKey = AppConstants.openRouterApiKey.isNotEmpty
         ? AppConstants.openRouterApiKey
-        : AppConstants.meshApiKey;
+        : AppConstants.deepSeekApiKey;
     final endpoint = AppConstants.openRouterApiKey.isNotEmpty
         ? 'https://openrouter.ai/api/v1/chat/completions'
-        : 'https://api.meshapi.ai/v1/chat/completions';
+        : (AppConstants.deepSeekApiKey.isNotEmpty
+            ? 'https://api.deepseek.com/v1/chat/completions'
+            : 'https://openrouter.ai/api/v1/chat/completions');
     final model = AppConstants.openRouterApiKey.isNotEmpty
         ? 'anthropic/claude-3-haiku'
-        : 'openai/gpt-4o-mini';
+        : (AppConstants.deepSeekApiKey.isNotEmpty
+            ? 'deepseek-chat'
+            : 'anthropic/claude-3-haiku');
 
     dio.options.headers = {
       'Authorization': 'Bearer $apiKey',
@@ -109,8 +113,7 @@ class ChatNotifier extends Notifier<List<ChatMessage>> {
     final langName = language == 'hi' ? 'Hindi (Devanagari script preferred, or Hinglish is acceptable)' : 'English';
 
     final systemPrompt = """
-You are SafeSignal — an elite AI cybersecurity expert and digital safety advisor specializing in Indian cyber threats.
-You are powered by Mesh API (always state this proudly if anyone asks about your underlying technology, API, or AI model).
+You are SafeSignal — an elite cybersecurity expert and digital safety advisor specializing in Indian cyber threats.
 
 You have deep expertise in:
 - Detecting Indian cyber frauds: Digital Arrest, OTP scam, KYC fraud, loan app fraud, investment fraud, phishing, SIM swapping, WhatsApp hijacking, UPI fraud
@@ -121,7 +124,7 @@ You have deep expertise in:
 - Text extraction and OCR (Optical Character Recognition) from uploaded images/screenshots.
 
 When analyzing a message or an uploaded image:
-1. If the user is just having a normal conversation, asking who you are, what API you use (Mesh API), or asking a general question about an uploaded image (e.g., "What is written in this image?", "Is this a real bill?"):
+1. If the user is just having a normal conversation, asking who you are, or asking a general question about an uploaded image (e.g., "What is written in this image?", "Is this a real bill?"):
    - DO NOT analyze it as a scam report. 
    - Respond with verdict "INFO".
    - Provide a highly detailed, conversational, and helpful reply in the "why" array (as a single item).
@@ -148,7 +151,7 @@ RESPOND ONLY WITH A VALID JSON OBJECT — no markdown, no code blocks, just raw 
 
 IMPORTANT: Write ALL text fields ENTIRELY in $langName. Be specific, educational, and practical.
 Mention real Indian fraud tactics, actual reporting channels (1930, cybercrime.gov.in).
-If an image is uploaded, scan it for text (OCR), fake logos, official headers, bank seals, QR codes, or suspicious URLs. Always mention that you are powered by Mesh API if asked about your technology.
+If an image is uploaded, scan it for text (OCR), fake logos, official headers, bank seals, QR codes, or suspicious URLs.
 """;
 
     messages.add({'role': 'system', 'content': systemPrompt});

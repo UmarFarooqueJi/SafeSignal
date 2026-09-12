@@ -5,7 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+
 import '../../core/constants.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -20,7 +20,7 @@ class _SignInScreenState extends State<SignInScreen> {
   final _passCtrl = TextEditingController();
   bool _passVisible = false;
   bool _isLoading = false;
-  bool _isEmailMode = false;
+  bool _isEmailMode = true;
   bool _isSignUpMode = false;
 
   Future<void> _continueAsGuest() async {
@@ -37,64 +37,7 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    setState(() => _isLoading = true);
-    try {
-      const webClientId = '1011436878280-qbja9u7a3qi2ts3vl7gc0cmn0lkpmclj.apps.googleusercontent.com';
-      
-      await GoogleSignIn.instance.initialize(
-        serverClientId: webClientId,
-      );
-      final googleUser = await GoogleSignIn.instance.authenticate();
-      final googleAuth = googleUser?.authentication;
-      final idToken = googleAuth?.idToken;
-      
-      if (idToken == null) {
-        throw 'No ID Token found.';
-      }
-      
-      await Supabase.instance.client.auth.signInWithIdToken(
-        provider: OAuthProvider.google,
-        idToken: idToken,
-      );
-      
-      // Save profile to Supabase
-      if (googleUser != null) {
-        try {
-          await Supabase.instance.client.from('profiles').upsert({
-            'id': Supabase.instance.client.auth.currentUser!.id,
-            'name': googleUser.displayName ?? 'Unknown',
-            'email': googleUser.email,
-            'avatar_url': googleUser.photoUrl,
-          });
-        } catch (e) {
-          debugPrint('Profile upsert error: $e');
-        }
-      }
-      
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(AppConstants.prefOnboardingDone, true);
-      await prefs.setBool('isLoggedIn', true);
-      
-      final isProfileSetupDone = prefs.getBool('isProfileSetupDone') ?? false;
-      
-      if (mounted) {
-        if (isProfileSetupDone) {
-          context.go('/home');
-        } else {
-          context.go('/profile-setup');
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google Sign-In Failed: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+
 
   Future<void> _signInWithEmail() async {
     if (_emailCtrl.text.isEmpty || _passCtrl.text.isEmpty) return;
@@ -108,23 +51,7 @@ class _SignInScreenState extends State<SignInScreen> {
           password: _passCtrl.text,
         );
         
-        // If email confirmation is required, session will be null
-        if (response.session == null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Account created! Please check your email to verify your account before logging in.'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 5),
-              ),
-            );
-            setState(() {
-              _isSignUpMode = false;
-              _passCtrl.clear();
-            });
-          }
-          return;
-        }
+
       } else {
         response = await Supabase.instance.client.auth.signInWithPassword(
           email: _emailCtrl.text.trim(),
@@ -146,10 +73,36 @@ class _SignInScreenState extends State<SignInScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('AuthException: ', '')),
-            backgroundColor: Colors.redAccent,
+        String errorMsg = e.toString().replaceAll('AuthException: ', '').trim();
+        if (errorMsg.contains('Invalid login credentials')) {
+          errorMsg = 'Email ya password galat hai. Kripya dobara check karein.';
+        } else if (errorMsg.contains('User already registered')) {
+          errorMsg = 'Yeh email pehle se hi registered hai. Kripya "Sign Up" ki jagah "Log In" karein.';
+        } else if (errorMsg.contains('Email not confirmed')) {
+          errorMsg = 'Aapka email verify nahi hua hai. Supabase me "Confirm email" OFF karke naya account banayein.';
+        }
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.redAccent),
+                SizedBox(width: 10),
+                Text('Error', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Text(
+              errorMsg,
+              style: const TextStyle(fontSize: 15),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
         );
       }
@@ -437,45 +390,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 14),
-                                  Center(
-                                    child: TextButton(
-                                      onPressed: () => setState(() {
-                                        _isEmailMode = false;
-                                        _isSignUpMode = false;
-                                      }),
-                                      child: Text(
-                                        '← Back to other options',
-                                        style: TextStyle(
-                                          color: isDark ? Colors.white38 : Colors.grey.shade500,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ] else ...[
-                                  // Google Sign In
-                                  _SocialButton(
-                                    label: 'Continue with Google',
-                                    icon: '🔵',
-                                    iconWidget: const _GoogleIcon(),
-                                    onTap: _signInWithGoogle,
-                                  ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05),
-
-                                  const SizedBox(height: 12),
-
-                                  // Email Sign In
-                                  _SocialButton(
-                                    label: 'Continue with Email',
-                                    icon: '✉️',
-                                    iconWidget: const Icon(Icons.email_outlined,
-                                        color: Color(0xFF6C63FF), size: 20),
-                                    onTap: () => setState(() => _isEmailMode = true),
-                                  ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.05),
-
                                   const SizedBox(height: 24),
-
                                   // Divider
                                   Row(
                                     children: [

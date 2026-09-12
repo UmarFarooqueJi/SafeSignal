@@ -2,14 +2,22 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 
 class SupabaseService {
-  final SupabaseClient _client = Supabase.instance.client;
+  SupabaseClient? get _client {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
 
   // Sign in Anonymously if not logged in
   Future<void> signInAnonymouslyIfNeeded() async {
-    final session = _client.auth.currentSession;
+    final client = _client;
+    if (client == null) return;
+    final session = client.auth.currentSession;
     if (session == null) {
       try {
-        await _client.auth.signInAnonymously();
+        await client.auth.signInAnonymously();
       } catch (e) {
         debugPrint('Anonymous sign-in error: $e');
       }
@@ -22,10 +30,12 @@ class SupabaseService {
     required String email,
     String? avatarUrl,
   }) async {
-    final user = _client.auth.currentUser;
+    final client = _client;
+    if (client == null) return;
+    final user = client.auth.currentUser;
     if (user != null) {
       try {
-        await _client.from('profiles').upsert({
+        await client.from('profiles').upsert({
           'id': user.id,
           'name': name,
           'email': email,
@@ -44,12 +54,15 @@ class SupabaseService {
     required String status, // 'SAFE', 'WARNING', 'DANGER'
     Map<String, dynamic>? details,
   }) async {
+    final client = _client;
+    if (client == null) return;
+
     // Ensure we have at least an anonymous user session
     await signInAnonymouslyIfNeeded();
-    final user = _client.auth.currentUser;
+    final user = client.auth.currentUser;
 
     try {
-      await _client.from('scan_history').insert({
+      await client.from('scan_history').insert({
         'user_id': user?.id,
         'scan_type': scanType,
         'target': target,
@@ -63,11 +76,14 @@ class SupabaseService {
 
   // Fetch scan history
   Future<List<Map<String, dynamic>>> getScanHistory() async {
-    final user = _client.auth.currentUser;
+    final client = _client;
+    if (client == null) return [];
+
+    final user = client.auth.currentUser;
     if (user == null) return [];
 
     try {
-      final data = await _client
+      final data = await client
           .from('scan_history')
           .select()
           .eq('user_id', user.id)
