@@ -175,7 +175,7 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
   }
 
   Future<void> _redirect() async {
-    await Future.delayed(const Duration(milliseconds: 2800));
+    await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
     

@@ -10,6 +10,7 @@ import 'data/models/verdict_model.dart';
 import 'data/models/alert_model.dart';
 import 'data/models/check_history_model.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +50,14 @@ void main() async {
     }
   } else {
     debugPrint('SafeSignal: Operating in Offline Secure Vault mode.');
+  }
+
+  // Initialize Notification Service
+  try {
+    await NotificationService().init();
+    debugPrint('SafeSignal: Notification channels initialized.');
+  } catch (e) {
+    debugPrint('SafeSignal: Notification initialization error: $e');
   }
 
   runApp(const ProviderScope(child: SafeSignalApp()));

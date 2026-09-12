@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/constants.dart';
 import 'dart:ui';
 
@@ -514,6 +515,7 @@ class _ProtectionPermissionsWidgetState
   bool _smsGranted = false;
   bool _notifGranted = false;
   bool _contactsGranted = false;
+  bool _batteryGranted = false;
 
   @override
   void initState() {
@@ -525,11 +527,13 @@ class _ProtectionPermissionsWidgetState
     final sms = await Permission.sms.isGranted;
     final notif = await Permission.notification.isGranted;
     final contacts = await Permission.contacts.isGranted;
+    final battery = await Permission.ignoreBatteryOptimizations.isGranted;
     if (mounted) {
       setState(() {
         _smsGranted = sms;
         _notifGranted = notif;
         _contactsGranted = contacts;
+        _batteryGranted = battery;
       });
     }
   }
@@ -565,6 +569,73 @@ class _ProtectionPermissionsWidgetState
           icon: Icons.phone_in_talk_rounded,
           granted: _contactsGranted,
           onTap: () => _req(Permission.contacts),
+        ),
+        const Divider(height: 1, indent: 60, endIndent: 20),
+        _PermRow(
+          title: 'Unrestricted Background Run',
+          subtitle: 'Prevents system from killing background protection',
+          icon: Icons.battery_charging_full_rounded,
+          granted: _batteryGranted,
+          onTap: () => _req(Permission.ignoreBatteryOptimizations),
+        ),
+        const Divider(height: 1, indent: 60, endIndent: 20),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () async {
+              await NotificationService().sendTestAlert();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('🔔 Test Alert Sent! Check your notification bar.'),
+                    backgroundColor: Color(0xFF2979FF),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2979FF).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.send_rounded, color: Color(0xFF2979FF), size: 22),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Test Alert Shield',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0D1117),
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Send immediate high-priority test notification',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.touch_app_rounded, color: Color(0xFF2979FF)),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );

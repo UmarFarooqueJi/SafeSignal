@@ -52,9 +52,10 @@ class SmsReceiver : BroadcastReceiver() {
                 // ── Save to SharedPreferences for Flutter to read ──────────
                 saveSmsToInbox(context, sender, body, analysis)
                 
-                // ── Show notification ──────────────────────────────────────
+                // ── Show notification & overlay ───────────────────────────
                 if (analysis.isSuspicious) {
                     showScamNotification(context, sender, body, analysis)
+                    showPremiumOverlay(context, sender, analysis)
                 } else {
                     showSafeNotification(context, sender, body, analysis)
                 }
@@ -284,6 +285,7 @@ class SmsReceiver : BroadcastReceiver() {
             ).apply {
                 description = "Real-time SMS scam detection alerts"
                 enableVibration(true)
+                vibrationPattern = longArrayOf(0, 350, 150, 350)
                 enableLights(true)
                 lightColor = android.graphics.Color.RED
             }
@@ -323,10 +325,11 @@ class SmsReceiver : BroadcastReceiver() {
                     )
                     .setSummaryText("SafeSignal Scam Shield")
             )
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .setVibrate(longArrayOf(0, 350, 150, 350))
             .setColor(if (analysis.verdict == "SCAM") android.graphics.Color.RED else android.graphics.Color.parseColor("#FF6F00"))
             .build()
 

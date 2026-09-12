@@ -630,12 +630,17 @@ class _AppCardState extends State<_AppCard> {
     
     // Determine install source nicely
     String source;
+    final storeName = RiskEngine.getStoreName(app.installer);
     if (app.isSystem) {
       source = 'System App';
-    } else if (app.installer == 'com.android.vending') {
-      source = 'Play Store';
+    } else if (storeName != null) {
+      source = storeName;
+    } else if (RiskEngine.isVerifiedEcosystem(app.package)) {
+      source = 'Verified Ecosystem';
     } else {
-      source = 'Sideloaded (${app.installer})';
+      source = app.installer.isEmpty || app.installer == 'unknown'
+          ? 'Direct APK / Sideload'
+          : 'Sideloaded (${app.installer})';
     }
 
     return GestureDetector(
@@ -704,7 +709,9 @@ class _AppCardState extends State<_AppCard> {
                           'Source: $source',
                           style: TextStyle(
                             fontSize: 11,
-                            color: source.startsWith('Sideloaded') ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
+                            color: (source.startsWith('Sideloaded') || source.startsWith('Direct APK'))
+                                ? const Color(0xFFEF4444)
+                                : const Color(0xFF059669),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -932,20 +939,70 @@ class AppInfo {
 }
 
 class RiskEngine {
+  static final Map<String, String> storeNames = {
+    'com.android.vending': 'Google Play Store',
+    'com.google.android.feedback': 'Google Play Services',
+    'com.google.android.packageinstaller': 'System Package Installer',
+    'com.android.packageinstaller': 'System Package Installer',
+    'com.sec.android.app.samsungapps': 'Samsung Galaxy Store',
+    'com.xiaomi.mipicks': 'Xiaomi GetApps',
+    'com.oppo.market': 'Oppo App Market',
+    'com.heytap.market': 'HeyTap App Market',
+    'com.vivo.appstore': 'Vivo V-Appstore',
+    'com.bbk.appstore': 'Vivo App Store',
+    'com.huawei.appmarket': 'Huawei AppGallery',
+    'com.amazon.venezia': 'Amazon Appstore',
+    'org.fdroid.fdroid': 'F-Droid',
+    'org.fdroid.basic': 'F-Droid',
+    'com.aurora.store': 'Aurora Store',
+  };
+
+  static String? getStoreName(String installer) => storeNames[installer];
+
+  static bool isVerifiedEcosystem(String pkg) {
+    const verifiedPrefixes = [
+      'com.google.',
+      'com.android.',
+      'com.sec.android.',
+      'com.samsung.',
+      'com.whatsapp',
+      'org.telegram.',
+      'org.thoughtcrime.securesms',
+      'com.instagram.',
+      'com.facebook.',
+      'com.microsoft.',
+      'com.truecaller',
+      'com.phonepe.',
+      'net.one97.paytm',
+      'in.org.npci.',
+      'com.spotify.',
+      'com.netflix.',
+      'com.ubercab',
+      'in.swiggy.',
+      'com.application.zomato',
+      'com.safesignal.',
+      'com.twitter.',
+      'com.linkedin.',
+      'com.amazon.',
+      'com.flipkart.',
+    ];
+    return verifiedPrefixes.any((prefix) => pkg.startsWith(prefix));
+  }
+
   static const _dangerPerms = {
-    'android.permission.RECORD_AUDIO':              ('Microphone',        8, 'Can record audio in background.'),
-    'android.permission.CAMERA':                    ('Camera',            8, 'Can access camera invisibly.'),
-    'android.permission.READ_CONTACTS':             ('Contacts',          10, 'Can read all your contacts.'),
-    'android.permission.READ_SMS':                  ('Read SMS',          20, 'Can read OTPs and private messages.'),
+    'android.permission.RECORD_AUDIO':              ('Microphone',        6, 'Can record audio in background.'),
+    'android.permission.CAMERA':                    ('Camera',            6, 'Can access camera.'),
+    'android.permission.READ_CONTACTS':             ('Contacts',          8, 'Can read contacts.'),
+    'android.permission.READ_SMS':                  ('Read SMS',          18, 'Can read OTPs and private messages.'),
     'android.permission.SEND_SMS':                  ('Send SMS',          15, 'Can send premium SMS messages.'),
     'android.permission.RECEIVE_SMS':               ('Receive SMS',       15, 'Can intercept incoming OTPs.'),
-    'android.permission.ACCESS_FINE_LOCATION':      ('Precise Location',  8, 'Can track exact GPS location.'),
-    'android.permission.ACCESS_BACKGROUND_LOCATION':('24/7 Location',     15, 'Can track location even when closed.'),
-    'android.permission.READ_CALL_LOG':             ('Call History',      12, 'Can see who you called.'),
-    'android.permission.PROCESS_OUTGOING_CALLS':    ('Intercept Calls',   18, 'Can monitor or block outgoing calls.'),
-    'android.permission.SYSTEM_ALERT_WINDOW':       ('Screen Overlay',    25, 'Can draw over other apps (often used to steal passwords).'),
+    'android.permission.ACCESS_FINE_LOCATION':      ('Precise Location',  6, 'Can track exact GPS location.'),
+    'android.permission.ACCESS_BACKGROUND_LOCATION':('24/7 Location',     14, 'Can track location even when closed.'),
+    'android.permission.READ_CALL_LOG':             ('Call History',      10, 'Can see who you called.'),
+    'android.permission.PROCESS_OUTGOING_CALLS':    ('Intercept Calls',   16, 'Can monitor or block outgoing calls.'),
+    'android.permission.SYSTEM_ALERT_WINDOW':       ('Screen Overlay',    22, 'Can draw over other apps.'),
     'android.permission.BIND_ACCESSIBILITY_SERVICE':('Accessibility',     35, 'Full control of device. Very dangerous if misused.'),
-    'android.permission.REQUEST_INSTALL_PACKAGES':  ('Install Apps',      20, 'Can install other potentially malicious apps.'),
+    'android.permission.REQUEST_INSTALL_PACKAGES':  ('Install Apps',      18, 'Can install other apps.'),
   };
 
   static AppInfo analyze(Map<String, dynamic> raw) {
@@ -954,8 +1011,8 @@ class RiskEngine {
     final pkg = raw['package'] as String? ?? '';
     final isSystem = raw['isSystem'] as bool? ?? false;
     final version = raw['versionName'] as String? ?? '';
-    final installer = raw['installer'] as String? ?? 'unknown';
-    final targetSdk = raw['targetSdk'] as int? ?? 33; // Default modern if missing
+    final installer = raw['installer'] as String? ?? '';
+    final targetSdk = raw['targetSdk'] as int? ?? 33;
     final hasLauncher = raw['hasLauncher'] as bool? ?? true;
     final hasAccessibility = raw['hasAccessibility'] as bool? ?? false;
     final hasDeviceAdmin = raw['hasDeviceAdmin'] as bool? ?? false;
@@ -963,96 +1020,97 @@ class RiskEngine {
     int score = 0;
     final reasons = <String>[];
 
-    // Real Sideloading Check
-    bool isSideloaded = !isSystem && installer != 'com.android.vending' && installer != 'com.amazon.venezia';
+    final isKnownStore = storeNames.containsKey(installer);
+    final isVerified = isVerifiedEcosystem(pkg);
+    final isSideloaded = !isSystem && !isKnownStore && !isVerified;
 
     if (isSystem) {
-      // System apps are generally trusted.
       score = 0;
     } else {
       if (isSideloaded) {
-        score += 20;
-        reasons.add('Sideloaded App: Not verified by Play Protect. Installed via $installer.');
+        score += 15;
+        final instLabel = installer.isEmpty || installer == 'unknown' ? 'Direct APK' : installer;
+        reasons.add('Sideloaded App: Installed via unverified source ($instLabel).');
       }
 
-      if (targetSdk < 28) { // Android 9 (Pie)
+      if (targetSdk < 28) {
         score += 15;
         reasons.add('Outdated SDK (Target: $targetSdk): Bypasses modern Android security protections.');
       }
 
       if (!hasLauncher) {
         score += 40;
-        reasons.insert(0, 'CRITICAL (Spyware): App is hiding its icon from your app drawer.');
+        reasons.insert(0, 'CRITICAL (Hidden Spyware): App is hiding its launcher icon.');
       }
 
       if (hasAccessibility) {
-        score += 40;
-        reasons.insert(0, 'CRITICAL (Control): Has Accessibility Service (can read your screen & tap buttons).');
+        score += 35;
+        reasons.insert(0, 'CRITICAL (Control): Has Accessibility Service enabled.');
       }
 
       if (hasDeviceAdmin) {
-        score += 40;
-        reasons.insert(0, 'CRITICAL (Admin): Requests Device Admin rights (can lock device or wipe data).');
+        score += 35;
+        reasons.insert(0, 'CRITICAL (Admin): Requests Device Admin rights.');
       }
 
       for (final perm in perms) {
         final info = _dangerPerms[perm];
         if (info != null) {
-          // If it's sideloaded OR targets old SDK, dangerous permissions carry full weight.
-          // If it's a Play Store app targeting modern SDK, we assume Google vetted it heavily, so reduce the weight drastically.
           int weight = info.$2;
-          if (!isSideloaded && targetSdk >= 30) {
-            weight = (weight * 0.3).round(); // 70% reduction in risk score for modern Play Store apps
+          if (isVerified) {
+            weight = (weight * 0.15).round(); // Verified ecosystem apps have expected permissions
+          } else if (isKnownStore && targetSdk >= 30) {
+            weight = (weight * 0.35).round(); // Legitimate store apps vetted by platform
           }
-          
+
           if (weight > 0) {
-             score += weight;
-             // Only add to reasons if it contributed significantly, or if it's highly sensitive
-             if (info.$2 >= 15 || isSideloaded) {
-               reasons.add('${info.$1}: ${info.$3}');
-             }
+            score += weight;
+            if (info.$2 >= 18 || isSideloaded) {
+              reasons.add('${info.$1}: ${info.$3}');
+            }
           }
         }
       }
 
-      // Flag dangerous combinations
+      // Flag truly dangerous malware combinations
       final hasInternet = perms.contains('android.permission.INTERNET');
-      
+
       if (perms.contains('android.permission.RECEIVE_SMS') && perms.contains('android.permission.SYSTEM_ALERT_WINDOW')) {
-        score += 30;
+        score += 35;
         reasons.insert(0, 'CRITICAL: Requests SMS + Screen Overlay (Classic Banking Trojan Pattern).');
       }
-      
+
       if (hasInternet && perms.contains('android.permission.BIND_ACCESSIBILITY_SERVICE')) {
         score += 40;
         reasons.insert(0, 'CRITICAL: Accessibility + Internet (High Risk of Screen Scraping / Data Theft).');
       }
 
-      if (hasInternet && perms.contains('android.permission.RECORD_AUDIO') && !isSystem) {
-        score += 15;
-        reasons.add('Spyware Risk: Mic + Internet (Can record and upload audio).');
+      // Only penalize unverified / sideloaded apps for generic mic/camera combos
+      if (isSideloaded && hasInternet && perms.contains('android.permission.RECORD_AUDIO')) {
+        score += 10;
+        reasons.add('Potential Risk: Unverified app requesting Mic + Internet.');
       }
 
-      if (hasInternet && perms.contains('android.permission.CAMERA') && !isSystem) {
-        score += 15;
-        reasons.add('Spyware Risk: Camera + Internet (Can take and upload hidden pictures).');
+      if (isSideloaded && hasInternet && perms.contains('android.permission.CAMERA')) {
+        score += 10;
+        reasons.add('Potential Risk: Unverified app requesting Camera + Internet.');
       }
-      
-      if (hasInternet && perms.contains('android.permission.READ_CONTACTS') && !isSystem) {
-        score += 15;
-        reasons.add('Data Exfiltration Risk: Contacts + Internet (Can upload your entire address book).');
+
+      if (isSideloaded && hasInternet && perms.contains('android.permission.READ_CONTACTS')) {
+        score += 12;
+        reasons.add('Data Privacy Risk: Unverified app requesting Contacts + Internet.');
       }
     }
 
     score = score.clamp(0, 100);
 
-    final level = score >= 80
+    final level = score >= 75
         ? RiskLevel.critical
         : score >= 50
             ? RiskLevel.high
-            : score >= 25
+            : score >= 30
                 ? RiskLevel.medium
-                : score >= 10
+                : score >= 15
                     ? RiskLevel.low
                     : RiskLevel.safe;
 

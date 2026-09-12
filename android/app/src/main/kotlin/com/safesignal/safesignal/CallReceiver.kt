@@ -20,6 +20,11 @@ import android.net.Uri
 import android.Manifest
 import android.content.pm.PackageManager
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import androidx.core.app.NotificationCompat
+
 /**
  * BroadcastReceiver that listens for incoming calls and shows
  * a SafeSignal overlay popup analyzing whether the caller is likely a scam.
@@ -27,6 +32,9 @@ import android.content.pm.PackageManager
 class CallReceiver : BroadcastReceiver() {
 
     companion object {
+        private const val CALL_CHANNEL_ID = "safesignal_call_alerts"
+        private const val CALL_NOTIFICATION_ID = 3003
+
         // Known scam prefixes in India
         private val SCAM_PREFIXES = setOf(
             "140", "141", "142", "143", "144", // Telemarketing prefixes
@@ -54,14 +62,16 @@ class CallReceiver : BroadcastReceiver() {
 
         when (state) {
             TelephonyManager.EXTRA_STATE_RINGING -> {
-                // Incoming call — analyze and show overlay
+                // Incoming call — analyze and show high-priority alert + overlay
                 val analysis = analyzeNumber(context, phoneNumber)
+                showCallNotification(context, phoneNumber, analysis)
                 showOverlay(context, phoneNumber, analysis)
             }
             TelephonyManager.EXTRA_STATE_IDLE,
             TelephonyManager.EXTRA_STATE_OFFHOOK -> {
-                // Call ended or picked up — dismiss overlay
+                // Call ended or picked up — dismiss overlay and clear notification
                 dismissOverlay()
+                dismissCallNotification(context)
             }
         }
     }
@@ -395,5 +405,79 @@ class CallReceiver : BroadcastReceiver() {
         } else {
             true
         }
+    }
+
+    private fun showCallNotification(context: Context, phoneNumber: String, analysis: CallAnalysis) {
+        try {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    CALL_CHANNEL_ID,
+                    "SafeSignal Live Call Shield",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Urgent incoming call scam analysis and warnings"
+                    enableVibration(true)
+                    vibrationPattern = longArrayOf(0, 450, 250, 450)
+                    enableLights(true)
+                    lightColor = if (analysis.verdict == "SCAM") Color.RED else Color.BLUE
+                }
+                nm.createNotificationChannel(channel)
+            }
+
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            val pendingIntent = PendingIntent.getActivity(
+                context, 0, launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val displayName = analysis.displayName ?: phoneNumber
+            val verdictTitle = when (analysis.verdict) {
+                "SCAM" -> "🔴 CRITICAL: Potential Scam Call!"
+                "CAUTION" -> "⚠️ CAUTION: Unverified Caller"
+                "SAFE" -> "🟢 Safe Caller: $displayName"
+                else -> "🛡️ SafeSignal Call Check: $displayName"
+            }
+
+            val alertColor = when (analysis.verdict) {
+                "SCAM" -> Color.RED
+                "CAUTION" -> Color.parseColor("#FF6F00")
+                "SAFE" -> Color.parseColor("#00C853")
+                else -> Color.parseColor("#2979FF")
+            }
+
+            val notification = NotificationCompat.Builder(context, CALL_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_warning)
+                .setContentTitle(verdictTitle)
+                .setContentText("${analysis.reason} (${analysis.confidence}% confidence)")
+                .setStyle(
+                    NotificationCompat.BigTextStyle()
+                        .setBigContentTitle(verdictTitle)
+                        .bigText("Caller: $displayName ($phoneNumber)\n\n" +
+                                "Analysis: ${analysis.reason}\n\n" +
+                                "Confidence Score: ${analysis.confidence}%\n\n" +
+                                (if (analysis.verdict == "SCAM") "🚨 Security Warning: Never share OTP, UPI PIN, or bank passwords with unknown callers."
+                                else "SafeSignal active background caller verification."))
+                        .setSummaryText("Call Shield Active")
+                )
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .setVibrate(longArrayOf(0, 450, 250, 450))
+                .setColor(alertColor)
+                .build()
+
+            nm.notify(CALL_NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun dismissCallNotification(context: Context) {
+        try {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.cancel(CALL_NOTIFICATION_ID)
+        } catch (_: Exception) {}
     }
 }
