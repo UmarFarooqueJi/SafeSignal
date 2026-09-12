@@ -118,3 +118,4 @@ fix_*.py
 rewrite_*.py
 scratch_*.dart
 analyze_out.txt
+.metadata
