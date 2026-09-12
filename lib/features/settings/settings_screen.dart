@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/services/supabase_service.dart';
 import '../../core/constants.dart';
 import 'dart:ui';
 
@@ -350,7 +351,10 @@ class SettingsScreen extends ConsumerWidget {
                 GestureDetector(
                   onTap: () async {
                     try {
-                      await Supabase.instance.client.auth.signOut();
+                      final client = SupabaseService.client;
+                      if (client != null) {
+                        await client.auth.signOut();
+                      }
                     } catch (e) {
                       debugPrint('Signout error: $e');
                     }

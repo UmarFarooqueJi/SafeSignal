@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/services/supabase_service.dart';
 
 import '../../core/constants.dart';
 
@@ -44,24 +45,28 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
     
     try {
-      AuthResponse response;
-      if (_isSignUpMode) {
-        response = await Supabase.instance.client.auth.signUp(
-          email: _emailCtrl.text.trim(),
-          password: _passCtrl.text,
-        );
-        
-
+      final client = SupabaseService.client;
+      if (client != null) {
+        AuthResponse response;
+        if (_isSignUpMode) {
+          response = await client.auth.signUp(
+            email: _emailCtrl.text.trim(),
+            password: _passCtrl.text,
+          );
+        } else {
+          response = await client.auth.signInWithPassword(
+            email: _emailCtrl.text.trim(),
+            password: _passCtrl.text,
+          );
+        }
       } else {
-        response = await Supabase.instance.client.auth.signInWithPassword(
-          email: _emailCtrl.text.trim(),
-          password: _passCtrl.text,
-        );
+        debugPrint('Supabase offline or not initialized. Operating in local account mode.');
       }
       
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(AppConstants.prefOnboardingDone, true);
       await prefs.setBool('isLoggedIn', true);
+      await prefs.setString('userEmail', _emailCtrl.text.trim());
       final isProfileSetupDone = prefs.getBool('isProfileSetupDone') ?? false;
       
       if (mounted) {

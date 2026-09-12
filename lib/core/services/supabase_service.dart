@@ -2,13 +2,24 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 
 class SupabaseService {
-  SupabaseClient? get _client {
+  static bool get isInitialized {
+    try {
+      final _ = Supabase.instance;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static SupabaseClient? get client {
     try {
       return Supabase.instance.client;
     } catch (_) {
       return null;
     }
   }
+
+  SupabaseClient? get _client => client;
 
   // Sign in Anonymously if not logged in
   Future<void> signInAnonymouslyIfNeeded() async {

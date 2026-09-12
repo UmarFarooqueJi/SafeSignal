@@ -29,18 +29,26 @@ void main() async {
   Hive.registerAdapter(AlertModelAdapter());
   Hive.registerAdapter(CheckHistoryModelAdapter());
 
-  // Initialize Supabase only if env is loaded and keys are present
-  if (envLoaded && AppConstants.supabaseUrl.isNotEmpty && AppConstants.supabaseAnonKey.isNotEmpty) {
+  // Initialize Supabase only if valid configuration is present
+  final sUrl = AppConstants.supabaseUrl;
+  final sKey = AppConstants.supabaseAnonKey;
+  final isValidSupabaseConfig = sUrl.isNotEmpty &&
+      sKey.isNotEmpty &&
+      !sUrl.contains('your-project-id') &&
+      !sKey.contains('your-supabase-anon-key');
+
+  if (isValidSupabaseConfig) {
     try {
       await Supabase.initialize(
-        url: AppConstants.supabaseUrl,
-        anonKey: AppConstants.supabaseAnonKey, // ignore: deprecated_member_use
+        url: sUrl,
+        anonKey: sKey,
       );
+      debugPrint('SafeSignal: Supabase successfully initialized.');
     } catch (e) {
       debugPrint('CRITICAL: Failed to initialize Supabase: $e');
     }
   } else {
-    debugPrint('CRITICAL: Skipping Supabase initialization due to missing environment variables.');
+    debugPrint('SafeSignal: Operating in Offline Secure Vault mode.');
   }
 
   runApp(const ProviderScope(child: SafeSignalApp()));
