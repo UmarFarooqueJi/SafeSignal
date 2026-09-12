@@ -40,7 +40,9 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
-      const webClientId = '1011436878280-qbja9u7a3qi2ts3vl7gc0cmn0lkpmclj.apps.googleusercontent.com';
+      final webClientId = AppConstants.googleWebClientId.isNotEmpty 
+          ? AppConstants.googleWebClientId 
+          : '1011436878280-qbja9u7a3qi2ts3vl7gc0cmn0lkpmclj.apps.googleusercontent.com';
       
       await GoogleSignIn.instance.initialize(
         serverClientId: webClientId,

@@ -2,7 +2,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppConstants {
   // API
-  static const String apiBaseUrl = 'http://10.0.2.2:8000'; // Android emulator → localhost
+  static String get apiBaseUrl {
+    final env = dotenv.env['ENV'] ?? 'development';
+    if (env == 'production') {
+      return dotenv.env['API_BASE_URL'] ?? 'https://your-backend.onrender.com';
+    }
+    return dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:8000'; // Android emulator → localhost
+  }
   static const String apiBaseUrlRelease = 'https://your-backend.onrender.com';
   static String get meshApiKey => dotenv.env['MESH_API_KEY'] ?? '';
   static String get newsDataApiKey => dotenv.env['NEWS_DATA_API_KEY'] ?? '';
@@ -15,6 +21,9 @@ class AppConstants {
   static String get grokApiKey => dotenv.env['GROK_API_KEY'] ?? '';
   static String get deepSeekApiKey => dotenv.env['DEEPSEEK_API_KEY'] ?? '';
   static String get openRouterApiKey => dotenv.env['OPENROUTER_API_KEY'] ?? '';
+
+  // Google Sign In - SECURE: now from env
+  static String get googleWebClientId => dotenv.env['GOOGLE_WEB_CLIENT_ID'] ?? '';
 
   // Have I Been Pwned (Phase 3)
   static String get hibpApiKey => dotenv.env['HIBP_API_KEY'] ?? '';

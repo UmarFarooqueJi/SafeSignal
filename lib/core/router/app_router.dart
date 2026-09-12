@@ -178,13 +178,23 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
     await Future.delayed(const Duration(milliseconds: 2800));
     if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     
     final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     final isProfileSetupDone = prefs.getBool('isProfileSetupDone') ?? false;
+    final isVaultEnabled = prefs.getBool('isVaultEnabled') ?? false;
+    final onboardingDone = prefs.getBool('onboarding_done') ?? false;
+    
+    if (!mounted) return;
+    
+    // Use GoRouter to navigate safely
+    if (!onboardingDone) {
+      context.go('/onboarding');
+      return;
+    }
     
     if (isLoggedIn) {
       if (isProfileSetupDone) {
-        final isVaultEnabled = prefs.getBool('isVaultEnabled') ?? false;
         if (isVaultEnabled) {
           context.go('/vault-lock');
         } else {

@@ -9,18 +9,19 @@ import 'core/constants.dart';
 import 'data/models/verdict_model.dart';
 import 'data/models/alert_model.dart';
 import 'data/models/check_history_model.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
+import 'features/settings/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load Environment Variables
+  // Load Environment Variables - secure, not bundled in assets
   bool envLoaded = false;
   try {
     await dotenv.load(fileName: ".env");
     envLoaded = true;
   } catch (e) {
-    debugPrint('CRITICAL: .env file not found or failed to load. Check .env.example.');
+    debugPrint('INFO: .env file not found, using compile-time env or defaults. Check .env.example');
   }
 
   // Initialize Hive
@@ -34,18 +35,17 @@ void main() async {
     try {
       await Supabase.initialize(
         url: AppConstants.supabaseUrl,
-        anonKey: AppConstants.supabaseAnonKey, // ignore: deprecated_member_use
+        anonKey: AppConstants.supabaseAnonKey,
       );
     } catch (e) {
       debugPrint('CRITICAL: Failed to initialize Supabase: $e');
     }
   } else {
-    debugPrint('CRITICAL: Skipping Supabase initialization due to missing environment variables.');
+    debugPrint('INFO: Skipping Supabase initialization due to missing env. Offline mode active.');
   }
 
   runApp(const ProviderScope(child: SafeSignalApp()));
 }
-
 
 class SafeSignalApp extends ConsumerWidget {
   const SafeSignalApp({super.key});
@@ -53,6 +53,8 @@ class SafeSignalApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+    final settings = ref.watch(settingsProvider);
+
     return MaterialApp.router(
       title: 'SafeSignal',
       debugShowCheckedModeBanner: false,
@@ -60,15 +62,20 @@ class SafeSignalApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.light,
       routerConfig: router,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('en'),
-        Locale('hi'),
-      ],
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: Locale(settings.language),
+      builder: (context, child) {
+        // Apply user text scale preference globally
+        final mediaQuery = MediaQuery.of(context);
+        final scale = settings.textScale.clamp(0.8, 1.5);
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: TextScaler.linear(scale),
+          ),
+          child: child!,
+        );
+      },
     );
   }
 }
