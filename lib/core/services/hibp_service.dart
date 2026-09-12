@@ -52,6 +52,7 @@ class HibpService {
             final breachesArray = data['breaches'] as List;
             if (breachesArray.isNotEmpty && breachesArray.first is List) {
               final List<dynamic> breachNames = breachesArray.first;
+              return breachNames.map((name) {
                 final strName = name.toString().trim();
                 final domain = strName.contains('.')
                     ? strName
@@ -60,12 +61,13 @@ class HibpService {
                   title: strName,
                   domain: domain,
                   breachDate: 'Historical Leak',
-                pwnCount: 0,
-                description: 'Your data was exposed in the $name data breach. We strongly advise changing your password.',
-                dataClasses: ['Email addresses', 'Passwords'],
-                isVerified: true,
-                logoPath: 'https://haveibeenpwned.com/Content/Images/PwnedLogo.png',
-              )).toList();
+                  pwnCount: 0,
+                  description: 'Your data was exposed in the $strName data breach. We strongly advise changing your password.',
+                  dataClasses: ['Email addresses', 'Passwords'],
+                  isVerified: true,
+                  logoPath: 'https://haveibeenpwned.com/Content/Images/PwnedLogo.png',
+                );
+              }).toList();
             }
           }
           return [];
