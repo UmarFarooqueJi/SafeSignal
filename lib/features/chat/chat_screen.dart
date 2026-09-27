@@ -52,10 +52,13 @@ class ChatNotifier extends Notifier<List<ChatMessage>> {
 
   Future<void> analyzeMessage(String text, {File? image, String language = 'hi'}) async {
     // Show user message / image
-    state = [...state, ChatMessage(text: text, isUser: true, image: image)];
+    final userMsg = ChatMessage(text: text, isUser: true, image: image);
+    state = [...state, userMsg];
 
     // Loading indicator
-    final loadingText = language == 'hi' ? 'AI jaanch ho rahi hai... 🔍' : 'AI is analyzing... 🔍';
+    final loadingText = image != null
+        ? (language == 'hi' ? 'Screenshot scan ho raha hai... 🔍' : 'Scanning screenshot with AI... 🔍')
+        : (language == 'hi' ? 'AI jaanch ho rahi hai... 🔍' : 'AI is analyzing... 🔍');
     state = [
       ...state,
       ChatMessage(text: loadingText, isUser: false, isLoading: true),
@@ -64,7 +67,40 @@ class ChatNotifier extends Notifier<List<ChatMessage>> {
     VerdictModel verdict;
 
     try {
-      verdict = await _analyzeWithAI(text, image, language);
+      // 1. If image is provided, run real OCR to extract all visible text from the screenshot
+      String? ocrText;
+      if (image != null) {
+        ocrText = await _extractTextFromImage(image);
+      }
+
+      String promptText = text;
+      if (image != null) {
+        if (ocrText != null && ocrText.trim().isNotEmpty) {
+          promptText = """
+[USER UPLOADED A SCREENSHOT FOR CYBER AUDIT]
+OCR Extracted Text from Screenshot:
+\"\"\"
+$ocrText
+\"\"\"
+
+User Note / Query: ${text.isEmpty || text == '[Screenshot Analysis Request]' ? 'Is this screenshot a scam, phishing, digital arrest, or bank fraud?' : text}
+""";
+        } else {
+          promptText = """
+[USER UPLOADED AN IMAGE]
+(No readable text found via OCR in this image).
+User Note / Query: ${text.isEmpty || text == '[Screenshot Analysis Request]' ? 'Analyze this image for cyber threat risks.' : text}
+""";
+        }
+      }
+
+      // 2. Fetch conversation history for contextual multi-turn memory
+      final history = state
+          .where((m) => !m.isLoading && m != userMsg && m.text.isNotEmpty && m.verdict == null)
+          .toList();
+      final recentHistory = history.length > 6 ? history.sublist(history.length - 6) : history;
+
+      verdict = await _analyzeWithAI(promptText, image, language, recentHistory, ocrText: ocrText);
     } catch (e) {
       debugPrint('AI Analysis failed, falling back to heuristics: $e');
       if (image != null) {
@@ -82,6 +118,59 @@ class ChatNotifier extends Notifier<List<ChatMessage>> {
     } else {
       state = [...state, ChatMessage(text: '', isUser: false, verdict: verdict)];
     }
+  }
+
+  /// High-reliability OCR Text Extraction for uploaded screenshots
+  static Future<String> _extractTextFromImage(File image) async {
+    try {
+      final bytes = await image.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final dio = Dio();
+      dio.options.connectTimeout = const Duration(seconds: 14);
+      dio.options.receiveTimeout = const Duration(seconds: 16);
+
+      final formData = FormData.fromMap({
+        'base64Image': 'data:image/jpeg;base64,$base64Image',
+        'apikey': 'K87899142388957',
+        'language': 'eng',
+        'isOverlayRequired': false,
+        'detectOrientation': true,
+        'scale': true,
+        'OCREngine': '2',
+      });
+
+      final response = await dio.post('https://api.ocr.space/parse/image', data: formData);
+      if (response.statusCode == 200 && response.data != null) {
+        final results = response.data['ParsedResults'] as List?;
+        if (results != null && results.isNotEmpty) {
+          final parsed = results[0]['ParsedText']?.toString().trim() ?? '';
+          if (parsed.isNotEmpty) return parsed;
+        }
+      }
+    } catch (e) {
+      debugPrint('[ChatOCR] Primary OCR failed: $e, trying secondary fallback key');
+      try {
+        final bytes = await image.readAsBytes();
+        final base64Image = base64Encode(bytes);
+        final dio = Dio();
+        dio.options.connectTimeout = const Duration(seconds: 10);
+        dio.options.receiveTimeout = const Duration(seconds: 10);
+
+        final formData = FormData.fromMap({
+          'base64Image': 'data:image/jpeg;base64,$base64Image',
+          'apikey': 'helloworld',
+          'language': 'eng',
+        });
+        final response = await dio.post('https://api.ocr.space/parse/image', data: formData);
+        if (response.statusCode == 200 && response.data != null) {
+          final results = response.data['ParsedResults'] as List?;
+          if (results != null && results.isNotEmpty) {
+            return results[0]['ParsedText']?.toString().trim() ?? '';
+          }
+        }
+      } catch (_) {}
+    }
+    return '';
   }
 
   static String _extractCleanHumanText(String raw) {
@@ -141,7 +230,13 @@ class ChatNotifier extends Notifier<List<ChatMessage>> {
     return indicators.any((k) => lower.contains(k));
   }
 
-  Future<VerdictModel> _analyzeWithAI(String text, File? image, String language) async {
+  Future<VerdictModel> _analyzeWithAI(
+    String text,
+    File? image,
+    String language,
+    List<ChatMessage> history, {
+    String? ocrText,
+  }) async {
     final dio = Dio();
     final apiKey = AppConstants.openRouterApiKey.isNotEmpty
         ? AppConstants.openRouterApiKey
@@ -188,49 +283,36 @@ Respond ONLY with valid JSON:
 """;
     } else {
       systemPrompt = """
-You are SafeSignal AI — an intelligent cybersecurity assistant and personal digital protection expert, created and developed by Umar Farooque (lead cybersecurity researcher and open-source engineer).
-You communicate fluently, naturally, and warmly in $langName.
+You are SafeSignal AI — an elite personal cybersecurity advisor and conversational digital protection expert, created and developed by Umar Farooque (lead cybersecurity researcher and open-source engineer).
+You communicate fluently, naturally, and warmly in $langName (matching the user's language and tone, whether Hindi, Hinglish, or English).
 
 Developer Details: Umar Farooque is the creator and lead researcher behind SafeSignal, building open-source intelligence and citizen defense against digital arrest scams, UPI fraud, and mobile malware.
 
-CRITICAL INSTRUCTIONS:
+CRITICAL CONVERSATIONAL INSTRUCTIONS:
 1. Speak naturally, conversationally, and helpfully like a human security advisor.
 2. DO NOT output JSON. DO NOT use braces {}, brackets [], or metadata fields like confidence, riskLevel, scamType, why, or summary.
-3. Reply with CLEAN, DIRECT CONVERSATIONAL TEXT ONLY.
+3. Answer questions directly, provide cybersecurity tips, and maintain conversational context with previous messages.
+4. Reply with CLEAN, DIRECT CONVERSATIONAL TEXT ONLY.
 """;
     }
 
     final messages = <Map<String, dynamic>>[];
     messages.add({'role': 'system', 'content': systemPrompt});
 
-    if (image != null) {
-      final bytes = await image.readAsBytes();
-      final base64Image = base64Encode(bytes);
-      final mimeType = image.path.endsWith('.png') ? 'image/png' : 'image/jpeg';
-
-      messages.add({
-        'role': 'user',
-        'content': [
-          {
-            'type': 'text',
-            'text': text.isEmpty || text == '[Screenshot Analysis Request]'
-                ? 'Analyze this screenshot for scams, phishing or fraud.'
-                : 'Analyze this screenshot. User context: $text'
-          },
-          {
-            'type': 'image_url',
-            'image_url': {
-              'url': 'data:$mimeType;base64,$base64Image'
-            }
-          }
-        ]
-      });
-    } else {
-      messages.add({
-        'role': 'user',
-        'content': text
-      });
+    // Add recent conversation history for memory
+    for (final h in history) {
+      if (h.text.isNotEmpty) {
+        messages.add({
+          'role': h.isUser ? 'user' : 'assistant',
+          'content': h.text,
+        });
+      }
     }
+
+    messages.add({
+      'role': 'user',
+      'content': text,
+    });
 
     final hasCustomKey = (AppConstants.openRouterApiKey.isNotEmpty && !AppConstants.openRouterApiKey.contains('your-')) ||
                          (AppConstants.deepSeekApiKey.isNotEmpty && !AppConstants.deepSeekApiKey.contains('your-'));
@@ -268,14 +350,11 @@ CRITICAL INSTRUCTIONS:
             'Authorization': 'Bearer $cfToken',
             'Content-Type': 'application/json',
           },
-          connectTimeout: const Duration(seconds: 14),
-          receiveTimeout: const Duration(seconds: 16),
+          connectTimeout: const Duration(seconds: 18),
+          receiveTimeout: const Duration(seconds: 22),
         ),
         data: {
-          'messages': [
-            {'role': 'system', 'content': systemPrompt},
-            {'role': 'user', 'content': text.isNotEmpty ? text : 'Namaste, please introduce yourself.'},
-          ],
+          'messages': messages,
         },
       );
 
@@ -302,10 +381,7 @@ CRITICAL INSTRUCTIONS:
           receiveTimeout: const Duration(seconds: 16),
         ),
         data: {
-          'messages': [
-            {'role': 'system', 'content': systemPrompt},
-            {'role': 'user', 'content': text.isNotEmpty ? text : 'Namaste'},
-          ],
+          'messages': messages,
           'model': 'openai',
           'seed': 42,
         },
