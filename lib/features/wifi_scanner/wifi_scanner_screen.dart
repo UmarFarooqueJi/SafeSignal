@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:flutter/services.dart';
@@ -225,6 +226,36 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
           level: _Level.critical,
           icon: Icons.gpp_bad,
         ));
+      }
+      // 3. Router Gateway Port Security Audit
+      if (gateway != 'N/A' && gateway.isNotEmpty) {
+        final dangerousPorts = [23, 21, 445];
+        final openDangerousPorts = <int>[];
+        for (final port in dangerousPorts) {
+          try {
+            final socket = await Socket.connect(gateway, port, timeout: const Duration(milliseconds: 350));
+            socket.destroy();
+            openDangerousPorts.add(port);
+          } catch (_) {}
+        }
+
+        if (openDangerousPorts.isNotEmpty) {
+          score -= 30;
+          final portNames = openDangerousPorts.map((p) => p == 23 ? 'Telnet (23)' : (p == 21 ? 'FTP (21)' : 'SMB (445)')).join(', ');
+          checks.add(_Check(
+            label: 'Insecure Router Ports',
+            detail: 'CRITICAL: Router gateway has vulnerable unencrypted ports open ($portNames). Attackers on this WiFi can hijack the router.',
+            level: _Level.danger,
+            icon: Icons.router_outlined,
+          ));
+        } else {
+          checks.add(const _Check(
+            label: 'Router Port Hardening',
+            detail: 'Dangerous router administration ports (Telnet, SMB, FTP) are securely closed.',
+            level: _Level.safe,
+            icon: Icons.verified_user_outlined,
+          ));
+        }
       }
     } catch (e) {
       // Offline ya totally unreachable

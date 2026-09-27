@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class BreachInfo {
   final String title;
@@ -8,9 +9,12 @@ class BreachInfo {
   final String description;
   final List<String> dataClasses;
   final bool isVerified;
-  final String logoPath; 
+  final String logoPath;
+  final String industry;
+  final String passwordRisk;
+  final String? referenceUrl;
 
-  BreachInfo({
+  const BreachInfo({
     required this.title,
     required this.domain,
     required this.breachDate,
@@ -19,80 +23,130 @@ class BreachInfo {
     required this.dataClasses,
     required this.isVerified,
     required this.logoPath,
+    this.industry = 'General',
+    this.passwordRisk = 'unknown',
+    this.referenceUrl,
   });
 }
 
 class HibpService {
-  final Dio _dio = Dio();
+  final Dio _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 12),
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) SafeSignal/1.0',
+      'Accept': 'application/json',
+    },
+  ));
 
-  // Using XposedOrNot API as a completely free alternative to HIBP.
-  // It returns real data breaches without requiring an API key.
   Future<List<BreachInfo>> checkEmail(String email) async {
-    int retries = 3;
-    int delayMs = 1000;
+    final cleanEmail = email.trim().toLowerCase();
 
-    while (retries > 0) {
-      try {
-        final response = await _dio.get(
-          'https://api.xposedornot.com/v1/check-email/${Uri.encodeComponent(email)}',
-          options: Options(
-            headers: {'User-Agent': 'SafeSignal-App'},
-            receiveTimeout: const Duration(seconds: 10),
-          ),
-        );
+    // 1. Try Deep Breach-Analytics endpoint (returns full details, logos, dates, data fields)
+    try {
+      final res = await _dio.get(
+        'https://api.xposedornot.com/v1/breach-analytics',
+        queryParameters: {'email': cleanEmail},
+      );
 
-        if (response.statusCode == 200) {
-          final data = response.data;
-          
-          if (data.containsKey('Error') && data['Error'] == 'Not found') {
-            return [];
-          }
-          
-          if (data.containsKey('breaches') && data['breaches'] != null) {
-            final breachesArray = data['breaches'] as List;
-            if (breachesArray.isNotEmpty && breachesArray.first is List) {
-              final List<dynamic> breachNames = breachesArray.first;
-              return breachNames.map((name) {
-                final strName = name.toString().trim();
-                final domain = strName.contains('.')
-                    ? strName
-                    : '${strName.replaceAll(RegExp(r'\s+'), '').toLowerCase()}.com';
-                return BreachInfo(
-                  title: strName,
-                  domain: domain,
-                  breachDate: 'Historical Leak',
-                  pwnCount: 0,
-                  description: 'Your data was exposed in the $strName data breach. We strongly advise changing your password.',
-                  dataClasses: ['Email addresses', 'Passwords'],
-                  isVerified: true,
-                  logoPath: 'https://haveibeenpwned.com/Content/Images/PwnedLogo.png',
-                );
-              }).toList();
+      if (res.statusCode == 200 && res.data is Map) {
+        final data = res.data as Map;
+
+        // Check if no breach found
+        if (data.containsKey('Error') && data['Error'].toString().toLowerCase().contains('not found')) {
+          return [];
+        }
+
+        final exposed = data['ExposedBreaches'];
+        if (exposed is Map && exposed['breaches_details'] is List) {
+          final list = exposed['breaches_details'] as List;
+          final result = <BreachInfo>[];
+
+          for (final item in list) {
+            if (item is Map) {
+              final title = item['breach']?.toString().trim() ?? 'Unknown Breach';
+              final domain = item['domain']?.toString().trim() ?? '';
+              final details = item['details']?.toString().trim() ?? 'Data records compromised in unauthorized access.';
+              final logo = item['logo']?.toString().trim() ?? '';
+              final industry = item['industry']?.toString().trim() ?? 'Technology';
+              final passRisk = item['password_risk']?.toString().trim() ?? 'unknown';
+              final rawDate = item['xposed_date']?.toString().trim() ?? '';
+              final date = rawDate.isNotEmpty ? rawDate : 'Historical';
+              final records = int.tryParse(item['xposed_records']?.toString() ?? '0') ?? 0;
+              final ref = item['references']?.toString().trim();
+              final verified = item['verified']?.toString().toLowerCase() == 'yes';
+
+              final rawData = item['xposed_data']?.toString() ?? 'Email addresses;Passwords';
+              final dataClasses = rawData
+                  .split(';')
+                  .map((e) => e.trim())
+                  .where((e) => e.isNotEmpty)
+                  .toList();
+
+              result.add(BreachInfo(
+                title: title,
+                domain: domain.isNotEmpty ? domain : '$title.com'.toLowerCase(),
+                breachDate: date,
+                pwnCount: records,
+                description: details,
+                dataClasses: dataClasses.isNotEmpty ? dataClasses : ['Email addresses', 'Passwords'],
+                isVerified: verified,
+                logoPath: logo.isNotEmpty ? logo : 'https://xposedornot.com/static/logos/$title.png',
+                industry: industry,
+                passwordRisk: passRisk,
+                referenceUrl: (ref != null && ref.startsWith('http')) ? ref : null,
+              ));
             }
           }
-          return [];
-        } else {
-          throw Exception('XposedOrNot Error: ${response.statusCode}');
+
+          if (result.isNotEmpty) return result;
         }
-      } on DioException catch (e) {
-        if (e.response?.statusCode == 404) {
-          return [];
-        } else if (e.response?.statusCode == 429) {
-          retries--;
-          if (retries == 0) rethrow;
-          await Future.delayed(Duration(milliseconds: delayMs));
-          delayMs *= 2;
-        } else {
-          retries--;
-          if (retries == 0) rethrow;
-          await Future.delayed(Duration(milliseconds: delayMs));
-        }
-      } catch (e) {
-        retries--;
-        if (retries == 0) rethrow;
-        await Future.delayed(Duration(milliseconds: delayMs));
       }
+    } catch (e) {
+      debugPrint('breach-analytics query error: $e');
     }
+
+    // 2. Fallback to basic check-email endpoint if analytics is busy or rate-limited
+    try {
+      final res = await _dio.get(
+        'https://api.xposedornot.com/v1/check-email/${Uri.encodeComponent(cleanEmail)}',
+      );
+
+      if (res.statusCode == 200 && res.data is Map) {
+        final data = res.data as Map;
+        if (data['Error'] != null && data['Error'].toString().toLowerCase().contains('not found')) {
+          return [];
+        }
+
+        if (data.containsKey('breaches') && data['breaches'] != null) {
+          final breachesArray = data['breaches'] as List;
+          if (breachesArray.isNotEmpty && breachesArray.first is List) {
+            final List<dynamic> breachNames = breachesArray.first;
+            return breachNames.map((name) {
+              final strName = name.toString().trim();
+              final domain = strName.contains('.')
+                  ? strName
+                  : '${strName.replaceAll(RegExp(r'\s+'), '').toLowerCase()}.com';
+              return BreachInfo(
+                title: strName,
+                domain: domain,
+                breachDate: 'Verified Leak Record',
+                pwnCount: 0,
+                description: 'Your account credentials associated with $strName were identified in public dark web leak databases.',
+                dataClasses: ['Email addresses', 'Encrypted Passwords', 'Account Credentials'],
+                isVerified: true,
+                logoPath: 'https://xposedornot.com/static/logos/$strName.png',
+                industry: 'Online Service',
+                passwordRisk: 'encrypted',
+              );
+            }).toList();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('check-email fallback error: $e');
+    }
+
     return [];
   }
 }

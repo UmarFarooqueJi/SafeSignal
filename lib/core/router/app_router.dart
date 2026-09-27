@@ -25,6 +25,8 @@ import '../../features/qr_scanner/qr_scanner_screen.dart';
 import '../../features/clipboard/clipboard_guard_screen.dart';
 import '../../features/vault/vault_screen.dart';
 import '../../features/vault/vault_lock_screen.dart';
+import '../../features/osint/social_osint_screen.dart';
+import '../../features/osint/phone_osint_screen.dart';
 import '../../data/models/verdict_model.dart';
 
 
@@ -97,6 +99,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/qr-scanner',
         builder: (context, state) => const QrScannerScreen(),
+      ),
+      GoRoute(
+        path: '/social-osint',
+        builder: (context, state) => const SocialOsintScreen(),
+      ),
+      GoRoute(
+        path: '/phone-osint',
+        builder: (context, state) {
+          final phone = state.extra as String?;
+          return PhoneOsintScreen(initialPhone: phone);
+        },
       ),
       GoRoute(
         path: '/clipboard',

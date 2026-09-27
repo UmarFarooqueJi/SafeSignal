@@ -17,17 +17,25 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   List<AlertModel> _alerts = [];
   bool _loading = true;
-  String _selectedCategory = 'hi';
+  String _selectedCategory = 'all';
   String? _errorMessage;
 
-  final _categories = [
-    ('hi', 'Hindi News'),
-    ('en', 'Hinglish News'),
+  // Category definitions: (id, display label, emoji)
+  static const _categoryDefs = [
+    ('all',            'Sab Alerts',       '🔔'),
+    ('new',            'Naya',             '🔴'),
+    ('digital_arrest', 'Arrest Scam',      '👮'),
+    ('investment',     'Investment Fraud', '💸'),
+    ('otp',            'OTP / SIM Scam',   '📱'),
+    ('lottery',        'Lottery Scam',     '🎰'),
+    ('phishing',       'Phishing',         '🎣'),
+    ('general',        'Cyber News',       '🛡️'),
   ];
 
   @override
   void initState() {
-    super.initState();
+    super.initState()
+    ;
     _fetchNews();
   }
 
@@ -38,26 +46,76 @@ class _FeedScreenState extends State<FeedScreen> {
     });
 
     try {
-      final dio = Dio();
-      final response = await dio.get(
-        'https://newsdata.io/api/1/news',
-        queryParameters: {
-          'apikey': AppConstants.newsDataApiKey,
-          'q': 'scam OR fraud OR cybercrime OR cyber',
-          'country': 'in',
-          'language': _selectedCategory, // 'hi' or 'en'
-        },
-      );
+      final dio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 12),
+      ));
 
-      if (response.statusCode == 200 && response.data['status'] == 'success') {
-        final List results = response.data['results'] ?? [];
-        final parsed = _NewsDataParser.parse(results);
+      final allItems = <dynamic>[];
+
+      // 1. If user provided a custom NewsData key in .env, attempt paid/dev endpoint
+      final customKey = AppConstants.newsDataApiKey;
+      final bool hasCustomKey = customKey.isNotEmpty && !customKey.contains('your_newsdata');
+
+      if (hasCustomKey) {
+        try {
+          final results = await Future.wait([
+            dio.get(
+              'https://newsdata.io/api/1/news',
+              queryParameters: {
+                'apikey': customKey,
+                'q': 'scam OR fraud OR cybercrime OR cyber OR phishing OR "digital arrest" OR OTP',
+                'country': 'in',
+                'language': 'hi',
+              },
+            ),
+            dio.get(
+              'https://newsdata.io/api/1/news',
+              queryParameters: {
+                'apikey': customKey,
+                'q': 'scam OR fraud OR cybercrime OR cyber OR phishing OR "digital arrest" OR OTP',
+                'country': 'in',
+                'language': 'en',
+              },
+            ),
+          ]);
+          for (final r in results) {
+            if (r.statusCode == 200 && r.data['status'] == 'success') {
+              allItems.addAll(r.data['results'] as List? ?? []);
+            }
+          }
+        } catch (e) {
+          debugPrint('Custom NewsData API failed: $e, falling back to keyless open-source RSS');
+        }
+      }
+
+      // 2. Open-source Keyless Public Aggregator: Fetch live Indian Cyber Fraud & Hacker News RSS feeds
+      if (allItems.isEmpty) {
+        final inQuery = Uri.encodeComponent('https://news.google.com/rss/search?q=cyber+scam+OR+fraud+OR+"digital+arrest"+india&hl=en-IN&gl=IN&ceid=IN:en');
+        final thnQuery = Uri.encodeComponent('https://feeds.feedburner.com/TheHackersNews');
+
+        final rssResults = await Future.wait([
+          dio.get('https://api.rss2json.com/v1/api.json?rss_url=$inQuery'),
+          dio.get('https://api.rss2json.com/v1/api.json?rss_url=$thnQuery'),
+        ]);
+
+        for (final r in rssResults) {
+          if (r.statusCode == 200 && r.data != null && r.data['status'] == 'ok') {
+            final items = r.data['items'] as List? ?? [];
+            allItems.addAll(items);
+          }
+        }
+      }
+
+      if (allItems.isNotEmpty) {
+        final parsed = _NewsDataParser.parse(allItems);
+        parsed.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
         setState(() {
           _alerts = parsed;
           _loading = false;
         });
       } else {
-        throw Exception('Failed to load news');
+        throw Exception('No articles returned from online feeds');
       }
     } catch (e) {
       debugPrint('News fetch error: $e');
@@ -69,7 +127,14 @@ class _FeedScreenState extends State<FeedScreen> {
     }
   }
 
-  List<AlertModel> get _filtered => _alerts; // The API already filters by language.
+  List<AlertModel> get _filtered {
+    if (_selectedCategory == 'all') return _alerts;
+    if (_selectedCategory == 'new') {
+      return _alerts.where((a) => a.isNew).toList();
+    }
+    return _alerts.where((a) => a.category == _selectedCategory).toList();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -116,21 +181,31 @@ class _FeedScreenState extends State<FeedScreen> {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              itemCount: _categories.length,
+              itemCount: _categoryDefs.length,
               itemBuilder: (context, i) {
-                final cat = _categories[i];
+                final cat = _categoryDefs[i];
                 final isSelected = _selectedCategory == cat.$1;
+                // Count items for this category
+                int count = 0;
+                if (!_loading) {
+                  if (cat.$1 == 'all') {
+                    count = _alerts.length;
+                  } else if (cat.$1 == 'new') {
+                    count = _alerts.where((a) => a.isNew).length;
+                  } else {
+                    count = _alerts.where((a) => a.category == cat.$1).length;
+                  }
+                }
                 return GestureDetector(
                   onTap: () {
                     if (_selectedCategory != cat.$1) {
                       setState(() => _selectedCategory = cat.$1);
-                      _fetchNews();
                     }
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
                     margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? const Color(0xFFE53935)
@@ -142,18 +217,14 @@ class _FeedScreenState extends State<FeedScreen> {
                             : (isDark ? const Color(0xFF30363D) : const Color(0xFFE8EEF8)),
                       ),
                       boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFFE53935).withValues(alpha: 0.35),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              )
-                            ]
+                          ? [BoxShadow(color: const Color(0xFFE53935).withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))]
                           : [],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        Text(cat.$3, style: const TextStyle(fontSize: 14)),
+                        const SizedBox(width: 5),
                         Text(
                           cat.$2,
                           style: TextStyle(
@@ -162,6 +233,24 @@ class _FeedScreenState extends State<FeedScreen> {
                             fontSize: 13,
                           ),
                         ),
+                        if (!_loading && count > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: isSelected ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFE53935).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '$count',
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : const Color(0xFFE53935),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -170,6 +259,7 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ),
         ),
+
       ),
       body: Column(
         children: [
@@ -510,57 +600,107 @@ class _AlertCard extends StatelessWidget {
   }
 }
 
-// ─── JSON NewsData Parser ───────────────────────────────────────────────────
+// ─── JSON NewsData & RSS Feed Parser ─────────────────────────────────────────
 class _NewsDataParser {
+  static String _cleanText(String raw) {
+    return raw
+        .replaceAll(RegExp(r'<[^>]*>'), ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&quot;', '"')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
   static List<AlertModel> parse(List results) {
     final list = <AlertModel>[];
+    final seenIds = <String>{};
     int count = 0;
+    final now = DateTime.now();
 
     for (final item in results) {
       if (item is! Map) continue;
 
-      final title = item['title']?.toString() ?? 'Scam Alert';
-      final description = item['description']?.toString();
+      final id = item['guid']?.toString() ??
+          item['article_id']?.toString() ??
+          item['link']?.toString() ??
+          'news_${count++}';
+      if (seenIds.contains(id)) continue;
+      seenIds.add(id);
+
+      final rawTitle = item['title']?.toString() ?? 'Scam Alert';
+      final title = _cleanText(rawTitle);
+
+      final rawDesc = item['description']?.toString() ?? item['content']?.toString() ?? '';
+      final description = _cleanText(rawDesc);
+
       final link = item['link']?.toString();
       final pubDateStr = item['pubDate']?.toString();
-      final source = item['source_id']?.toString() ?? 'News';
 
+      String? imageUrl;
+      if (item['image_url'] != null && item['image_url'].toString().isNotEmpty) {
+        imageUrl = item['image_url'].toString();
+      } else if (item['enclosure'] is Map && item['enclosure']['link'] != null) {
+        imageUrl = item['enclosure']['link'].toString();
+      } else if (item['thumbnail'] != null && item['thumbnail'].toString().isNotEmpty) {
+        imageUrl = item['thumbnail'].toString();
+      }
 
-      DateTime? publishedAt;
-      if (pubDateStr != null) {
+      String source = item['source_id']?.toString() ?? '';
+      if (source.isEmpty && item['author'] != null) {
+        source = item['author'].toString();
+      }
+      if (source.isEmpty && link != null) {
         try {
-          publishedAt = DateTime.parse(pubDateStr);
+          source = Uri.parse(link).host.replaceAll('www.', '');
         } catch (_) {}
       }
-      publishedAt ??= DateTime.now().subtract(Duration(minutes: count * 20));
+      if (source.isEmpty) source = 'Cyber News';
 
-      final lowerTitle = title.toLowerCase();
-      var category = 'general';
-      if (lowerTitle.contains('arrest')) {
+      DateTime publishedAt;
+      try {
+        publishedAt = DateTime.parse(pubDateStr ?? '');
+      } catch (_) {
+        publishedAt = now.subtract(Duration(hours: count * 2));
+      }
+
+      // isNew: published within last 24 hours
+      final isNew = now.difference(publishedAt).inHours < 24;
+
+      // Category detection — check both title and description
+      final lowerText = '${title.toLowerCase()} ${description.toLowerCase()}';
+      String category = 'general';
+      if (lowerText.contains('arrest') || lowerText.contains('digital arrest') || lowerText.contains('cbi') || lowerText.contains('police call')) {
         category = 'digital_arrest';
-      } else if (lowerTitle.contains('otp') || lowerTitle.contains('sms') || lowerTitle.contains('sim') || lowerTitle.contains('link')) {
+      } else if (lowerText.contains('phishing') || lowerText.contains('fake website') || lowerText.contains('fake bank') || lowerText.contains('clone site')) {
+        category = 'phishing';
+      } else if (lowerText.contains('otp') || lowerText.contains('sim swap') || lowerText.contains('sms scam') || lowerText.contains('sim cloning') || lowerText.contains('aadhaar link')) {
         category = 'otp';
-      } else if (lowerTitle.contains('invest') || lowerTitle.contains('trading') || lowerTitle.contains('earn') || lowerTitle.contains('money') || lowerTitle.contains('crypto')) {
+      } else if (lowerText.contains('invest') || lowerText.contains('trading') || lowerText.contains('earn') || lowerText.contains('profit') || lowerText.contains('crypto') || lowerText.contains('return')) {
         category = 'investment';
-      } else if (lowerTitle.contains('lottery') || lowerTitle.contains('won') || lowerTitle.contains('prize') || lowerTitle.contains('kbc')) {
+      } else if (lowerText.contains('lottery') || lowerText.contains('won') || lowerText.contains('prize') || lowerText.contains('kbc') || lowerText.contains('lucky winner')) {
         category = 'lottery';
       }
 
       list.add(
         AlertModel(
-          id: item['article_id']?.toString() ?? 'news_${count++}',
+          id: id,
           headline: title,
-          summary: description != null && description.isNotEmpty
+          summary: description.isNotEmpty
               ? description
               : 'Cybercrime alert from $source. Read the full news article below.',
           sourceUrl: link,
+          imageUrl: imageUrl,
           isTrending: count <= 3,
           publishedAt: publishedAt,
           category: category,
-          isNew: count <= 6,
+          isNew: isNew,
         ),
       );
-      
+
       count++;
     }
     return list;

@@ -1005,6 +1005,28 @@ class RiskEngine {
     'android.permission.REQUEST_INSTALL_PACKAGES':  ('Install Apps',      18, 'Can install other apps.'),
   };
 
+  // ─── Citizen Lab & Amnesty International Stalkerware Signature Database ────
+  static const _knownSpywareSignatures = {
+    'com.mspy': 'mSpy Commercial Stalkerware',
+    'com.flexispy': 'FlexiSPY Surveillance Tool',
+    'com.cerberus': 'Cerberus Spyware Suite',
+    'com.spyic': 'Spyic Covert Phone Tracker',
+    'com.hoverwatch': 'Hoverwatch Stealth Keylogger',
+    'com.trackview': 'TrackView Hidden Spy Camera',
+    'com.spymaster': 'SpyMaster Pro Stalkerware',
+    'net.kidsguard': 'KidsGuard Stealth Monitor',
+    'com.thetruthspy': 'TheTruthSpy Stalkerware',
+    'com.cocospy': 'Cocospy Surveillance Tool',
+    'org.coplug': 'Copy9 / TruthSpy Stalkerware',
+    'com.ikeymonitor': 'iKeyMonitor Keylogger & Spyware',
+    'com.appmia': 'Appmia Mobile Surveillance',
+    'com.mobistealth': 'MobiStealth Stealth Tracker',
+    'com.spybubble': 'SpyBubble Surveillance Suite',
+    'com.xnspy': 'XnSpy Surveillance Software',
+    'com.onespy': 'OneSpy Stalkerware System',
+    'com.spyzie': 'Spyzie Stealth Monitor',
+  };
+
   static AppInfo analyze(Map<String, dynamic> raw) {
     final perms = (raw['permissions'] as List<dynamic>?)?.cast<String>() ?? [];
     final name = raw['name'] as String? ?? 'Unknown';
@@ -1027,6 +1049,20 @@ class RiskEngine {
     if (isSystem) {
       score = 0;
     } else {
+      // 1. STALKERWARE SIGNATURE CHECK
+      final pkgLower = pkg.toLowerCase();
+      String? foundSpyware;
+      for (final entry in _knownSpywareSignatures.entries) {
+        if (pkgLower.contains(entry.key)) {
+          foundSpyware = entry.value;
+          break;
+        }
+      }
+      if (foundSpyware != null) {
+        score += 85;
+        reasons.insert(0, '🚨 CRITICAL STALKERWARE: Matches signature for $foundSpyware. Known to covertly exfiltrate calls, chats, photos, and live location.');
+      }
+
       if (isSideloaded) {
         score += 15;
         final instLabel = installer.isEmpty || installer == 'unknown' ? 'Direct APK' : installer;

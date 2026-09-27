@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/supabase_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/services/hibp_service.dart';
@@ -485,9 +486,290 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
             ),
           ),
         
+        const SizedBox(height: 24),
+
+        // Section: Real Individual Breaches Breakdown
+        if (_breaches.isNotEmpty) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'BREACH TIMELINE & LEAK DETAILS (${_breaches.length})',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ..._breaches.map((b) => _buildBreachDetailCard(b, isDark)),
+        ],
+
         const SizedBox(height: 30),
       ],
     );
+  }
+
+  Widget _buildBreachDetailCard(BreachInfo b, bool isDark) {
+    final hasPassword = b.dataClasses.any((d) => d.toLowerCase().contains('password'));
+    final isPlaintext = b.passwordRisk.toLowerCase().contains('plain');
+    
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF111827) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: hasPassword
+              ? Colors.redAccent.withValues(alpha: 0.4)
+              : (isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0)),
+          width: hasPassword ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Company Logo
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1F2937) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.network(
+                  b.logoPath,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => Center(
+                    child: Text(
+                      b.title.isNotEmpty ? b.title[0].toUpperCase() : '?',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        color: hasPassword ? Colors.redAccent : const Color(0xFF6C63FF),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            b.title,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (b.isVerified) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.verified, size: 16, color: Color(0xFF38BDF8)),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      b.domain.isNotEmpty ? b.domain : b.title.toLowerCase(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Year pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (hasPassword ? Colors.redAccent : const Color(0xFF6C63FF)).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  b.breachDate,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: hasPassword ? Colors.redAccent : const Color(0xFF6C63FF),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Metric Badges (Records, Industry, Password Risk)
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              if (b.pwnCount > 0)
+                _buildBadge(
+                  Icons.people_outline,
+                  '${_formatRecords(b.pwnCount)} victims',
+                  const Color(0xFFF59E0B),
+                ),
+              if (b.industry.isNotEmpty && b.industry != 'General')
+                _buildBadge(
+                  Icons.business_outlined,
+                  b.industry,
+                  const Color(0xFF38BDF8),
+                ),
+              if (isPlaintext)
+                _buildBadge(
+                  Icons.lock_open,
+                  'Plaintext Passwords Exposed!',
+                  Colors.redAccent,
+                )
+              else if (hasPassword)
+                _buildBadge(
+                  Icons.lock_outline,
+                  'Password Hash Leaked',
+                  Colors.orangeAccent,
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Leaked Data Classes Chips
+          Text(
+            'EXPOSED DATA TYPES:',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white38 : Colors.black38,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: b.dataClasses.map((dc) {
+              final isPwd = dc.toLowerCase().contains('password');
+              final isPhone = dc.toLowerCase().contains('phone');
+              final isAddress = dc.toLowerCase().contains('address');
+              final isGovt = dc.toLowerCase().contains('id') || dc.toLowerCase().contains('ssn');
+
+              final color = isPwd
+                  ? Colors.redAccent
+                  : isGovt
+                      ? Colors.deepOrangeAccent
+                      : isPhone
+                          ? Colors.purpleAccent
+                          : isAddress
+                              ? Colors.amber.shade700
+                              : const Color(0xFF6C63FF);
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  dc,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Incident Description
+          Text(
+            b.description,
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white70 : const Color(0xFF475569),
+              height: 1.35,
+            ),
+          ),
+
+          if (b.referenceUrl != null) ...[
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () async {
+                final uri = Uri.tryParse(b.referenceUrl!);
+                if (uri != null && await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text(
+                    'Read incident source',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(width: 4),
+                  Icon(Icons.open_in_new, size: 12, color: Color(0xFF38BDF8)),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadge(IconData icon, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatRecords(int n) {
+    if (n >= 1000000000) return '${(n / 1000000000).toStringAsFixed(1)}B';
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(0)}K';
+    return n.toString();
   }
 
   Widget _buildRow(String label, String value, {required Color valueColor, required bool isDark}) {

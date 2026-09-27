@@ -7,7 +7,7 @@
   [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)](#)
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-  [![Security Policy](https://img.shields.io/badge/Security-Policy-red.svg)](SECURITY.md)
+  [![Download APK](https://img.shields.io/badge/Download-Release%20APK%20(v1.1.0)-success?style=for-the-badge&logo=android&logoColor=white)](https://github.com/UmarFarooqueJi/SafeSignal/releases/latest)
   <br>
   <b>🚀 Powered by Hybrid AI Orchestration & Real-time Threat Intelligence</b>
 </div>

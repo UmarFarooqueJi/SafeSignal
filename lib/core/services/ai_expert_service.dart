@@ -57,6 +57,14 @@ Be India-specific. Mention RBI guidelines, NPCI dispute process, and cybercrime.
 You know: TRAI DLT template abuse, OTP phishing patterns, fake KYC SMSes, Aadhaar/PAN impersonation, fake IRDAI/SEBI SMSes, WhatsApp link traps, courier scam scripts.
 When analyzing an SMS or message, identify the EXACT scam category, explain the psychological manipulation technique used, and give clear action steps in simple language.
 Always mention: the India-specific fraud type, what data the scammer wants, and how to report it (1930, cybercrime.gov.in).''',
+
+    // Phone / Telecom Fraud & OSINT Expert
+    'phone': '''You are TelecomShield AI — India's premier expert on mobile phone reconnaissance, telecom fraud, VoIP burner detection, and caller impersonation syndicates.
+You know: DoT series allocations, TRAI regulations, Digital Arrest call scripts (Cambodia/Myanmar/Pakistan syndicates), Wangiri callback fraud, VoIP spoofing (Twilio/TextNow), UPI VPA mapping, and Chakshu reporting.
+When analyzing a phone number telemetry report, explain in 3-4 bullets:
+1. Origin & Carrier credibility (Is it an Indian GSM number or virtual VoIP burner / high-risk international scam compound?).
+2. Scam category probability (Digital Arrest, FedEx customs, fake bank KYC, job fraud).
+3. Immediate defense action for the citizen (Do not call back, block, verify legal name on UPI, report on Chakshu).''',
   };
 
   // ─── Main Expert Analysis Call ─────────────────────────────────────────────
@@ -77,36 +85,120 @@ Always mention: the India-specific fraud type, what data the scammer wants, and 
 
     final fullSystem = '$systemPrompt\n\n$langInstruction\n\nFormat your response as plain text with bullet points (use • symbol). Max 5 bullets. Be concise.';
 
-    // Try OpenRouter first
-    try {
-      return await _callOpenRouter(fullSystem, context);
-    } catch (e) {
-      debugPrint('[AiExpert] OpenRouter failed: $e, trying DeepSeek...');
+    // 1. Try user-configured OpenRouter if valid key present
+    if (AppConstants.openRouterApiKey.isNotEmpty && !AppConstants.openRouterApiKey.contains('your-')) {
+      try {
+        return await _callOpenRouter(fullSystem, context);
+      } catch (e) {
+        debugPrint('[AiExpert] OpenRouter failed: $e, trying DeepSeek...');
+      }
     }
 
-    // Try DeepSeek next
-    try {
-      return await _callDeepSeek(fullSystem, context);
-    } catch (e) {
-      debugPrint('[AiExpert] DeepSeek failed: $e, trying Grok...');
+    // 2. Try user-configured DeepSeek if valid key present
+    if (AppConstants.deepSeekApiKey.isNotEmpty && !AppConstants.deepSeekApiKey.contains('your-')) {
+      try {
+        return await _callDeepSeek(fullSystem, context);
+      } catch (e) {
+        debugPrint('[AiExpert] DeepSeek failed: $e, trying Grok...');
+      }
     }
 
-    // Try Grok next
-    try {
-      return await _callGrok(fullSystem, context);
-    } catch (e) {
-      debugPrint('[AiExpert] Grok failed: $e, trying Gemini...');
+    // 3. Try user-configured Grok if valid key present
+    if (AppConstants.grokApiKey.isNotEmpty && !AppConstants.grokApiKey.contains('your-')) {
+      try {
+        return await _callGrok(fullSystem, context);
+      } catch (e) {
+        debugPrint('[AiExpert] Grok failed: $e, trying Gemini...');
+      }
     }
 
-    // Fallback to Gemini
-    try {
-      return await _callGemini(fullSystem, context);
-    } catch (e) {
-      debugPrint('[AiExpert] Gemini failed: $e');
+    // 4. Try user-configured Gemini if valid key present
+    if (AppConstants.geminiApiKey.isNotEmpty && !AppConstants.geminiApiKey.contains('your-')) {
+      try {
+        return await _callGemini(fullSystem, context);
+      } catch (e) {
+        debugPrint('[AiExpert] Gemini failed: $e');
+      }
     }
 
-    // Offline fallback
+    // 5. Cloudflare Workers AI (High-speed serverless Llama 3.1)
+    try {
+      return await _callCloudflareWorkersAI(fullSystem, context);
+    } catch (e) {
+      debugPrint('[AiExpert] Cloudflare Workers AI failed: $e, trying Pollinations...');
+    }
+
+    // 6. Keyless Secondary: Pollinations AI
+    try {
+      return await _callPollinationsAI(fullSystem, context);
+    } catch (e) {
+      debugPrint('[AiExpert] Pollinations failed: $e, using offline heuristics fallback');
+    }
+
+    // 7. Complete Offline Fallback
     return _offlineFallback(domain, language);
+  }
+
+  // ─── Cloudflare Workers AI Call ──────────────────────────────────────────
+
+  Future<String> _callCloudflareWorkersAI(String systemPrompt, String userContent) async {
+    final cfAccount = AppConstants.cloudflareAccountId;
+    final cfToken = AppConstants.cloudflareAiToken;
+    const model = '@cf/meta/llama-3.1-8b-instruct';
+
+    final response = await _dio.post(
+      'https://api.cloudflare.com/client/v4/accounts/$cfAccount/ai/run/$model',
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $cfToken',
+          'Content-Type': 'application/json',
+        },
+        sendTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+      ),
+      data: {
+        'messages': [
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': userContent},
+        ],
+      },
+    );
+
+    if (response.statusCode == 200 && response.data != null) {
+      final res = response.data['result'];
+      if (res != null && res['response'] != null) {
+        final answer = res['response'].toString().trim();
+        if (answer.isNotEmpty) return answer;
+      }
+    }
+    throw Exception('Invalid Cloudflare Workers AI response');
+  }
+
+  // ─── Pollinations Keyless Public AI Call ──────────────────────────────────
+
+  Future<String> _callPollinationsAI(String systemPrompt, String userContent) async {
+    final response = await _dio.post(
+      'https://text.pollinations.ai/',
+      options: Options(
+        headers: {'Content-Type': 'application/json'},
+        sendTimeout: const Duration(seconds: 12),
+        receiveTimeout: const Duration(seconds: 15),
+      ),
+      data: {
+        'messages': [
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': userContent},
+        ],
+        'model': 'openai',
+        'seed': 42,
+      },
+    );
+
+    if (response.statusCode == 200 && response.data != null) {
+      final raw = response.data.toString().trim();
+      if (raw.isNotEmpty) return raw;
+    }
+    throw Exception('Empty response from Pollinations');
   }
 
   // ─── OpenRouter API Call ───────────────────────────────────────────────────

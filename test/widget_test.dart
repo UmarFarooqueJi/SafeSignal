@@ -12,10 +12,10 @@ void main() {
       'isLoggedIn': true,
       'isProfileSetupDone': true,
     });
-    dotenv.testLoad(fileInput: '''
-SUPABASE_URL=https://dummy.supabase.co
-SUPABASE_ANON_KEY=dummy-key
-''');
+    dotenv.load(mergeWith: {
+      'SUPABASE_URL': 'https://dummy.supabase.co',
+      'SUPABASE_ANON_KEY': 'dummy-key',
+    });
   });
 
   testWidgets('SafeSignal app smoke test', (WidgetTester tester) async {

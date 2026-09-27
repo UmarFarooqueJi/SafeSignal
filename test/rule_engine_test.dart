@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safesignal/core/services/local_rule_engine.dart';
-import 'package:safesignal/core/models/ai_verdict.dart';
 
 void main() {
   group('LocalRuleEngine Tests', () {

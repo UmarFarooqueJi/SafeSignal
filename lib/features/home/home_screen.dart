@@ -1,12 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../device_audit/device_audit_screen.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -17,19 +14,9 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  String? _profileImagePath;
-
   @override
   void initState() {
     super.initState();
-    _loadProfile();
-  }
-
-  Future<void> _loadProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _profileImagePath = prefs.getString('userProfileImage');
-    });
   }
 
   @override
@@ -174,7 +161,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         borderRadius: BorderRadius.circular(30),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 20,
                             offset: const Offset(0, 8),
                           ),
@@ -293,11 +280,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _ImageCard(
-                              title: 'Call Shield\nAnalysis',
-                              subtitle: 'Spam Call Protection',
+                              title: 'Social OSINT\nFootprint',
+                              subtitle: 'Profile & Handle Recon',
                               imagePath: 'assets/images/ai_call_shield_card.png',
                               height: 145,
-                              onTap: () => context.push('/call-shield'),
+                              onTap: () => context.push('/social-osint'),
                             ).animate().scale(begin: const Offset(0.9, 0.9), delay: 200.ms).fadeIn(),
                           ),
                         ],
@@ -307,22 +294,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         children: [
                           Expanded(
                             child: _ImageCard(
+                              title: 'Phone Fraud\n& OSINT',
+                              subtitle: 'Carrier & VoIP Check',
+                              imagePath: 'assets/images/ai_call_shield_card.png',
+                              height: 135,
+                              onTap: () => context.push('/phone-osint'),
+                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 220.ms).fadeIn(),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _ImageCard(
                               title: 'SMS Guard\n& OTP Protect',
                               subtitle: 'Financial Fraud Alert',
                               imagePath: 'assets/images/ai_sms_guard_card.png',
                               height: 135,
                               onTap: () => context.push('/sms-inbox'),
                             ).animate().scale(begin: const Offset(0.9, 0.9), delay: 250.ms).fadeIn(),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _ImageCard(
-                              title: 'Dark Web\nBreach Scan',
-                              subtitle: 'Identity Theft Check',
-                              imagePath: 'assets/images/ai_darkweb_card.png',
-                              height: 135,
-                              onTap: () => context.push('/email-breach'),
-                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 300.ms).fadeIn(),
                           ),
                         ],
                       ),
@@ -331,12 +318,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         children: [
                           Expanded(
                             child: _ImageCard(
+                              title: 'Dark Web\nBreach Scan',
+                              subtitle: 'Identity Theft Check',
+                              imagePath: 'assets/images/ai_darkweb_card.png',
+                              height: 135,
+                              onTap: () => context.push('/email-breach'),
+                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 280.ms).fadeIn(),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _ImageCard(
                               title: 'AI Cyber\nAssistant',
                               subtitle: 'Ask Any Threat',
                               imagePath: 'assets/images/ai_assistant_card.png',
                               height: 135,
                               onTap: () => context.push('/chat'),
-                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 350.ms).fadeIn(),
+                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 320.ms).fadeIn(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _ImageCard(
+                              title: 'UPI Payment\nShield',
+                              subtitle: 'QR & VPA Intel',
+                              imagePath: 'assets/images/ai_sms_guard_card.png',
+                              height: 135,
+                              onTap: () => context.push('/upi-scanner'),
+                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 360.ms).fadeIn(),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -351,29 +362,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _ImageCard(
-                              title: 'Clipboard\nGuard',
-                              subtitle: 'OTP Protection',
-                              imagePath: 'assets/images/ai_sms_guard_card.png',
-                              height: 135,
-                              onTap: () => context.push('/clipboard'),
-                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 450.ms).fadeIn(),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _ImageCard(
-                              title: 'App Lock\nVault',
-                              subtitle: 'Biometric Security',
-                              imagePath: 'assets/images/ai_spyware_card.png',
-                              height: 135,
-                              onTap: () => context.push('/vault'),
-                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 500.ms).fadeIn(),
-                          ),
-                        ],
-                      ),
+                      _ImageCard(
+                        title: 'SafeSignal Vault Lock',
+                        subtitle: 'Biometric Encrypted Evidence & Secret Vault',
+                        imagePath: 'assets/images/ai_spyware_card.png',
+                        height: 115,
+                        onTap: () => context.push('/vault'),
+                      ).animate().scale(begin: const Offset(0.95, 0.95), delay: 440.ms).fadeIn(),
                     ],
                   ),
                 ),
@@ -551,7 +546,7 @@ class _ImageCard extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -564,11 +559,11 @@ class _ImageCard extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withOpacity(0.2),
-                Colors.black.withOpacity(0.8),
-                Colors.black,
+                Colors.black.withValues(alpha: 0.05),
+                Colors.black.withValues(alpha: 0.45),
+                Colors.black.withValues(alpha: 0.72),
               ],
-              stops: const [0.0, 0.4, 1.0],
+              stops: const [0.0, 0.5, 1.0],
             ),
           ),
           padding: const EdgeInsets.all(20),
@@ -589,154 +584,13 @@ class _ImageCard extends StatelessWidget {
               Text(
                 subtitle,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SolidCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final Color color;
-  final IconData icon;
-  final Color iconColor;
-  final double height;
-  final VoidCallback onTap;
-
-  const _SolidCard({
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.icon,
-    required this.iconColor,
-    required this.height,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: height,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Stack(
-          children: [
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Icon(icon, color: iconColor, size: 28),
-            ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GradientCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final List<Color> colors;
-  final double height;
-  final VoidCallback onTap;
-
-  const _GradientCard({
-    required this.title,
-    required this.subtitle,
-    required this.colors,
-    required this.height,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: height,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: colors,
-          ),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                height: 1.2,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.8),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
         ),
       ),
     );

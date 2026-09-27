@@ -28,9 +28,9 @@ class AppTheme {
   // ─── Dark Surface ─────────────────────────────────────────────
   static const Color darkBg       = Color(0xFF06090F);
   static const Color darkSurface  = Color(0xFF0D1117);
-  static const Color darkCard     = Color(0xFF161B27);
-  static const Color darkCardAlt  = Color(0xFF1C2333);
-  static const Color darkBorder   = Color(0xFF30363D);
+  static const Color darkCard     = Color(0xFF1E2638);
+  static const Color darkCardAlt  = Color(0xFF253046);
+  static const Color darkBorder   = Color(0xFF3A4456);
 
   // ─── Text Sizes ───────────────────────────────────────────────
   static const double textNormal  = 1.0;

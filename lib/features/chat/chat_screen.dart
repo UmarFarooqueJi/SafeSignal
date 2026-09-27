@@ -76,16 +76,73 @@ class ChatNotifier extends Notifier<List<ChatMessage>> {
 
     state = state.where((m) => !m.isLoading).toList();
     if (verdict.verdict == 'INFO') {
-      final infoText = verdict.why.isNotEmpty ? verdict.why.join('\n\n') : 'Kuch samajh nahi aaya, kripya dobara likhein.';
+      String infoText = verdict.why.isNotEmpty ? verdict.why.join('\n\n') : 'Kuch samajh nahi aaya, kripya dobara likhein.';
+      infoText = _extractCleanHumanText(infoText);
       state = [...state, ChatMessage(text: infoText, isUser: false, verdict: null)];
     } else {
       state = [...state, ChatMessage(text: '', isUser: false, verdict: verdict)];
     }
   }
 
+  static String _extractCleanHumanText(String raw) {
+    String text = raw.trim();
+
+    // 1. Remove markdown code fences if wrapped
+    if (text.startsWith('```json')) text = text.substring(7);
+    if (text.startsWith('```')) text = text.substring(3);
+    if (text.endsWith('```')) text = text.substring(0, text.length - 3);
+    text = text.trim();
+
+    // 2. If it contains pseudo-dictionary or JSON-like syntax
+    if (text.contains('why:') || text.contains('summary:') || text.contains('confidence:') || text.startsWith('{')) {
+      // Try extracting why block: why: [ ... ] or why: "..."
+      final whyMatch = RegExp(r'why:\s*(?:\[\s*"?([^"\]]+)"?\s*\]|"([^"]+)"|([^\n,\}]+))', dotAll: true).firstMatch(text);
+      if (whyMatch != null) {
+        String val = (whyMatch.group(1) ?? whyMatch.group(2) ?? whyMatch.group(3) ?? '').trim();
+        if (val.isNotEmpty && !val.startsWith('[')) {
+          while (val.startsWith('"') || val.startsWith("'")) { val = val.substring(1); }
+          while (val.endsWith('"') || val.endsWith("'")) { val = val.substring(0, val.length - 1); }
+          return val.trim();
+        }
+      }
+
+      // Try extracting summary: summary: "..."
+      final summaryMatch = RegExp(r'summary:\s*(?:"([^"]+)"|([^\n,\}]+))', dotAll: true).firstMatch(text);
+      if (summaryMatch != null) {
+        String val = (summaryMatch.group(1) ?? summaryMatch.group(2) ?? '').trim();
+        if (val.isNotEmpty) {
+          while (val.startsWith('"') || val.startsWith("'")) { val = val.substring(1); }
+          while (val.endsWith('"') || val.endsWith("'")) { val = val.substring(0, val.length - 1); }
+          return val.trim();
+        }
+      }
+
+      // Strip all metadata keys and bracket noise if no clean match
+      text = text
+          .replaceAll(RegExp(r'\{?\s*(?:confidence|riskLevel|scamType|verdict|whatToDo|summary|why)\s*:[^,\}\]]*[,\]\}]?'), '')
+          .replaceAll(RegExp(r'[{}\[\]]'), '')
+          .trim();
+    }
+
+    return text.isNotEmpty ? text : raw;
+  }
+
+  bool _isScamAnalysisQuery(String text) {
+    final lower = text.toLowerCase().trim();
+    final indicators = [
+      'scam', 'fraud', 'fake', 'verify', 'check', 'jaanch', 'sach', 'jhooth',
+      'http', 'www.', '.com', '.in', '.xyz', '.top', '.ru', 'bit.ly', 'tinyurl',
+      '.apk', 'cbi', 'arrest', 'police', 'court', 'narcotics', 'ed ',
+      'kyc', 'lottery', 'prize', 'won', 'winner', 'crorepati', 'kbc',
+      'part time job', 'telegram', 'task', 'earn money', 'investment',
+      'paisa bhejo', 'upi pin', 'electricity bill', 'power cut',
+      'sim block', 'aadhar update', 'pan card', 'loan approved',
+    ];
+    return indicators.any((k) => lower.contains(k));
+  }
+
   Future<VerdictModel> _analyzeWithAI(String text, File? image, String language) async {
     final dio = Dio();
-    // Use OpenRouter as primary — key is always available
     final apiKey = AppConstants.openRouterApiKey.isNotEmpty
         ? AppConstants.openRouterApiKey
         : AppConstants.deepSeekApiKey;
@@ -108,52 +165,42 @@ class ChatNotifier extends Notifier<List<ChatMessage>> {
     dio.options.connectTimeout = const Duration(seconds: 25);
     dio.options.receiveTimeout = const Duration(seconds: 25);
 
-    final messages = <Map<String, dynamic>>[];
+    final langName = language == 'hi' ? 'Hindi / Hinglish' : 'English';
+    final isScamCheck = image != null || _isScamAnalysisQuery(text);
 
-    final langName = language == 'hi' ? 'Hindi (Devanagari script preferred, or Hinglish is acceptable)' : 'English';
+    final String systemPrompt;
+    if (isScamCheck) {
+      systemPrompt = """
+You are SafeSignal — an elite cybersecurity fraud analyst for Indian cyber threats, developed by Umar Farooque.
+Analyze the user's message/link/image for fraud, phishing, APK malware, or scam risk.
+Write your analysis entirely in $langName.
 
-    final systemPrompt = """
-You are SafeSignal — an elite cybersecurity expert and digital safety advisor specializing in Indian cyber threats.
-
-You have deep expertise in:
-- Detecting Indian cyber frauds: Digital Arrest, OTP scam, KYC fraud, loan app fraud, investment fraud, phishing, SIM swapping, WhatsApp hijacking, UPI fraud
-- Android & iOS mobile security, app permissions, privacy settings
-- Password security, 2FA, VPN, secure DNS
-- Network security, data breaches, dark web monitoring
-- Govt cybercrime reporting (1930 helpline, cybercrime.gov.in, CERT-In)
-- Text extraction and OCR (Optical Character Recognition) from uploaded images/screenshots.
-
-When analyzing a message or an uploaded image:
-1. If the user is just having a normal conversation, asking who you are, or asking a general question about an uploaded image (e.g., "What is written in this image?", "Is this a real bill?"):
-   - DO NOT analyze it as a scam report. 
-   - Respond with verdict "INFO".
-   - Provide a highly detailed, conversational, and helpful reply in the "why" array (as a single item).
-   - If an image is provided and they ask to read it, extract the text and explain it clearly.
-
-2. ONLY analyze a message or image as a SCAM or SAFE if the user explicitly shares a suspicious link, message, or asks you to check for fraud/scam.
-
-RESPOND ONLY WITH A VALID JSON OBJECT — no markdown, no code blocks, just raw JSON:
+Respond ONLY with valid JSON:
 {
-  "verdict": "SCAM" or "LIKELY_SAFE" or "UNCERTAIN" or "INFO",
-  "confidence": 0.0 to 1.0,
-  "scamType": one of ["digital_arrest", "lottery_prize", "job_fraud", "bank_phishing", "otp_theft", "investment_fraud", "fake_news", "malware_link", "impersonation", "romance_scam", "loan_app", "upi_fraud", "sim_swap", "none"],
-  "riskLevel": "HIGH" or "MEDIUM" or "LOW",
-  "why": [
-    "For INFO verdicts, put your full conversational, helpful, and detailed answer here as a single string item in the array.",
-    "For SCAM/SAFE, put specific red flags and evidence here."
-  ],
-  "whatToDo": [
-    "Immediate actionable step 1",
-    "Step 2"
-  ],
-  "summary": "2-3 sentence plain language summary of the verdict and main risk (or a summary of your advice for INFO)"
+  "verdict": "SCAM" or "LIKELY_SAFE" or "UNCERTAIN",
+  "confidence": 0.85,
+  "scamType": "bank_phishing",
+  "riskLevel": "HIGH",
+  "summary": "Short 1-2 sentence conclusion",
+  "why": ["Point 1", "Point 2"],
+  "whatToDo": ["Action 1", "Action 2"]
 }
-
-IMPORTANT: Write ALL text fields ENTIRELY in $langName. Be specific, educational, and practical.
-Mention real Indian fraud tactics, actual reporting channels (1930, cybercrime.gov.in).
-If an image is uploaded, scan it for text (OCR), fake logos, official headers, bank seals, QR codes, or suspicious URLs.
 """;
+    } else {
+      systemPrompt = """
+You are SafeSignal AI — an intelligent cybersecurity assistant and personal digital protection expert, created and developed by Umar Farooque (lead cybersecurity researcher and open-source engineer).
+You communicate fluently, naturally, and warmly in $langName.
 
+Developer Details: Umar Farooque is the creator and lead researcher behind SafeSignal, building open-source intelligence and citizen defense against digital arrest scams, UPI fraud, and mobile malware.
+
+CRITICAL INSTRUCTIONS:
+1. Speak naturally, conversationally, and helpfully like a human security advisor.
+2. DO NOT output JSON. DO NOT use braces {}, brackets [], or metadata fields like confidence, riskLevel, scamType, why, or summary.
+3. Reply with CLEAN, DIRECT CONVERSATIONAL TEXT ONLY.
+""";
+    }
+
+    final messages = <Map<String, dynamic>>[];
     messages.add({'role': 'system', 'content': systemPrompt});
 
     if (image != null) {
@@ -185,65 +232,278 @@ If an image is uploaded, scan it for text (OCR), fake logos, official headers, b
       });
     }
 
-    final payload = {
-      'model': model,
-      'messages': messages,
-      'response_format': {'type': 'json_object'},
-    };
+    final hasCustomKey = (AppConstants.openRouterApiKey.isNotEmpty && !AppConstants.openRouterApiKey.contains('your-')) ||
+                         (AppConstants.deepSeekApiKey.isNotEmpty && !AppConstants.deepSeekApiKey.contains('your-'));
 
-    final response = await dio.post(endpoint, data: payload);
-
-    if (response.statusCode == 200) {
-      final choices = response.data['choices'] as List;
-      if (choices.isNotEmpty) {
-        final content = choices[0]['message']['content'] as String;
-        String cleanJson = content.trim();
-        if (cleanJson.startsWith('```json')) {
-          cleanJson = cleanJson.substring(7);
+    if (hasCustomKey) {
+      try {
+        final payload = {
+          'model': model,
+          'messages': messages,
+          if (isScamCheck) 'response_format': {'type': 'json_object'},
+        };
+        final response = await dio.post(endpoint, data: payload);
+        if (response.statusCode == 200) {
+          final choices = response.data['choices'] as List;
+          if (choices.isNotEmpty) {
+            final content = choices[0]['message']['content'] as String;
+            return _parseAiResponse(content, text, language);
+          }
         }
-        if (cleanJson.endsWith('```')) {
-          cleanJson = cleanJson.substring(0, cleanJson.length - 3);
+      } catch (e) {
+        debugPrint('[ChatAI] Custom API call failed: $e, trying Cloudflare Workers AI');
+      }
+    }
+
+    // 2. High-Speed Cloudflare Workers AI Tier (Llama 3.1 8B Instruct)
+    try {
+      final cfAccount = AppConstants.cloudflareAccountId;
+      final cfToken = AppConstants.cloudflareAiToken;
+      const cfModel = '@cf/meta/llama-3.1-8b-instruct';
+
+      final cfResponse = await dio.post(
+        'https://api.cloudflare.com/client/v4/accounts/$cfAccount/ai/run/$cfModel',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $cfToken',
+            'Content-Type': 'application/json',
+          },
+          connectTimeout: const Duration(seconds: 14),
+          receiveTimeout: const Duration(seconds: 16),
+        ),
+        data: {
+          'messages': [
+            {'role': 'system', 'content': systemPrompt},
+            {'role': 'user', 'content': text.isNotEmpty ? text : 'Namaste, please introduce yourself.'},
+          ],
+        },
+      );
+
+      if (cfResponse.statusCode == 200 && cfResponse.data != null) {
+        final res = cfResponse.data['result'];
+        if (res != null && res['response'] != null) {
+          final raw = res['response'].toString().trim();
+          if (raw.isNotEmpty) {
+            return _parseAiResponse(raw, text, language);
+          }
         }
-        cleanJson = cleanJson.trim();
+      }
+    } catch (e) {
+      debugPrint('[ChatAI] Cloudflare Workers AI failed: $e, trying Pollinations fallback');
+    }
 
-        final Map<String, dynamic> data = jsonDecode(cleanJson);
-        final verdictVal = data['verdict'] as String? ?? 'UNCERTAIN';
-        final confidenceVal = (data['confidence'] as num?)?.toDouble() ?? 0.6;
-        final scamTypeVal = data['scamType'] as String? ?? 'unknown';
-        final riskLevel = data['riskLevel'] as String? ?? 'MEDIUM';
-        final whyList = List<String>.from(data['why'] ?? []);
-        final whatToDoList = List<String>.from(data['whatToDo'] ?? []);
-        final summary = data['summary'] as String? ?? '';
+    // 3. Keyless Public Fallback: Pollinations AI
+    try {
+      final pollResponse = await dio.post(
+        'https://text.pollinations.ai/',
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+          connectTimeout: const Duration(seconds: 14),
+          receiveTimeout: const Duration(seconds: 16),
+        ),
+        data: {
+          'messages': [
+            {'role': 'system', 'content': systemPrompt},
+            {'role': 'user', 'content': text.isNotEmpty ? text : 'Namaste'},
+          ],
+          'model': 'openai',
+          'seed': 42,
+        },
+      );
 
-        // Prepend summary as first why item if present
-        final fullWhy = summary.isNotEmpty ? [summary, ...whyList] : whyList;
+      if (pollResponse.statusCode == 200 && pollResponse.data != null) {
+        final raw = pollResponse.data.toString().trim();
+        return _parseAiResponse(raw, text, language);
+      }
+    } catch (e) {
+      debugPrint('[ChatAI] Pollinations fallback failed: $e');
+    }
+
+    throw Exception('All AI tiers exhausted, using smart offline heuristics');
+  }
+
+  VerdictModel _parseAiResponse(String content, String text, String language) {
+    String cleanJson = content.trim();
+
+    if (cleanJson.startsWith('```json')) cleanJson = cleanJson.substring(7);
+    if (cleanJson.startsWith('```')) cleanJson = cleanJson.substring(3);
+    if (cleanJson.endsWith('```')) cleanJson = cleanJson.substring(0, cleanJson.length - 3);
+    cleanJson = cleanJson.trim();
+
+    // Check if JSON object is present
+    Map<String, dynamic>? data;
+    final firstBrace = cleanJson.indexOf('{');
+    final lastBrace = cleanJson.lastIndexOf('}');
+
+    if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+      final jsonSub = cleanJson.substring(firstBrace, lastBrace + 1);
+      try {
+        data = jsonDecode(jsonSub) as Map<String, dynamic>?;
+      } catch (_) {
+        // Try repairing unquoted keys: {confidence: 0, ...} -> {"confidence": 0, ...}
+        try {
+          final quotedJson = jsonSub.replaceAllMapped(
+            RegExp(r'([a-zA-Z_]\w*)\s*:'),
+            (m) => '"${m.group(1)}":',
+          );
+          data = jsonDecode(quotedJson) as Map<String, dynamic>?;
+        } catch (_) {}
+      }
+    }
+
+    if (data != null) {
+      final verdictVal = data['verdict'] as String? ?? 'INFO';
+      final confidenceVal = (data['confidence'] as num?)?.toDouble() ?? 0.85;
+      final scamTypeVal = data['scamType'] as String? ?? 'none';
+      final riskLevel = data['riskLevel'] as String? ?? 'LOW';
+      final whyList = List<String>.from(data['why'] ?? []);
+      final whatToDoList = List<String>.from(data['whatToDo'] ?? []);
+      final summary = data['summary'] as String? ?? '';
+
+      // If verdict is INFO, extract clean human conversation text
+      if (verdictVal == 'INFO') {
+        String cleanMessage = '';
+        if (whyList.isNotEmpty) {
+          cleanMessage = whyList.join('\n\n').trim();
+        } else if (summary.isNotEmpty) {
+          cleanMessage = summary.trim();
+        } else {
+          cleanMessage = _extractCleanHumanText(content);
+        }
+        cleanMessage = _extractCleanHumanText(cleanMessage);
 
         return VerdictModel(
-          checkId: 'ai_scan_${DateTime.now().millisecondsSinceEpoch}',
-          verdict: verdictVal,
-          confidence: confidenceVal,
-          scamType: '${scamTypeVal.replaceAll('_', ' ')} | Risk: $riskLevel',
-          escalated: true,
-          why: fullWhy,
-          whatToDo: whatToDoList,
-          trendNote: verdictVal == 'SCAM' ? 'SafeSignal AI ne is pattern ko flag kiya hai.' : null,
+          checkId: 'ai_chat_${DateTime.now().millisecondsSinceEpoch}',
+          verdict: 'INFO',
+          confidence: 1.0,
+          scamType: 'SafeSignal AI',
+          escalated: false,
+          why: [cleanMessage],
+          whatToDo: [],
           language: language,
           disclaimer: language == 'hi'
               ? 'SafeSignal ek AI assistant hai. Zaruri maamlon mein 1930 pe call karein.'
-              : 'SafeSignal is an AI assistant. For urgent matters, call 1930.',
+              : 'SafeSignal is an AI assistant.',
           inputText: text,
           checkedAt: DateTime.now(),
         );
       }
+
+      // If verdict is SCAM or LIKELY_SAFE or UNCERTAIN
+      final fullWhy = summary.isNotEmpty ? [summary, ...whyList] : whyList;
+
+      return VerdictModel(
+        checkId: 'ai_scan_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: verdictVal,
+        confidence: confidenceVal,
+        scamType: verdictVal == 'SCAM' ? '${scamTypeVal.replaceAll('_', ' ')} | Risk: $riskLevel' : 'AI Advice',
+        escalated: verdictVal == 'SCAM',
+        why: fullWhy.isNotEmpty ? fullWhy : [content],
+        whatToDo: whatToDoList,
+        trendNote: verdictVal == 'SCAM' ? 'SafeSignal AI ne is threat pattern ko flag kiya hai.' : null,
+        language: language,
+        disclaimer: language == 'hi'
+            ? 'SafeSignal ek AI assistant hai. Zaruri maamlon mein 1930 pe call karein.'
+            : 'SafeSignal is an AI assistant. For urgent matters, call 1930.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
     }
 
-    throw Exception('Failed to get valid AI response');
+    // Direct plain text response (No JSON, clean conversation)
+    final humanText = _extractCleanHumanText(cleanJson.isNotEmpty ? cleanJson : content);
+
+    return VerdictModel(
+      checkId: 'ai_chat_${DateTime.now().millisecondsSinceEpoch}',
+      verdict: 'INFO',
+      confidence: 1.0,
+      scamType: 'SafeSignal AI',
+      escalated: false,
+      why: [humanText],
+      whatToDo: [],
+      language: language,
+      disclaimer: language == 'hi'
+          ? 'SafeSignal ek AI assistant hai. Zaruri maamlon mein 1930 pe call karein.'
+          : 'SafeSignal is an AI assistant.',
+      inputText: text,
+      checkedAt: DateTime.now(),
+    );
   }
 
   VerdictModel _analyzeText(String text, String language) {
-    final lower = text.toLowerCase();
+    final lower = text.toLowerCase().trim();
+    final isHindi = language == 'hi';
 
-    // Score-based analysis — extended keyword sets
+    // 1. Dynamic Greeting Detection
+    if (lower == 'hi' || lower == 'hello' || lower == 'hey' || lower.contains('namaste') || lower.contains('kaise ho') || lower == 'salam') {
+      return VerdictModel(
+        checkId: 'local_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'INFO',
+        confidence: 1.0,
+        scamType: 'Greeting',
+        escalated: false,
+        why: isHindi ? [
+          'Namaste! Main SafeSignal AI cyber security expert hoon.\n\nMain aapko online fraud, fake banking SMS, phishing link, digital arrest call aur Android spyware se bachane ke liye train kiya gaya hoon.\n\nAap mujhse koi bhi sawaal pooch sakte hain ya koi suspicious message yahan paste kar sakte hain!'
+        ] : [
+          'Hello! I am SafeSignal AI, your cybersecurity specialist.\n\nI protect you against online fraud, phishing links, fake bank SMS, digital arrest threats, and Android stalkerware.\n\nAsk me any question or paste any suspicious message or link here!'
+        ],
+        whatToDo: [],
+        language: language,
+        disclaimer: isHindi
+            ? 'SafeSignal ek AI assistant hai. Zaruri maamlon mein 1930 pe call karein.'
+            : 'SafeSignal is an AI assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 2. Identity / Creator Queries
+    if (lower.contains('umar farooque') || lower.contains('umar') || lower.contains('farooque') || lower.contains('developer') || lower.contains('banaya')) {
+      return VerdictModel(
+        checkId: 'local_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'INFO',
+        confidence: 1.0,
+        scamType: 'Developer Info',
+        escalated: false,
+        why: isHindi ? [
+          'Umar Farooque SafeSignal ke lead developer aur cybersecurity researcher hain, jinhone is application ko citizen digital protection aur open-source threat intelligence ke liye build kiya hai.'
+        ] : [
+          'Umar Farooque is the lead developer and cybersecurity researcher behind SafeSignal, building open-source intelligence and citizen defense systems.'
+        ],
+        whatToDo: [],
+        language: language,
+        disclaimer: isHindi
+            ? 'SafeSignal ek AI assistant hai. Zaruri maamlon mein 1930 pe call karein.'
+            : 'SafeSignal is an AI assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 3. Question Words / General Inquiry
+    if (lower.contains('kya') || lower.contains('kaise') || lower.contains('what') || lower.contains('how') || lower.contains('help') || lower.contains('madad')) {
+      return VerdictModel(
+        checkId: 'local_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'INFO',
+        confidence: 1.0,
+        scamType: 'Cyber Guidance',
+        escalated: false,
+        why: isHindi ? [
+          'Main aapki in mamlon mein madad kar sakta hoon:\n• Suspicious WhatsApp call ya SMS check karna\n• Phishing URL aur malicious website scan karna\n• Digital arrest aur CBI impersonation calls se bachna\n• UPI payment fraud aur fake QR code detect karna\n• Unknown phone number ki telecom forensics (VoIP / Carrier) nikalna\n\nKoi bhi link ya text paste karein!'
+        ] : [
+          'Here is what I can do for you:\n• Verify suspicious SMS and WhatsApp messages\n• Scan phishing URLs and malicious domains\n• Guard against Digital Arrest and fake enforcement scams\n• Detect fraudulent UPI payment links & QR codes\n• Perform Telecom OSINT & VoIP burner number detection\n\nPaste any message or link to begin!'
+        ],
+        whatToDo: [],
+        language: language,
+        disclaimer: isHindi
+            ? 'SafeSignal ek AI assistant hai. Zaruri maamlon mein 1930 pe call karein.'
+            : 'SafeSignal is an AI assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 4. Score-based Scam Analysis
     final scamKeywords = [
       'arrest', 'cbi', 'ed ', 'narcotics', 'police case', 'court order',
       'paisa bhejo', 'account block', 'kyc expire', 'kyc update',
@@ -267,36 +527,34 @@ If an image is uploaded, scan it for text (OCR), fake logos, official headers, b
     final safeScore = safeKeywords.where((k) => lower.contains(k)).length;
     final isOtp = otpKeywords.any((k) => lower.contains(k));
 
-    final isHindi = language == 'hi';
-
     if (scamScore >= 2) {
       return VerdictModel(
         checkId: 'local_${DateTime.now().millisecondsSinceEpoch}',
         verdict: 'SCAM',
-        confidence: 0.88,
+        confidence: 0.90,
         scamType: 'Suspicious Pattern Detected',
         escalated: false,
         why: isHindi ? [
-          'Is message mein $scamScore se zyada suspicious keywords mile hain',
+          'Is message mein $scamScore se zyada suspicious scam keywords mile hain',
           'Fraudsters aisa language use karte hain — dara ke, laalach de ke ya urgency create karke',
-          'Real government agencies aur banks kabhi is tarah message nahi karte',
+          'Real government agencies aur banks kabhi is tarah threatening ya urgent message nahi bhejte',
         ] : [
-          'This message contains $scamScore+ suspicious keywords',
-          'Fraudsters use this language to scare, lure or create urgency',
-          'Real government agencies and banks never communicate this way',
+          'This message contains $scamScore+ suspicious scam keywords',
+          'Fraudsters use this language to induce fear, greed or urgency',
+          'Legitimate enforcement agencies and banks never send threatening links or payment demands',
         ],
         whatToDo: isHindi ? [
-          'Koi bhi link pe click mat karo',
-          'Kisi ko bhi OTP, password ya personal details mat do',
-          '1930 pe call karke cybercrime report karo',
-          'Message delete kar do ya screenshot lekar police ko do',
+          'Koi bhi link par click mat karo',
+          'Kisi ko bhi OTP, PIN ya paise transfer mat karo',
+          'National Cybercrime Helpline: 1930 par turant call karein',
+          'cybercrime.gov.in par report karein',
         ] : [
           'Do not click any link in this message',
-          'Never share OTP, password or personal details',
-          'Report to cybercrime helpline: 1930',
-          'Delete the message or screenshot it and report to police',
+          'Never share OTP, PIN or transfer money',
+          'Report immediately to National Cybercrime Helpline: 1930',
+          'File a complaint at cybercrime.gov.in',
         ],
-        trendNote: isHindi ? 'Ye pattern common Indian fraud hai' : 'This is a common Indian fraud pattern',
+        trendNote: isHindi ? 'Ye pattern common Indian cyber fraud hai' : 'Common Indian cybercrime tactic',
         language: language,
         disclaimer: isHindi ? 'SafeSignal ek AI assistant hai. Zaruri maamlon mein 1930 pe call karein.' : 'SafeSignal is an AI assistant. For urgent matters, call 1930.',
         inputText: text,
@@ -306,15 +564,19 @@ If an image is uploaded, scan it for text (OCR), fake logos, official headers, b
     if (scamScore == 1 && safeScore == 0) return VerdictModel.mockCaution();
     if (safeScore >= 1 || isOtp) return VerdictModel.mockSafe();
     if (lower.contains('http') || lower.contains('www.')) return VerdictModel.mockCaution();
-    
-    // Normal conversation fallback
+
+    // Default conversational response
     return VerdictModel(
       checkId: 'local_${DateTime.now().millisecondsSinceEpoch}',
       verdict: 'INFO',
       confidence: 1.0,
-      scamType: 'none',
+      scamType: 'General Advice',
       escalated: false,
-      why: isHindi ? ['Main SafeSignal AI hoon. Aap koi suspicious message ya link paste karke check karwa sakte hain.'] : ['I am SafeSignal AI. You can paste a suspicious message or link for analysis.'],
+      why: isHindi ? [
+        'Aapka message mila hai. Agar ye koi suspicious SMS, WhatsApp message ya link hai toh ise pura share karein taaki main security audit kar saku.'
+      ] : [
+        'Message received. If this relates to a suspicious SMS, link or call, share the full text so I can perform a security audit.'
+      ],
       whatToDo: [],
       trendNote: null,
       language: language,

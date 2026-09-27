@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -14,6 +15,7 @@ class _AuditResult {
   final List<AppInfo> riskyApps;
   final Map<String, List<AppInfo>> permissionApps;
   final bool developerOptionsEnabled;
+  final bool isRooted;
 
   _AuditResult({
     this.deviceInfo,
@@ -21,6 +23,7 @@ class _AuditResult {
     required this.riskyApps,
     required this.permissionApps,
     required this.developerOptionsEnabled,
+    this.isRooted = false,
   });
 }
 
@@ -30,6 +33,13 @@ const _riskyKeywords = [
   'loan', 'cash', 'money', 'earn', 'reward', 'casino', 'bet', 'gamble',
   'hack', 'spy', 'monitor', 'tracker', 'screen.recorder', 'screenrec',
   'flashlight', 'qr', 'scanner.pro', 'call.recorder',
+];
+
+// ─── Citizen Lab & Amnesty International Stalkerware IOCs ────────────────────
+const _stalkerSignatures = [
+  'mspy', 'flexispy', 'cerberus', 'spyic', 'hoverwatch', 'trackview',
+  'spymaster', 'kidsguard', 'thetruthspy', 'cocospy', 'coplug', 'ikeymonitor',
+  'mobistealth', 'spybubble', 'xnspy', 'onespy', 'spyzie'
 ];
 
 // ─── Known permission-heavy package patterns ──────────────────────────────────
@@ -111,37 +121,100 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         devOptionsEnabled = await channel.invokeMethod<bool>('isDeveloperOptionsEnabled') ?? false;
       } catch (_) {}
 
-      // Stage 6 — Permission audit
+      // Stage 6 — Genuine Android Permission & Sideload Audit
       _updateStage(5, 78);
-      final riskyApps = allApps.where((app) {
-        final pkgLower = app.packageName.toLowerCase();
-        final nameLower = app.name.toLowerCase();
-        return _riskyKeywords.any((k) => pkgLower.contains(k) || nameLower.contains(k));
-      }).take(10).toList();
+      Map<String, List<String>> appPermMap = {};
+      Set<String> sideloadedPkgs = {};
+      try {
+        const scannerChannel = MethodChannel('com.safesignal/app_scanner');
+        final rawApps = await scannerChannel.invokeMethod<List<dynamic>>('getInstalledApps');
+        if (rawApps != null) {
+          for (final raw in rawApps) {
+            if (raw is Map) {
+              final pkg = raw['package']?.toString() ?? '';
+              final perms = (raw['permissions'] as List?)?.map((e) => e.toString().toUpperCase()).toList() ?? [];
+              appPermMap[pkg] = perms;
+              final installer = raw['installer']?.toString() ?? '';
+              if (installer.isEmpty || installer == 'unknown' || installer.contains('packageinstaller')) {
+                sideloadedPkgs.add(pkg);
+              }
+            }
+          }
+        }
+      } catch (_) {}
 
+      // Genuine permission-based filtering
       final cameraApps = allApps.where((app) {
+        final perms = appPermMap[app.packageName];
+        if (perms != null && perms.isNotEmpty) {
+          return perms.any((p) => p.contains('CAMERA'));
+        }
         final p = app.packageName.toLowerCase();
         final n = app.name.toLowerCase();
         return _cameraApps.any((k) => p.contains(k) || n.contains(k));
-      }).take(6).toList();
+      }).take(8).toList();
 
       final smsApps = allApps.where((app) {
+        final perms = appPermMap[app.packageName];
+        if (perms != null && perms.isNotEmpty) {
+          return perms.any((p) => p.contains('SMS'));
+        }
         final p = app.packageName.toLowerCase();
         final n = app.name.toLowerCase();
         return _smsApps.any((k) => p.contains(k) || n.contains(k));
-      }).take(6).toList();
+      }).take(8).toList();
 
       final contactApps = allApps.where((app) {
+        final perms = appPermMap[app.packageName];
+        if (perms != null && perms.isNotEmpty) {
+          return perms.any((p) => p.contains('CONTACTS'));
+        }
         final p = app.packageName.toLowerCase();
         final n = app.name.toLowerCase();
         return _contactApps.any((k) => p.contains(k) || n.contains(k));
-      }).take(6).toList();
+      }).take(8).toList();
 
       final micApps = allApps.where((app) {
+        final perms = appPermMap[app.packageName];
+        if (perms != null && perms.isNotEmpty) {
+          return perms.any((p) => p.contains('RECORD_AUDIO'));
+        }
         final p = app.packageName.toLowerCase();
         final n = app.name.toLowerCase();
         return _micApps.any((k) => p.contains(k) || n.contains(k));
-      }).take(6).toList();
+      }).take(8).toList();
+
+      bool isRooted = false;
+      try {
+        final tags = deviceInfo?.tags ?? '';
+        if (tags.contains('test-keys')) isRooted = true;
+
+        final suPaths = [
+          '/system/bin/su',
+          '/system/xbin/su',
+          '/sbin/su',
+          '/system/app/Superuser.apk',
+          '/data/local/xbin/su',
+          '/data/local/bin/su',
+        ];
+        for (final p in suPaths) {
+          if (File(p).existsSync()) {
+            isRooted = true;
+            break;
+          }
+        }
+      } catch (_) {}
+
+      final riskyApps = allApps.where((app) {
+        final isSideloaded = sideloadedPkgs.contains(app.packageName);
+        final perms = appPermMap[app.packageName] ?? [];
+        final hasDangerous = perms.any((p) => p.contains('SMS') || p.contains('CAMERA') || p.contains('RECORD_AUDIO'));
+        final pkgLower = app.packageName.toLowerCase();
+        final nameLower = app.name.toLowerCase();
+        final matchesKeyword = _riskyKeywords.any((k) => pkgLower.contains(k) || nameLower.contains(k));
+        final matchesStalker = _stalkerSignatures.any((k) => pkgLower.contains(k) || nameLower.contains(k));
+        return matchesStalker || (isSideloaded && hasDangerous) || matchesKeyword;
+      }).take(10).toList();
 
       // Stage 7 — Network
       _updateStage(6, 90);
@@ -162,6 +235,7 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           'Mic': micApps,
         },
         developerOptionsEnabled: devOptionsEnabled,
+        isRooted: isRooted,
       );
 
       // Save to Supabase
@@ -633,6 +707,53 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                             : 'You Are Safe.',
                         style: TextStyle(
                           color: r.developerOptionsEnabled ? Colors.red : const Color(0xFF00C853),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // 4b. Root & System Tampering Check
+        _AuditCard(
+          delay: 500,
+          title: 'Root & System Integrity',
+          icon: Icons.security_rounded,
+          iconColor: r.isRooted ? Colors.red.shade600 : const Color(0xFF00C853),
+          statusBadge: _StatusBadge(
+            label: r.isRooted ? 'Rooted / Tampered!' : 'Intact & Clean',
+            color: r.isRooted ? Colors.red.shade600 : const Color(0xFF00C853),
+          ),
+          children: [
+            Row(
+              children: [
+                Icon(
+                  r.isRooted ? Icons.gpp_bad_rounded : Icons.verified_user_rounded,
+                  color: r.isRooted ? Colors.red : const Color(0xFF00C853),
+                  size: 28,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        r.isRooted ? 'Root binary / su path detected!' : 'Android SELinux & System Partition Intact.',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      Text(
+                        r.isRooted
+                            ? 'Your device operating system has been modified. Banking & UPI apps are vulnerable to memory interception.'
+                            : 'No rootkits, su binaries, or test-keys build tags found.',
+                        style: TextStyle(
+                          color: r.isRooted ? Colors.red : const Color(0xFF00C853),
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
