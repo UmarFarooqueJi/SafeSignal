@@ -27,6 +27,7 @@ import '../../features/vault/vault_screen.dart';
 import '../../features/vault/vault_lock_screen.dart';
 import '../../features/osint/social_osint_screen.dart';
 import '../../features/osint/phone_osint_screen.dart';
+import '../../features/incident_response/incident_response_screen.dart';
 import '../../data/models/verdict_model.dart';
 
 
@@ -133,6 +134,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/chat',
         builder: (context, state) => const ChatScreen(),
+      ),
+      GoRoute(
+        path: '/incident-response',
+        builder: (context, state) => const IncidentResponseScreen(),
       ),
 
       // Top-level routes for main sections
