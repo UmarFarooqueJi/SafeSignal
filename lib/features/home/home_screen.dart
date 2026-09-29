@@ -304,11 +304,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _ImageCard(
-                              title: 'SMS Guard\n& OTP Protect',
-                              subtitle: 'Financial Fraud Alert',
+                              title: 'SIM & OTP\nHijack Shield',
+                              subtitle: 'USSD Forwarding Check',
                               imagePath: 'assets/images/ai_sms_guard_card.png',
                               height: 135,
-                              onTap: () => context.push('/sms-inbox'),
+                              onTap: () => context.push('/otp-guard'),
                             ).animate().scale(begin: const Offset(0.9, 0.9), delay: 250.ms).fadeIn(),
                           ),
                         ],
@@ -318,14 +318,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         children: [
                           Expanded(
                             child: _ImageCard(
+                              title: 'SMS Phishing\nRadar',
+                              subtitle: 'Financial Fraud Alert',
+                              imagePath: 'assets/images/ai_sms_guard_card.png',
+                              height: 135,
+                              onTap: () => context.push('/sms-inbox'),
+                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 270.ms).fadeIn(),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _ImageCard(
                               title: 'Dark Web\nBreach Scan',
                               subtitle: 'Identity Theft Check',
                               imagePath: 'assets/images/ai_darkweb_card.png',
                               height: 135,
                               onTap: () => context.push('/email-breach'),
-                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 280.ms).fadeIn(),
+                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 290.ms).fadeIn(),
                           ),
-                          const SizedBox(width: 12),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
                           Expanded(
                             child: _ImageCard(
                               title: 'AI Cyber\nAssistant',
@@ -335,11 +349,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               onTap: () => context.push('/chat'),
                             ).animate().scale(begin: const Offset(0.9, 0.9), delay: 320.ms).fadeIn(),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
+                          const SizedBox(width: 12),
                           Expanded(
                             child: _ImageCard(
                               title: 'UPI Payment\nShield',
@@ -347,9 +357,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               imagePath: 'assets/images/ai_sms_guard_card.png',
                               height: 135,
                               onTap: () => context.push('/upi-scanner'),
-                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 360.ms).fadeIn(),
+                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 350.ms).fadeIn(),
                           ),
-                          const SizedBox(width: 12),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
                           Expanded(
                             child: _ImageCard(
                               title: 'AI Scanner\nAdvanced',
@@ -357,7 +371,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               imagePath: 'assets/images/ai_website_card.png',
                               height: 135,
                               onTap: () => context.push('/qr-scanner'),
-                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 400.ms).fadeIn(),
+                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 380.ms).fadeIn(),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _ImageCard(
+                              title: 'Call Shield\nSentinel',
+                              subtitle: 'Spam Call Defense',
+                              imagePath: 'assets/images/ai_call_shield_card.png',
+                              height: 135,
+                              onTap: () => context.push('/call-shield'),
+                            ).animate().scale(begin: const Offset(0.9, 0.9), delay: 410.ms).fadeIn(),
                           ),
                         ],
                       ),
