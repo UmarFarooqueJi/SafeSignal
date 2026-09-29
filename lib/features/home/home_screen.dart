@@ -653,8 +653,6 @@ class _CyberCard extends StatelessWidget {
   final Color accentColor;
   final String badgeText;
   final VoidCallback onTap;
-  final double? height;
-
   const _CyberCard({
     required this.title,
     required this.subtitle,
@@ -662,7 +660,6 @@ class _CyberCard extends StatelessWidget {
     required this.accentColor,
     required this.badgeText,
     required this.onTap,
-    this.height,
   });
 
   @override
@@ -675,7 +672,7 @@ class _CyberCard extends StatelessWidget {
         splashColor: accentColor.withValues(alpha: 0.1),
         highlightColor: accentColor.withValues(alpha: 0.05),
         child: Ink(
-          height: height ?? 142,
+          height: 142,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
