@@ -182,35 +182,87 @@ User Note / Query: ${text.isEmpty || text == '[Screenshot Analysis Request]' ? '
     if (text.endsWith('```')) text = text.substring(0, text.length - 3);
     text = text.trim();
 
-    // 2. If it contains pseudo-dictionary or JSON-like syntax
-    if (text.contains('why:') || text.contains('summary:') || text.contains('confidence:') || text.startsWith('{')) {
-      // Try extracting why block: why: [ ... ] or why: "..."
-      final whyMatch = RegExp(r'why:\s*(?:\[\s*"?([^"\]]+)"?\s*\]|"([^"]+)"|([^\n,\}]+))', dotAll: true).firstMatch(text);
-      if (whyMatch != null) {
-        String val = (whyMatch.group(1) ?? whyMatch.group(2) ?? whyMatch.group(3) ?? '').trim();
-        if (val.isNotEmpty && !val.startsWith('[')) {
-          while (val.startsWith('"') || val.startsWith("'")) { val = val.substring(1); }
-          while (val.endsWith('"') || val.endsWith("'")) { val = val.substring(0, val.length - 1); }
-          return val.trim();
+    // 2. Direct JSON decode if valid JSON map
+    if (text.startsWith('{') && text.endsWith('}')) {
+      try {
+        final dynamic decoded = jsonDecode(text);
+        if (decoded is Map) {
+          if (decoded['why'] != null) {
+            final why = decoded['why'];
+            if (why is List && why.isNotEmpty) {
+              return why.map((e) => e.toString()).join('\n\n');
+            }
+            if (why is String && why.trim().isNotEmpty) {
+              return why.trim();
+            }
+          }
+          if (decoded['summary'] != null) {
+            final summary = decoded['summary'].toString().trim();
+            if (summary.isNotEmpty) return summary;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 3. Fallback extraction for malformed or pseudo-dictionary text
+    if (text.contains('why:') ||
+        text.contains('summary:') ||
+        text.contains('"why"') ||
+        text.contains('"summary"') ||
+        text.startsWith('{')) {
+      final whyArrayMatch = RegExp(r"""["']?why["']?\s*:\s*\[\s*([\s\S]*?)\s*\](?:\s*,|\s*\})""").firstMatch(text);
+      if (whyArrayMatch != null) {
+        String val = whyArrayMatch.group(1)?.trim() ?? '';
+        val = val.replaceAll(RegExp(r"""^["']|["']$"""), '').trim();
+        val = val.replaceAll(RegExp(r"""["']\s*,\s*["']"""), '\n\n').trim();
+        if (val.isNotEmpty && !val.contains('confidence:') && !val.contains('verdict:')) {
+          return val;
         }
       }
 
-      // Try extracting summary: summary: "..."
-      final summaryMatch = RegExp(r'summary:\s*(?:"([^"]+)"|([^\n,\}]+))', dotAll: true).firstMatch(text);
+      final whyStringMatch = RegExp(r"""["']?why["']?\s*:\s*["']([\s\S]*?)["'](?:\s*,|\s*\})""").firstMatch(text);
+      if (whyStringMatch != null) {
+        String val = whyStringMatch.group(1)?.trim() ?? '';
+        if (val.isNotEmpty && !val.contains('confidence:') && !val.contains('verdict:')) {
+          return val;
+        }
+      }
+
+      final summaryMatch = RegExp(r"""["']?summary["']?\s*:\s*["']([\s\S]*?)["'](?:\s*,|\s*\})""").firstMatch(text);
       if (summaryMatch != null) {
-        String val = (summaryMatch.group(1) ?? summaryMatch.group(2) ?? '').trim();
-        if (val.isNotEmpty) {
-          while (val.startsWith('"') || val.startsWith("'")) { val = val.substring(1); }
-          while (val.endsWith('"') || val.endsWith("'")) { val = val.substring(0, val.length - 1); }
-          return val.trim();
+        String val = summaryMatch.group(1)?.trim() ?? '';
+        if (val.isNotEmpty && !val.contains('confidence:') && !val.contains('verdict:')) {
+          return val;
         }
       }
 
-      // Strip all metadata keys and bracket noise if no clean match
-      text = text
-          .replaceAll(RegExp(r'\{?\s*(?:confidence|riskLevel|scamType|verdict|whatToDo|summary|why)\s*:[^,\}\]]*[,\]\}]?'), '')
-          .replaceAll(RegExp(r'[{}\[\]]'), '')
-          .trim();
+      final summaryUnquoted = RegExp(r"""["']?summary["']?\s*:\s*([\s\S]*?)(?=(?:,\s*(?:verdict|whatToDo|why|confidence|riskLevel)\s*:|\}$))""").firstMatch(text);
+      if (summaryUnquoted != null) {
+        String val = summaryUnquoted.group(1)?.trim() ?? '';
+        val = val.replaceAll(RegExp(r"""^["']|["']$"""), '').trim();
+        if (val.isNotEmpty && !val.contains('confidence:') && !val.contains('verdict:')) {
+          return val;
+        }
+      }
+
+      final whyUnquoted = RegExp(r"""["']?why["']?\s*:\s*\[([\s\S]*?)\]""").firstMatch(text);
+      if (whyUnquoted != null) {
+        String val = whyUnquoted.group(1)?.trim() ?? '';
+        val = val.replaceAll(RegExp(r"""^["']|["']$"""), '').trim();
+        if (val.isNotEmpty && !val.contains('confidence:') && !val.contains('verdict:')) {
+          return val;
+        }
+      }
+
+      // Fallback: Strip metadata fields entirely
+      String stripped = text;
+      stripped = stripped.replaceAll(RegExp(r"""["']?(?:confidence|riskLevel|scamType|verdict|whatToDo|isScam)\s*:[^,\}\]]*[,\]\}]?""", caseSensitive: false), '');
+      stripped = stripped.replaceAll(RegExp(r"""["']?(?:why|summary)\s*:\s*\[?""", caseSensitive: false), '');
+      stripped = stripped.replaceAll(RegExp(r'[{}\[\]]'), '');
+      stripped = stripped.replaceAll(RegExp(r'^\s*,\s*|\s*,\s*$'), '').trim();
+      if (stripped.isNotEmpty) {
+        return stripped;
+      }
     }
 
     return text.isNotEmpty ? text : raw;
@@ -299,12 +351,13 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
     final messages = <Map<String, dynamic>>[];
     messages.add({'role': 'system', 'content': systemPrompt});
 
-    // Add recent conversation history for memory
+    // Add recent conversation history for memory, filtering any malformed JSON dumps
     for (final h in history) {
-      if (h.text.isNotEmpty) {
+      final t = h.text.trim();
+      if (t.isNotEmpty && !t.startsWith('{') && !t.contains('confidence:')) {
         messages.add({
           'role': h.isUser ? 'user' : 'assistant',
-          'content': h.text,
+          'content': t,
         });
       }
     }

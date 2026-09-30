@@ -1,3 +1,10 @@
+// -----------------------------------------------------------------------------
+// SafeSignal Mobile Security Suite
+// Module: Community Crowd Intelligence Service
+// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Decentralized threat intelligence via Supabase-backed community reports.
+// -----------------------------------------------------------------------------
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -44,7 +51,9 @@ class CrowdIntelService {
       if (json != null) {
         final list = jsonDecode(json) as List;
         _localBlocklist = Set<String>.from(list.map((e) => e.toString()));
-        debugPrint('[CrowdIntel] Loaded ${_localBlocklist.length} cached hashes');
+        debugPrint(
+          '[CrowdIntel] Loaded ${_localBlocklist.length} cached hashes',
+        );
       }
     } catch (e) {
       debugPrint('[CrowdIntel] Cache load error: $e');
@@ -60,7 +69,8 @@ class CrowdIntelService {
       final tsString = prefs.getString(_cacheTimestampKey);
       if (tsString != null) {
         final cached = DateTime.tryParse(tsString);
-        if (cached != null && DateTime.now().difference(cached) < _cacheMaxAge) {
+        if (cached != null &&
+            DateTime.now().difference(cached) < _cacheMaxAge) {
           debugPrint('[CrowdIntel] Cache is fresh, skipping sync');
           return;
         }
@@ -79,9 +89,14 @@ class CrowdIntelService {
 
       // Save to local cache
       await prefs.setString(_cacheKey, jsonEncode(hashes.toList()));
-      await prefs.setString(_cacheTimestampKey, DateTime.now().toIso8601String());
+      await prefs.setString(
+        _cacheTimestampKey,
+        DateTime.now().toIso8601String(),
+      );
 
-      debugPrint('[CrowdIntel] Synced ${hashes.length} verified threats from server');
+      debugPrint(
+        '[CrowdIntel] Synced ${hashes.length} verified threats from server',
+      );
     } catch (e) {
       debugPrint('[CrowdIntel] Sync error (non-critical): $e');
     }
@@ -113,7 +128,9 @@ class CrowdIntelService {
           .maybeSingle();
 
       if (response != null) {
-        return ThreatReport.fromJson(Map<String, dynamic>.from(response as Map));
+        return ThreatReport.fromJson(
+          Map<String, dynamic>.from(response as Map),
+        );
       }
     } catch (e) {
       debugPrint('[CrowdIntel] Lookup error: $e');
@@ -133,18 +150,20 @@ class CrowdIntelService {
     final hash = ThreatReport.hashValue(rawValue);
     try {
       // Direct upsert — works without stored procedures
-      await client.from('threat_reports').upsert(
-        {
-          'type': type,
-          'value_hash': hash,
-          'verdict': verdict,
-          'reporter_count': 1,
-          'confidence': verdict == 'SCAM' ? 0.75 : 0.55,
-          'status': 'pending',
-        },
-        onConflict: 'value_hash',
-        ignoreDuplicates: false,
-      );
+      await client
+          .from('threat_reports')
+          .upsert(
+            {
+              'type': type,
+              'value_hash': hash,
+              'verdict': verdict,
+              'reporter_count': 1,
+              'confidence': verdict == 'SCAM' ? 0.75 : 0.55,
+              'status': 'pending',
+            },
+            onConflict: 'value_hash',
+            ignoreDuplicates: false,
+          );
 
       // Add to local cache immediately
       if (verdict == 'SCAM') {
@@ -152,7 +171,9 @@ class CrowdIntelService {
         _saveLocalCache();
       }
 
-      debugPrint('[CrowdIntel] Report submitted for $type (hash: ${hash.substring(0, 8)}...)');
+      debugPrint(
+        '[CrowdIntel] Report submitted for $type (hash: ${hash.substring(0, 8)}...)',
+      );
       return true;
     } catch (e) {
       debugPrint('[CrowdIntel] Report error (non-critical): $e');

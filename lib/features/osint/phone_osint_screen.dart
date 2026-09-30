@@ -690,12 +690,16 @@ Alerts: ${res.threatAlerts.join('; ')}
               child: const Icon(Icons.phone_android_rounded, color: Color(0xFF3B82F6), size: 20),
             ),
             const SizedBox(width: 10),
-            Text(
-              'Phone Fraud & OSINT',
-              style: TextStyle(
-                color: textColor,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
+            Expanded(
+              child: Text(
+                'Phone Fraud & OSINT',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -751,6 +755,10 @@ Alerts: ${res.threatAlerts.join('; ')}
 
             const SizedBox(height: 18),
 
+            // OSINT Sub-Mode Switcher (Social vs Phone)
+            _buildOsintModeSwitcher(isDark),
+            const SizedBox(height: 14),
+
             // Dedicated Phone Input Card
             Container(
               decoration: BoxDecoration(
@@ -775,15 +783,20 @@ Alerts: ${res.threatAlerts.join('; ')}
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'TARGET PHONE NUMBER',
-                        style: TextStyle(
-                          color: Color(0xFF3B82F6),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.1,
+                      const Expanded(
+                        child: Text(
+                          'TARGET PHONE NUMBER',
+                          style: TextStyle(
+                            color: Color(0xFF3B82F6),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.1,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
                         'Telecom / Scam Recon',
                         style: TextStyle(color: subColor, fontSize: 11, fontWeight: FontWeight.w500),
@@ -971,6 +984,80 @@ Alerts: ${res.threatAlerts.join('; ')}
     );
   }
 
+  Widget _buildOsintModeSwitcher(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : const Color(0xFFE2E8F0),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () => context.push('/social-osint'),
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.person_search_rounded,
+                      size: 16,
+                      color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Social Recon',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.phone_android_rounded, size: 16, color: Color(0xFF3B82F6)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Phone OSINT',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                      color: Color(0xFF3B82F6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPresetChip(String label, String number, bool isDark, Color cardBg, Color textColor) {
     return InkWell(
       onTap: () {
@@ -1051,6 +1138,8 @@ Alerts: ${res.threatAlerts.join('; ')}
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 0.5,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 3),
                               Text(
@@ -1060,6 +1149,7 @@ Alerts: ${res.threatAlerts.join('; ')}
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                 ),
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ],
@@ -1068,14 +1158,16 @@ Alerts: ${res.threatAlerts.join('; ')}
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: res.riskColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: res.riskColor.withValues(alpha: 0.5)),
                     ),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           res.riskLevel,
@@ -1104,13 +1196,23 @@ Alerts: ${res.threatAlerts.join('; ')}
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    res.lineType,
-                    style: TextStyle(color: subColor, fontSize: 11, fontWeight: FontWeight.w600),
+                  Expanded(
+                    child: Text(
+                      res.lineType,
+                      style: TextStyle(color: subColor, fontSize: 11, fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  Text(
-                    res.countryName,
-                    style: TextStyle(color: subColor, fontSize: 11, fontWeight: FontWeight.w600),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      res.countryName,
+                      textAlign: TextAlign.end,
+                      style: TextStyle(color: subColor, fontSize: 11, fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -1153,16 +1255,23 @@ Alerts: ${res.threatAlerts.join('; ')}
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.psychology_rounded, color: Color(0xFF3B82F6), size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'AI Telecom Threat Assessment',
-                        style: TextStyle(color: textColor, fontWeight: FontWeight.w800, fontSize: 13),
-                      ),
-                    ],
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.psychology_rounded, color: Color(0xFF3B82F6), size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'AI Telecom Threat Assessment',
+                            style: TextStyle(color: textColor, fontWeight: FontWeight.w800, fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   if (_isAiLoading)
                     const SizedBox(
                       width: 14,
@@ -1410,33 +1519,43 @@ Alerts: ${res.threatAlerts.join('; ')}
           // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: p.brandColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: p.brandColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(p.icon, color: p.brandColor, size: 22),
                     ),
-                    child: Icon(p.icon, color: p.brandColor, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        p.platform,
-                        style: TextStyle(color: textColor, fontWeight: FontWeight.w800, fontSize: 15),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            p.platform,
+                            style: TextStyle(color: textColor, fontWeight: FontWeight.w800, fontSize: 14),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            p.category,
+                            style: TextStyle(color: subColor, fontSize: 11, fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      Text(
-                        p.category,
-                        style: TextStyle(color: subColor, fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -1501,34 +1620,43 @@ Alerts: ${res.threatAlerts.join('; ')}
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: p.onPrimaryAction,
-                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                  icon: const Icon(Icons.open_in_new_rounded, size: 14),
                   label: Text(
                     p.primaryActionLabel,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: p.brandColor,
                     foregroundColor: Colors.white,
                     elevation: 0,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                   ),
                 ),
               ),
               if (p.secondaryActionLabel != null && p.onSecondaryAction != null) ...[
                 const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: p.onSecondaryAction,
-                  icon: const Icon(Icons.copy_rounded, size: 16),
-                  label: Text(
-                    p.secondaryActionLabel!,
-                    style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 12),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: p.onSecondaryAction,
+                    icon: const Icon(Icons.copy_rounded, size: 14),
+                    label: Text(
+                      p.secondaryActionLabel!,
+                      style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 11),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      side: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    ),
                   ),
                 ),
               ],
@@ -1631,15 +1759,25 @@ Alerts: ${res.threatAlerts.join('; ')}
             style: TextStyle(color: textColor, fontSize: 11, height: 1.35, fontStyle: FontStyle.italic),
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () => _copyToClipboard(complaintText, 'Complaint Statement'),
-            icon: const Icon(Icons.copy_rounded, size: 14),
-            label: const Text('Copy Complaint for Chakshu Form', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFFDC2626),
-              side: const BorderSide(color: Color(0xFFDC2626)),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _copyToClipboard(complaintText, 'Complaint Statement'),
+              icon: const Icon(Icons.copy_rounded, size: 14),
+              label: const Text(
+                'Copy Complaint for Chakshu Form',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                foregroundColor: const Color(0xFFDC2626),
+                side: const BorderSide(color: Color(0xFFDC2626)),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
             ),
           ),
         ],
@@ -1749,13 +1887,20 @@ Alerts: ${res.threatAlerts.join('; ')}
                       Navigator.pop(ctx);
                       _copyToClipboard('$nationalDigits@ybl', 'PhonePe VPA');
                     },
-                    icon: const Icon(Icons.copy_rounded, size: 16),
-                    label: const Text('Copy PhonePe VPA'),
+                    icon: const Icon(Icons.copy_rounded, size: 15),
+                    label: const Text(
+                      'Copy PhonePe VPA',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF5F259F),
                       foregroundColor: Colors.white,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     ),
                   ),
                 ),
@@ -1766,13 +1911,20 @@ Alerts: ${res.threatAlerts.join('; ')}
                       Navigator.pop(ctx);
                       _copyToClipboard('$nationalDigits@oksbi', 'Google Pay VPA');
                     },
-                    icon: const Icon(Icons.copy_rounded, size: 16),
-                    label: const Text('Copy GPay VPA'),
+                    icon: const Icon(Icons.copy_rounded, size: 15),
+                    label: Text(
+                      'Copy GPay VPA',
+                      style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: textColor,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       side: BorderSide(color: subColor.withValues(alpha: 0.3)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     ),
                   ),
                 ),

@@ -1,27 +1,43 @@
-﻿# Security Policy
-
-SafeSignal takes the security of its users and code very seriously. We appreciate the responsible disclosure of vulnerabilities.
+# Security Policy
 
 ## Supported Versions
 
-Only the latest release and the main branch receive active security updates.
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+| Version | Supported |
+|---------|----------|
+| 1.2.x   | ✅ Current |
+| 1.1.x   | ✅ Security patches only |
+| < 1.1   | ❌ End of life |
 
 ## Reporting a Vulnerability
 
-If you discover a potential vulnerability or security issue:
+SafeSignal is a security-focused application. We take vulnerability reports seriously.
 
-1. **Do NOT open a public GitHub issue.**
-2. Email the maintainers directly or use GitHub's private vulnerability reporting feature on the repository.
-3. Provide detailed steps to reproduce the issue, including environment details, payloads, and expected vs actual behavior.
-4. Allow reasonable time for the maintainers to investigate and issue a patch before publishing any details publicly.
+**Contact:** umarfarooque@safesignal.app
+**PGP:** Contact via email to request encrypted channel
+**Response SLA:** 72 hours acknowledgment, 7 days triage
 
-## Secrets & API Hygiene
+### Scope
 
-- SafeSignal relies on various third-party security intelligence providers (Supabase, VirusTotal, Google Safe Browsing, OpenRouter).
-- Under no circumstances should actual production API keys or environment variables be committed to the repository.
-- Always use `.env.example` as a template and keep `.env` strictly gitignored.
+In-scope for responsible disclosure:
+- Authentication bypass in Supabase integration
+- Data leakage from Hive encrypted vault
+- Man-in-the-middle vulnerabilities in threat API calls
+- Local privilege escalation via native Kotlin services
+- Biometric authentication bypass
+
+Out-of-scope:
+- Vulnerabilities in third-party libraries (report upstream)
+- Social engineering attacks
+- Physical device access scenarios
+
+### Process
+
+1. Email `umarfarooque@safesignal.app` with subject `[SECURITY] SafeSignal <brief>`
+2. Include: affected version, reproduction steps, impact assessment
+3. We will acknowledge within 72 hours
+4. Coordinated disclosure after patch release
+5. Credit will be given in release notes (unless you prefer anonymity)
+
+### Attribution
+
+SafeSignal was developed by **Umar Farooque** and is maintained by SafeSignal Technologies.

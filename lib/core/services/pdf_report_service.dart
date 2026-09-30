@@ -1,3 +1,10 @@
+// -----------------------------------------------------------------------------
+// SafeSignal Mobile Security Suite
+// Module: Legal Incident Report PDF Generator
+// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Generates Section 66D IT Act compliant FIR PDF documents.
+// -----------------------------------------------------------------------------
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -27,15 +34,30 @@ class PdfReportService {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
-                    pw.Text('SafeSignal Cyber Forensic Report',
-                        style: pw.TextStyle(
-                            fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.red800)),
-                    pw.Text('Generated for Cyber Crime Cell (1930)',
-                        style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
-                    pw.Text('Date: ${DateTime.now().toLocal().toString().split('.')[0]}',
-                        style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey500)),
+                    pw.Text(
+                      'SafeSignal Cyber Forensic Report',
+                      style: pw.TextStyle(
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.red800,
+                      ),
+                    ),
+                    pw.Text(
+                      'Generated for Cyber Crime Cell (1930)',
+                      style: const pw.TextStyle(
+                        fontSize: 12,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                    pw.Text(
+                      'Date: ${DateTime.now().toLocal().toString().split('.')[0]}',
+                      style: const pw.TextStyle(
+                        fontSize: 10,
+                        color: PdfColors.grey500,
+                      ),
+                    ),
                   ],
-                )
+                ),
               ],
             ),
             pw.SizedBox(height: 20),
@@ -43,8 +65,10 @@ class PdfReportService {
             pw.SizedBox(height: 20),
 
             // Summary Section
-            pw.Text('INCIDENT SUMMARY',
-                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            pw.Text(
+              'INCIDENT SUMMARY',
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+            ),
             pw.SizedBox(height: 10),
             pw.Container(
               padding: const pw.EdgeInsets.all(12),
@@ -56,17 +80,28 @@ class PdfReportService {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  _buildRow('Threat Type:', scamData['scamType']?.toString().toUpperCase() ?? 'UNKNOWN'),
-                  _buildRow('Risk Level:', scamData['riskLevel']?.toString() ?? 'HIGH'),
-                  _buildRow('AI Confidence:', '${((scamData['confidence'] as double? ?? 0.0) * 100).toStringAsFixed(1)}%'),
+                  _buildRow(
+                    'Threat Type:',
+                    scamData['scamType']?.toString().toUpperCase() ?? 'UNKNOWN',
+                  ),
+                  _buildRow(
+                    'Risk Level:',
+                    scamData['riskLevel']?.toString() ?? 'HIGH',
+                  ),
+                  _buildRow(
+                    'AI Confidence:',
+                    '${((scamData['confidence'] as double? ?? 0.0) * 100).toStringAsFixed(1)}%',
+                  ),
                 ],
               ),
             ),
             pw.SizedBox(height: 20),
 
             // Original Message
-            pw.Text('ORIGINAL SUSPICIOUS CONTENT',
-                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            pw.Text(
+              'ORIGINAL SUSPICIOUS CONTENT',
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+            ),
             pw.SizedBox(height: 10),
             pw.Container(
               width: double.infinity,
@@ -84,8 +119,10 @@ class PdfReportService {
             pw.SizedBox(height: 20),
 
             // Evidence / Red Flags
-            pw.Text('EVIDENCE & RED FLAGS IDENTIFIED',
-                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            pw.Text(
+              'EVIDENCE & RED FLAGS IDENTIFIED',
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+            ),
             pw.SizedBox(height: 10),
             ...List.generate(
               (scamData['why'] as List<dynamic>? ?? []).length,
@@ -94,7 +131,13 @@ class PdfReportService {
                 child: pw.Row(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('• ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.red800)),
+                    pw.Text(
+                      '• ',
+                      style: pw.TextStyle(
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.red800,
+                      ),
+                    ),
                     pw.Expanded(
                       child: pw.Text(
                         scamData['why'][index].toString(),
@@ -107,14 +150,17 @@ class PdfReportService {
             ),
             pw.SizedBox(height: 20),
             pw.Divider(),
-            
+
             // Footer
             pw.SizedBox(height: 20),
             pw.Center(
               child: pw.Text(
                 'This is an AI-generated preliminary forensic analysis by SafeSignal.\nPlease verify with official authorities.',
                 textAlign: pw.TextAlign.center,
-                style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+                style: const pw.TextStyle(
+                  fontSize: 10,
+                  color: PdfColors.grey600,
+                ),
               ),
             ),
           ];
@@ -125,7 +171,8 @@ class PdfReportService {
     // Save and print/share
     await Printing.sharePdf(
       bytes: await pdf.save(),
-      filename: 'SafeSignal_CyberReport_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      filename:
+          'SafeSignal_CyberReport_${DateTime.now().millisecondsSinceEpoch}.pdf',
     );
   }
 
@@ -134,9 +181,15 @@ class PdfReportService {
       padding: const pw.EdgeInsets.only(bottom: 4),
       child: pw.Row(
         children: [
-          pw.Text(label, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+          pw.Text(
+            label,
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
+          ),
           pw.SizedBox(width: 8),
-          pw.Text(value, style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey800)),
+          pw.Text(
+            value,
+            style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey800),
+          ),
         ],
       ),
     );

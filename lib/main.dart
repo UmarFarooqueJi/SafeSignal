@@ -11,6 +11,7 @@ import 'data/models/alert_model.dart';
 import 'data/models/check_history_model.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/services/notification_service.dart';
+import 'features/settings/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +61,7 @@ void main() async {
     debugPrint('SafeSignal: Notification initialization error: $e');
   }
 
+  debugPrint('SafeSignal: Calling runApp now...');
   runApp(const ProviderScope(child: SafeSignalApp()));
 }
 
@@ -70,12 +72,13 @@ class SafeSignalApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+    final settings = ref.watch(settingsProvider);
     return MaterialApp.router(
       title: 'SafeSignal',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.light,
+      themeMode: settings.themeMode,
       routerConfig: router,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

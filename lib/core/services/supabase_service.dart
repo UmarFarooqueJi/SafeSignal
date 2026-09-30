@@ -1,3 +1,10 @@
+// -----------------------------------------------------------------------------
+// SafeSignal Mobile Security Suite
+// Module: Supabase Backend Integration & Auth Service
+// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Handles user authentication, profile sync, and scan history persistence.
+// -----------------------------------------------------------------------------
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 
@@ -99,7 +106,7 @@ class SupabaseService {
           .select()
           .eq('user_id', user.id)
           .order('created_at', ascending: false);
-      
+
       return List<Map<String, dynamic>>.from(data);
     } catch (e) {
       debugPrint('Fetch scan history error: $e');

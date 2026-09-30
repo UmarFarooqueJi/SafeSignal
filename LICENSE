@@ -1,21 +1,70 @@
-﻿MIT License
+SafeSignal Source-Available License v1.0
+=========================================
 
-Copyright (c) 2026 Umar Farooque
+Copyright (c) 2026 Umar Farooque (umarfarooque@safesignal.app)
+Organization: SafeSignal Technologies
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Developed by Umar Farooque. All rights reserved.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+This software is made source-available for transparency, security research,
+and educational purposes. It is NOT free software under any open-source
+definition. The following terms govern all use.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+─── SECTION 1: PERMISSIONS ──────────────────────────────────────────────
+
+You MAY:
+  • Read and study the source code for personal learning
+  • Use this software on your personal devices
+  • Fork the repository for personal, non-commercial research
+  • Submit security disclosures to umarfarooque@safesignal.app
+  • Reference this software in academic or research publications,
+    with proper citation of the original author
+
+─── SECTION 2: RESTRICTIONS ────────────────────────────────────────────
+
+You MAY NOT:
+  • Remove, alter, or obscure attribution to Umar Farooque as the
+    original author in any copy, fork, or derivative work
+  • Redistribute this software (source or binary) without the
+    original author's written permission
+  • Use this software or any portion of it in a commercial product
+    without a separate commercial license from SafeSignal Technologies
+  • Remove the NOTICE file from any distribution
+  • Claim original authorship of any part of this software
+  • Use the SafeSignal name, logo, or branding in derivative works
+    without written permission
+
+─── SECTION 3: MANDATORY ATTRIBUTION ─────────────────────────────────
+
+Any permitted use MUST:
+  1. Preserve all copyright notices from this software.
+  2. Preserve the NOTICE file in its entirety.
+  3. Prominently display the following statement in any About screen
+     or equivalent user-visible attribution section:
+
+       "SafeSignal was developed by Umar Farooque.
+        Original source: github.com/UmarFarooqueJi/SafeSignal"
+
+  4. Preserve the SafeSignalAttribution class in lib/core/foundation/
+     in all source distributions.
+
+─── SECTION 4: WARRANTY DISCLAIMER ─────────────────────────────────
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+UMAR FAROOQUE OR SAFESIGNAL TECHNOLOGIES BE LIABLE FOR ANY CLAIM, DAMAGES
+OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+─── SECTION 5: GOVERNING LAW ────────────────────────────────────────
+
+This license is governed by the laws of India. Disputes shall be resolved
+in courts of competent jurisdiction in India.
+
+─── CONTACT ─────────────────────────────────────────────────────────────
+
+For commercial licensing, partnership, or research collaboration:
+  Umar Farooque <umarfarooque@safesignal.app>
+  https://github.com/UmarFarooqueJi

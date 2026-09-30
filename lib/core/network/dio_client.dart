@@ -1,3 +1,10 @@
+// -----------------------------------------------------------------------------
+// SafeSignal Mobile Security Suite
+// Module: HTTP Client Factory (Dio)
+// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// -----------------------------------------------------------------------------
+
 import 'package:dio/dio.dart';
 import '../constants.dart';
 
@@ -12,9 +19,10 @@ class DioClient {
   static Dio _createDio() {
     final dio = Dio(
       BaseOptions(
-        baseUrl: AppConstants.apiBaseUrl,
+        baseUrl: AppConstants.apiBaseUrlRelease,
         connectTimeout: const Duration(seconds: AppConstants.apiTimeoutSeconds),
-        receiveTimeout: const Duration(seconds: AppConstants.deepAnalysisTimeoutSeconds),
+        receiveTimeout:
+            const Duration(seconds: AppConstants.deepAnalysisTimeoutSeconds),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',

@@ -1,3 +1,10 @@
+// -----------------------------------------------------------------------------
+// SafeSignal Mobile Security Suite
+// Module: Hybrid AI Orchestration Engine with Circuit Breaker
+// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Circuit-breaker: OpenRouter → DeepSeek → Local Rule Engine (degraded)
+// -----------------------------------------------------------------------------
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -38,14 +45,8 @@ class LlmOrchestrator {
 
     // Try cloud providers in order: OpenRouter Claude (primary) → DeepSeek (secondary)
     final providers = [
-      _Provider(
-        name: 'openrouter',
-        analyze: (t, l) => _callOpenRouter(t, l),
-      ),
-      _Provider(
-        name: 'deepseek',
-        analyze: (t, l) => _callDeepSeek(t, l),
-      ),
+      _Provider(name: 'openrouter', analyze: (t, l) => _callOpenRouter(t, l)),
+      _Provider(name: 'deepseek', analyze: (t, l) => _callDeepSeek(t, l)),
     ];
 
     for (final provider in providers) {
@@ -55,7 +56,8 @@ class LlmOrchestrator {
       }
 
       try {
-        final verdict = await provider.analyze(text, language)
+        final verdict = await provider
+            .analyze(text, language)
             .timeout(const Duration(seconds: 20));
         _recordSuccess(provider.name);
         return verdict.copyWith(provider: provider.name);
@@ -66,7 +68,9 @@ class LlmOrchestrator {
     }
 
     // All cloud providers failed → degraded mode with rule engine
-    debugPrint('[LLM] All providers failed — using rule engine (degraded mode)');
+    debugPrint(
+      '[LLM] All providers failed — using rule engine (degraded mode)',
+    );
     return ruleVerdict.copyWith(isOffline: true);
   }
 
@@ -76,7 +80,8 @@ class LlmOrchestrator {
         ? 'Hindi (Devanagari or Hinglish acceptable)'
         : 'English';
 
-    final systemPrompt = '''
+    final systemPrompt =
+        '''
 You are SafeSignal — India's elite AI cybersecurity expert. Analyze the following content for scams, fraud, and security threats.
 
 RESPOND ONLY WITH A VALID JSON OBJECT — no markdown, no code blocks:
@@ -132,7 +137,8 @@ Write ALL text in $langName.
         ? 'Hindi (Devanagari or Hinglish acceptable)'
         : 'English';
 
-    final systemPrompt = '''
+    final systemPrompt =
+        '''
 You are SafeSignal — India's elite AI cybersecurity expert. Analyze the following for scams and fraud.
 RESPOND ONLY WITH A VALID JSON OBJECT:
 {

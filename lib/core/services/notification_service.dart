@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------------
+// SafeSignal Mobile Security Suite
+// Module: Real-time Push Notification Orchestrator
+// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// -----------------------------------------------------------------------------
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -15,8 +21,9 @@ class NotificationService {
   Future<void> init() async {
     if (_initialized) return;
 
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const initSettings = InitializationSettings(android: androidSettings);
 
     await _notificationsPlugin.initialize(
@@ -28,8 +35,10 @@ class NotificationService {
 
     // Request notification permission on Android 13+ (API 33+)
     if (Platform.isAndroid) {
-      final androidImpl = _notificationsPlugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final androidImpl = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await androidImpl?.requestNotificationsPermission();
     }
 
@@ -96,7 +105,8 @@ class NotificationService {
   Future<void> sendTestAlert() async {
     await showThreatAlert(
       title: '🛡️ SafeSignal Active Shield Verified',
-      body: 'High-priority notification channels are active and protecting your device.',
+      body:
+          'High-priority notification channels are active and protecting your device.',
       id: 9999,
     );
   }

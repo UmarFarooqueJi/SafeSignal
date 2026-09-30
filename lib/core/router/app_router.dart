@@ -28,6 +28,7 @@ import '../../features/vault/vault_lock_screen.dart';
 import '../../features/osint/social_osint_screen.dart';
 import '../../features/osint/phone_osint_screen.dart';
 import '../../features/incident_response/incident_response_screen.dart';
+import '../../features/history/history_screen.dart';
 import '../../data/models/verdict_model.dart';
 
 
@@ -35,6 +36,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
     routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const HomeScreen(),
+      ),
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashRedirectScreen(),
@@ -139,6 +144,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/incident-response',
         builder: (context, state) => const IncidentResponseScreen(),
       ),
+      GoRoute(
+        path: '/history',
+        builder: (context, state) => const HistoryScreen(),
+      ),
 
       // Top-level routes for main sections
       GoRoute(
@@ -176,10 +185,10 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1300),
     );
     _scaleAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOutBack)
-        .drive(Tween(begin: 0.5, end: 1.0));
+        .drive(Tween(begin: 0.7, end: 1.0));
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn)
         .drive(Tween(begin: 0.0, end: 1.0));
     _controller.forward();
@@ -193,33 +202,22 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
   }
 
   Future<void> _redirect() async {
-    await Future.delayed(const Duration(milliseconds: 1500));
+    await Future.delayed(const Duration(milliseconds: 1700));
     if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
     
-    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-    final isProfileSetupDone = prefs.getBool('isProfileSetupDone') ?? false;
-    
-    if (isLoggedIn) {
-      if (isProfileSetupDone) {
-        final isVaultEnabled = prefs.getBool('isVaultEnabled') ?? false;
-        if (isVaultEnabled) {
-          context.go('/vault-lock');
-        } else {
-          context.go('/home');
-        }
-      } else {
-        context.go('/profile-setup');
-      }
+    final isVaultEnabled = prefs.getBool('isVaultEnabled') ?? false;
+    if (isVaultEnabled) {
+      context.go('/vault-lock');
     } else {
-      context.go('/signin');
+      context.go('/home');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF6C63FF),
+      backgroundColor: const Color(0xFFDEEBF7),
       body: Center(
         child: AnimatedBuilder(
           animation: _controller,
@@ -236,60 +234,70 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Premium logo
+                    // Premium logo — white squircle with drop shadow like before
                     Container(
-                      width: 120,
-                      height: 120,
+                      width: 96,
+                      height: 96,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
+                        borderRadius: BorderRadius.circular(26),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 40,
-                            offset: const Offset(0, 16),
+                            color: const Color(0xFF0284C7).withValues(alpha: 0.15),
+                            blurRadius: 28,
+                            offset: const Offset(0, 10),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                      child: Center(
                         child: Image.asset(
                           'assets/images/logo_transparent.png',
-                          fit: BoxFit.contain,
+                          width: 64,
+                          height: 64,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.shield_rounded,
+                            color: Color(0xFF0284C7),
+                            size: 50,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 26),
                     // App name typing animation
                     Text(
                       currentText,
                       style: const TextStyle(
-                        fontSize: 42,
+                        fontSize: 34,
                         fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -1.5,
+                        color: Color(0xFF0F172A),
+                        letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Text(
                       'AI-Powered Scam Protection',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
-                        fontSize: 14,
+                        color: const Color(0xFF0F172A).withValues(alpha: 0.60),
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.3,
                       ),
                     ),
-                    const SizedBox(height: 80),
-                    // Loading bar
+                    const SizedBox(height: 44),
+                    // Sleek loading bar
                     SizedBox(
-                      width: 100,
+                      width: 90,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: LinearProgressIndicator(
-                          color: Colors.white,
-                          backgroundColor: Colors.white.withValues(alpha: 0.2),
-                          minHeight: 3,
+                        child: const LinearProgressIndicator(
+                          color: Color(0xFF0284C7),
+                          backgroundColor: Color(0xFFCBD5E1),
+                          minHeight: 3.5,
                         ),
                       ),
                     ),

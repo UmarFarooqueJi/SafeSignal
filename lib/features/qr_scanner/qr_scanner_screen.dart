@@ -321,7 +321,7 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
                       child: Column(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.75),
                               borderRadius: BorderRadius.circular(30),
@@ -333,7 +333,7 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
                                 SizedBox(width: 8),
                                 Text(
                                   'Align QR inside viewfinder',
-                                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),

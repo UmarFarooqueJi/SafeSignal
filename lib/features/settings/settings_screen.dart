@@ -3,37 +3,38 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/constants.dart';
-import 'dart:ui';
 
 // ─── Settings State ───────────────────────────────────────────────────────────
 class SettingsState {
   final String language;
   final double textScale;
   final bool notificationsEnabled;
+  final ThemeMode themeMode;
 
   const SettingsState({
     this.language = 'hi',
     this.textScale = 1.0,
     this.notificationsEnabled = true,
+    this.themeMode = ThemeMode.light,
   });
 
-  SettingsState copyWith(
-      {String? language,
-      double? textScale,
-      bool? notificationsEnabled}) {
+  SettingsState copyWith({
+    String? language,
+    double? textScale,
+    bool? notificationsEnabled,
+    ThemeMode? themeMode,
+  }) {
     return SettingsState(
       language: language ?? this.language,
       textScale: textScale ?? this.textScale,
-      notificationsEnabled:
-          notificationsEnabled ?? this.notificationsEnabled,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      themeMode: themeMode ?? this.themeMode,
     );
   }
 }
@@ -48,11 +49,22 @@ class SettingsNotifier extends Notifier<SettingsState> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    final themeStr = prefs.getString('pref_theme_mode') ?? 'light';
+    ThemeMode mode;
+    if (themeStr == 'dark') {
+      mode = ThemeMode.dark;
+    } else if (themeStr == 'system') {
+      mode = ThemeMode.system;
+    } else {
+      mode = ThemeMode.light;
+    }
+
     state = state.copyWith(
       language: prefs.getString(AppConstants.prefLanguage) ?? 'hi',
       textScale: prefs.getDouble(AppConstants.prefTextScale) ?? 1.0,
       notificationsEnabled:
           prefs.getBool(AppConstants.prefNotifications) ?? true,
+      themeMode: mode,
     );
   }
 
@@ -73,10 +85,20 @@ class SettingsNotifier extends Notifier<SettingsState> {
     await prefs.setBool(AppConstants.prefNotifications, value);
     state = state.copyWith(notificationsEnabled: value);
   }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    String val = 'light';
+    if (mode == ThemeMode.dark) val = 'dark';
+    if (mode == ThemeMode.system) val = 'system';
+    await prefs.setString('pref_theme_mode', val);
+    state = state.copyWith(themeMode: mode);
+  }
 }
 
-final settingsProvider =
-    NotifierProvider<SettingsNotifier, SettingsState>(SettingsNotifier.new);
+final settingsProvider = NotifierProvider<SettingsNotifier, SettingsState>(
+  SettingsNotifier.new,
+);
 
 // ─── Profile Future Provider ──────────────────────────────────────────────────
 final profileProvider = FutureProvider<Map<String, String?>>((ref) async {
@@ -87,7 +109,7 @@ final profileProvider = FutureProvider<Map<String, String?>>((ref) async {
   };
 });
 
-// ─── Settings Screen ──────────────────────────────────────────────────────────
+// ─── Classic Settings Screen ──────────────────────────────────────────────────
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -97,397 +119,499 @@ class SettingsScreen extends ConsumerWidget {
     final notifier = ref.read(settingsProvider.notifier);
     final profile = ref.watch(profileProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF06090F) : const Color(0xFFEBF3FA);
+
+    final bg = isDark ? const Color(0xFF06090F) : const Color(0xFFF1F5F9);
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final sectionTitleColor = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
-        extendBodyBehindAppBar: true,
         backgroundColor: bg,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: bg,
           elevation: 0,
+          scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back_ios_new, color: isDark ? Colors.white : const Color(0xFF0D1117), size: 22),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: textMain,
+              size: 20,
+            ),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
           title: Text(
             'Settings',
             style: TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 24,
-              color: isDark ? Colors.white : const Color(0xFF0D1117),
-              letterSpacing: -0.5,
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+              color: textMain,
+              letterSpacing: -0.3,
             ),
           ),
-          centerTitle: false,
+          centerTitle: true,
         ),
-        body: SafeArea(
-          bottom: false,
-          child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
-              physics: const BouncingScrollPhysics(),
+        body: ListView(
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          children: [
+            // ── Classic Profile Header ─────────────────────────────────────────
+            profile.when(
+              data: (data) =>
+                  _buildClassicProfileCard(context, ref, data, isDark),
+              loading: () => const SizedBox(height: 70),
+              error: (_, _) => const SizedBox(),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Section 1: General Preferences ─────────────────────────────────
+            _buildSectionHeader('PREFERENCES', sectionTitleColor),
+            const SizedBox(height: 8),
+            _ClassicSettingsGroup(
               children: [
-                // ── Profile Card ─────────────────────────────────────────────────
-                profile.when(
-                  data: (data) => _PremiumCard(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () async {
-                              try {
-                                final picker = ImagePicker();
-                                final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-                                if (pickedFile != null) {
-                                  final prefs = await SharedPreferences.getInstance();
-                                  await prefs.setString('userProfileImage', pickedFile.path);
-                                  ref.invalidate(profileProvider);
-                                }
-                              } catch (e) {
-                                debugPrint('Error picking image: $e');
-                              }
-                            },
-                            child: Stack(
-                              alignment: Alignment.bottomRight,
-                              children: [
-                                Container(
-                                  width: 76,
-                                  height: 76,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
-                                    border: Border.all(color: Colors.white, width: 3),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      )
-                                    ],
-                                    image: data['image'] != null && File(data['image']!).existsSync()
-                                        ? DecorationImage(
-                                            image: FileImage(File(data['image']!)),
-                                            fit: BoxFit.cover,
-                                          )
-                                        : null,
-                                  ),
-                                  child: data['image'] == null || !File(data['image']!).existsSync()
-                                      ? const Icon(Icons.person_rounded, size: 40, color: Color(0xFF2979FF))
-                                      : null,
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF2979FF),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 2),
-                                  ),
-                                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  data['name'] ?? 'Premium User',
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w900,
-                                    color: Color(0xFF0D1117),
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF00C853).withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.verified_user_rounded, color: Color(0xFF00C853), size: 14),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'SafeSignal Active',
-                                        style: TextStyle(
-                                          color: Color(0xFF00C853),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 50.ms).slideY(begin: 0.05),
-                  loading: () => const SizedBox(),
-                  error: (err, stack) => const SizedBox(),
-                ),
-
-                const SizedBox(height: 30),
-
-                // ── General Settings ────────────────────────────────────────────
-                const Padding(
-                  padding: EdgeInsets.only(left: 8, bottom: 8),
-                  child: Text(
-                    'GENERAL',
-                    style: TextStyle(
-                      color: Color(0xFF1565C0),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      letterSpacing: 1.2,
-                    ),
+                _ClassicSettingsTile(
+                  icon: Icons.dark_mode_rounded,
+                  iconBg: const Color(0xFF8B5CF6),
+                  title: 'Dark Mode',
+                  subtitle: settings.themeMode == ThemeMode.dark
+                      ? 'Deep Cyber Dark'
+                      : 'Crisp Light Mode',
+                  trailing: Switch.adaptive(
+                    value: settings.themeMode == ThemeMode.dark,
+                    activeTrackColor: const Color(0xFF8B5CF6),
+                    onChanged: (val) {
+                      notifier.setThemeMode(
+                        val ? ThemeMode.dark : ThemeMode.light,
+                      );
+                    },
                   ),
-                ).animate().fadeIn(delay: 100.ms),
-                
-                _PremiumCard(
-                  child: Column(
+                  onTap: () {
+                    notifier.setThemeMode(
+                      settings.themeMode == ThemeMode.dark
+                          ? ThemeMode.light
+                          : ThemeMode.dark,
+                    );
+                  },
+                ),
+                _buildDivider(isDark),
+                _ClassicSettingsTile(
+                  icon: Icons.translate_rounded,
+                  iconBg: const Color(0xFF3B82F6),
+                  title: 'Language',
+                  subtitle: settings.language == 'hi'
+                      ? 'हिंदी (Hindi)'
+                      : 'English',
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _SettingsTile(
-                        title: 'Language',
-                        subtitle: settings.language == 'hi' ? 'हिंदी (Hindi)' : 'English',
-                        icon: Icons.language_rounded,
-                        iconColor: const Color(0xFF2979FF),
-                        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.black26),
-                        onTap: () {
-                          // Toggle language directly for simplicity
-                          notifier.setLanguage(settings.language == 'hi' ? 'en' : 'hi');
-                        },
-                      ),
-                      const Divider(height: 1, indent: 60, endIndent: 20),
-                      _SettingsTile(
-                        title: 'Notifications',
-                        subtitle: 'Alerts & Security Updates',
-                        icon: Icons.notifications_active_rounded,
-                        iconColor: const Color(0xFFFF9100),
-                        trailing: Switch.adaptive(
-                          value: settings.notificationsEnabled,
-                          activeColor: const Color(0xFF2979FF),
-                          onChanged: (val) => notifier.setNotifications(val),
+                      Text(
+                        settings.language == 'hi' ? 'HI' : 'EN',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: sectionTitleColor,
                         ),
-                        onTap: () => notifier.setNotifications(!settings.notificationsEnabled),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: sectionTitleColor,
                       ),
                     ],
                   ),
-                ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.05),
-
-                const SizedBox(height: 30),
-
-                // ── Cloud Sync ───────────────────────────────────────────────
-                const Padding(
-                  padding: EdgeInsets.only(left: 8, bottom: 8),
-                  child: Text(
-                    'CLOUD BACKUP & SYNC',
-                    style: TextStyle(
-                      color: Color(0xFF1565C0),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ).animate().fadeIn(delay: 180.ms),
-                
-                _PremiumCard(
-                  child: _SettingsTile(
-                    title: 'Sync Settings to Cloud',
-                    subtitle: 'Back up your preferences & scans',
-                    icon: Icons.cloud_upload_rounded,
-                    iconColor: Colors.blueAccent,
-                    trailing: const Icon(Icons.cloud_sync, color: Colors.blueAccent),
-                    onTap: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      messenger.showSnackBar(
-                        const SnackBar(content: Text('Syncing to Secure Cloud...')),
-                      );
-                      await Future.delayed(const Duration(seconds: 2));
-                      if (context.mounted) {
-                        messenger.hideCurrentSnackBar();
-                        messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ Data successfully synced to cloud.'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05),
-
-                const SizedBox(height: 30),
-
-                // ── Permissions ───────────────────────────────────────────────
-                const Padding(
-                  padding: EdgeInsets.only(left: 8, bottom: 8),
-                  child: Text(
-                    'SECURITY & PERMISSIONS',
-                    style: TextStyle(
-                      color: Color(0xFF1565C0),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ).animate().fadeIn(delay: 200.ms),
-                
-                _PremiumCard(
-                  child: const _ProtectionPermissionsWidget(),
-                ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.05),
-
-                const SizedBox(height: 40),
-                
-                // ── Logout ───────────────────────────────────────────────────────
-                GestureDetector(
-                  onTap: () async {
-                    try {
-                      final client = SupabaseService.client;
-                      if (client != null) {
-                        await client.auth.signOut();
-                      }
-                    } catch (e) {
-                      debugPrint('Signout error: $e');
-                    }
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.clear();
-                    if (context.mounted) {
-                       context.go('/splash');
-                    }
+                  onTap: () {
+                    notifier.setLanguage(
+                      settings.language == 'hi' ? 'en' : 'hi',
+                    );
                   },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withOpacity(0.1),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
+                ),
+                _buildDivider(isDark),
+                _ClassicSettingsTile(
+                  icon: Icons.notifications_active_rounded,
+                  iconBg: const Color(0xFFF59E0B),
+                  title: 'Security Alerts',
+                  subtitle: 'Real-time push threat telemetry',
+                  trailing: Switch.adaptive(
+                    value: settings.notificationsEnabled,
+                    activeTrackColor: const Color(0xFF3B82F6),
+                    onChanged: (val) => notifier.setNotifications(val),
+                  ),
+                  onTap: () =>
+                      notifier.setNotifications(!settings.notificationsEnabled),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Section 2: Security & Protection Engines ───────────────────────
+            _buildSectionHeader(
+              'SECURITY SHIELDS & ENGINES',
+              sectionTitleColor,
+            ),
+            const SizedBox(height: 8),
+            _ClassicSettingsGroup(
+              children: const [_ProtectionPermissionsWidget()],
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Section 3: System & About ──────────────────────────────────────
+            _buildSectionHeader('SYSTEM & ABOUT', sectionTitleColor),
+            const SizedBox(height: 8),
+            _ClassicSettingsGroup(
+              children: [
+                _ClassicSettingsTile(
+                  icon: Icons.security_rounded,
+                  iconBg: const Color(0xFF10B981),
+                  title: 'Threat Intel Core',
+                  subtitle: 'SafeSignal Hybrid AI Engine v1.4',
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
                     ),
-                    child: const Center(
-                      child: Text(
-                        'Logout',
-                        style: TextStyle(
-                          color: Color(0xFFD32F2F),
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'ACTIVE',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF10B981),
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
-                ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.05),
+                  onTap: () {},
+                ),
+                _buildDivider(isDark),
+                _ClassicSettingsTile(
+                  icon: Icons.info_outline_rounded,
+                  iconBg: const Color(0xFF64748B),
+                  title: 'App Version',
+                  subtitle: '1.4.2 (Production Android Build)',
+                  trailing: Text(
+                    'Build 142',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: sectionTitleColor,
+                    ),
+                  ),
+                  onTap: () {},
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 32),
+
+            // ── About SafeSignal (Attribution-Locked) ─────────────────────────
+            _buildSectionHeader('ABOUT', sectionTitleColor),
+            const SizedBox(height: 10),
+            _ClassicSettingsGroup(
+              children: [_AboutSafeSignalPanel(isDark: isDark)],
+            ),
+
+            const SizedBox(height: 32),
+
+            // ── Classic Danger Button: Logout ─────────────────────────────────
+            _buildClassicLogoutButton(context, isDark),
+
+            const SizedBox(height: 48),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 6),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: color,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider(bool isDark) {
+    return Divider(
+      height: 1,
+      thickness: 0.6,
+      indent: 56,
+      endIndent: 0,
+      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+    );
+  }
+
+  Widget _buildClassicProfileCard(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, String?> data,
+    bool isDark,
+  ) {
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final borderColor = isDark
+        ? const Color(0xFF1E293B)
+        : const Color(0xFFE2E8F0);
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () async {
+              try {
+                final picker = ImagePicker();
+                final picked = await picker.pickImage(
+                  source: ImageSource.gallery,
+                );
+                if (picked != null) {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('userProfileImage', picked.path);
+                  ref.invalidate(profileProvider);
+                }
+              } catch (e) {
+                debugPrint('Avatar picker error: ');
+              }
+            },
+            child: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: isDark
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFFE2E8F0),
+                  backgroundImage:
+                      data['image'] != null && File(data['image']!).existsSync()
+                      ? FileImage(File(data['image']!))
+                      : null,
+                  child:
+                      data['image'] == null ||
+                          !File(data['image']!).existsSync()
+                      ? Icon(
+                          Icons.person_rounded,
+                          size: 32,
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF2563EB),
+                        )
+                      : null,
+                ),
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF2563EB),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt_rounded,
+                    size: 10,
+                    color: Colors.white,
+                  ),
+                ),
               ],
             ),
           ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data['name'] ?? 'Umar Farooque',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: textMain,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'SafeSignal Guard Active',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF10B981),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClassicLogoutButton(BuildContext context, bool isDark) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          try {
+            final client = SupabaseService.client;
+            if (client != null) {
+              await client.auth.signOut();
+            }
+          } catch (e) {
+            debugPrint('Signout error: ');
+          }
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.clear();
+          if (context.mounted) {
+            context.go('/splash');
+          }
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1012) : const Color(0xFFFEE2E2),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? const Color(0xFFEF4444).withValues(alpha: 0.3)
+                  : const Color(0xFFFCA5A5),
+              width: 1,
+            ),
+          ),
+          child: const Center(
+            child: Text(
+              'Sign Out / Reset Session',
+              style: TextStyle(
+                color: Color(0xFFEF4444),
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
         ),
+      ),
     );
   }
 }
 
-// ─── Supporting Premium Widgets ────────────────────────────────────────────────
-
-class _PremiumCard extends StatelessWidget {
-  final Widget child;
-
-  const _PremiumCard({required this.child});
+// ─── Classic Inset Settings Card ──────────────────────────────────────────────
+class _ClassicSettingsGroup extends StatelessWidget {
+  final List<Widget> children;
+  const _ClassicSettingsGroup({required this.children});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final borderColor = isDark
+        ? const Color(0xFF1E293B)
+        : const Color(0xFFE2E8F0);
+
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF161B27) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? const Color(0xFF30363D) : const Color(0xFFE8EEF8),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor, width: 1),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: child,
-      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
 }
 
-class _SettingsTile extends StatelessWidget {
+// ─── Classic Settings Tile ────────────────────────────────────────────────────
+class _ClassicSettingsTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconBg;
   final String title;
   final String subtitle;
-  final IconData icon;
-  final Color iconColor;
   final Widget trailing;
   final VoidCallback onTap;
 
-  const _SettingsTile({
+  const _ClassicSettingsTile({
+    required this.icon,
+    required this.iconBg,
     required this.title,
     required this.subtitle,
-    required this.icon,
-    required this.iconColor,
     required this.trailing,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(14),
+                  color: iconBg.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icon, color: iconColor, size: 22),
+                child: Icon(icon, color: iconBg, size: 19),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0D1117),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: textMain,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black54,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        color: textSub,
                       ),
                     ),
                   ],
@@ -502,6 +626,7 @@ class _SettingsTile extends StatelessWidget {
   }
 }
 
+// ─── Permissions & Engines Group ──────────────────────────────────────────────
 class _ProtectionPermissionsWidget extends StatefulWidget {
   const _ProtectionPermissionsWidget();
 
@@ -545,182 +670,553 @@ class _ProtectionPermissionsWidgetState
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       children: [
-        _PermRow(
-          title: 'SMS Scan Engine',
-          subtitle: 'Detects fraud in incoming messages',
-          icon: Icons.message_rounded,
+        _buildPermTile(
+          icon: Icons.mark_chat_read_rounded,
+          iconBg: const Color(0xFFF97316),
+          title: 'SMS Scam Engine',
+          subtitle: 'Scans fraud & smishing in messages',
           granted: _smsGranted,
           onTap: () => _req(Permission.sms),
+          isDark: isDark,
         ),
-        const Divider(height: 1, indent: 60, endIndent: 20),
-        _PermRow(
-          title: 'Real-time Alerts',
-          subtitle: 'Instant threat notifications',
+        _buildDivider(isDark),
+        _buildPermTile(
           icon: Icons.notifications_active_rounded,
+          iconBg: const Color(0xFF3B82F6),
+          title: 'Real-time Threat Alerts',
+          subtitle: 'Instant push warning on active threats',
           granted: _notifGranted,
           onTap: () => _req(Permission.notification),
+          isDark: isDark,
         ),
-        const Divider(height: 1, indent: 60, endIndent: 20),
-        _PermRow(
-          title: 'Call Shield',
-          subtitle: 'Identifies spoofed or spam calls',
+        _buildDivider(isDark),
+        _buildPermTile(
           icon: Icons.phone_in_talk_rounded,
+          iconBg: const Color(0xFF06B6D4),
+          title: 'Call Shield Filter',
+          subtitle: 'Detects scam callers & caller ID spoof',
           granted: _contactsGranted,
           onTap: () => _req(Permission.contacts),
+          isDark: isDark,
         ),
-        const Divider(height: 1, indent: 60, endIndent: 20),
-        _PermRow(
-          title: 'Unrestricted Background Run',
-          subtitle: 'Prevents system from killing background protection',
-          icon: Icons.battery_charging_full_rounded,
+        _buildDivider(isDark),
+        _buildPermTile(
+          icon: Icons.bolt_rounded,
+          iconBg: const Color(0xFF10B981),
+          title: 'Background Guard Run',
+          subtitle: 'Keeps on-device shields persistent',
           granted: _batteryGranted,
           onTap: () => _req(Permission.ignoreBatteryOptimizations),
+          isDark: isDark,
         ),
-        const Divider(height: 1, indent: 60, endIndent: 20),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () async {
-              await NotificationService().sendTestAlert();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('🔔 Test Alert Sent! Check your notification bar.'),
-                    backgroundColor: Color(0xFF2979FF),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2979FF).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(Icons.send_rounded, color: Color(0xFF2979FF), size: 22),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Test Alert Shield',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF0D1117),
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Send immediate high-priority test notification',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.touch_app_rounded, color: Color(0xFF2979FF)),
-                ],
-              ),
-            ),
-          ),
-        ),
+        _buildDivider(isDark),
+        _buildTestAlertTile(context, isDark),
       ],
     );
   }
-}
 
-class _PermRow extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool granted;
-  final VoidCallback onTap;
+  Widget _buildDivider(bool isDark) {
+    return Divider(
+      height: 1,
+      thickness: 0.6,
+      indent: 56,
+      endIndent: 0,
+      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+    );
+  }
 
-  const _PermRow({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.granted,
-    required this.onTap,
-  });
+  Widget _buildPermTile({
+    required IconData icon,
+    required Color iconBg,
+    required String title,
+    required String subtitle,
+    required bool granted,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
-  @override
-  Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: granted ? null : onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
-                  color: (granted ? const Color(0xFF00C853) : const Color(0xFFD32F2F)).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(14),
+                  color: (granted ? const Color(0xFF10B981) : iconBg)
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icon, color: granted ? const Color(0xFF00C853) : const Color(0xFFD32F2F), size: 22),
+                child: Icon(
+                  icon,
+                  color: granted ? const Color(0xFF10B981) : iconBg,
+                  size: 19,
+                ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0D1117),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: textMain,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black54,
+                        fontWeight: FontWeight.w400,
+                        color: textSub,
                       ),
                     ),
                   ],
                 ),
               ),
               if (granted)
-                const Icon(Icons.check_circle_rounded, color: Color(0xFF00C853), size: 24)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF10B981),
+                  size: 22,
+                )
               else
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2979FF),
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFF2563EB),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
-                    'Fix',
+                    'Grant',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTestAlertTile(BuildContext context, bool isDark) {
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          await NotificationService().sendTestAlert();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  '🔔 Test Security Alert dispatched to notification bar.',
+                ),
+                backgroundColor: const Color(0xFF0F172A),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            );
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  Icons.bolt_rounded,
+                  color: Color(0xFF8B5CF6),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Dispatch Test Shield Alert',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: textMain,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Test high-priority telemetry notification pipeline',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        color: textSub,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.send_rounded,
+                size: 18,
+                color: Color(0xFF8B5CF6),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── About SafeSignal Attribution-Locked Panel ────────────────────────────────
+// Content sourced from lib/core/foundation/attribution.dart constants.
+// Any modification to developer name or copyright requires updating attribution.dart
+// which constitutes a license violation under SafeSignal Source-Available License v1.0.
+// See NOTICE and LICENSE files at project root.
+class _AboutSafeSignalPanel extends StatelessWidget {
+  final bool isDark;
+
+  const _AboutSafeSignalPanel({required this.isDark});
+
+  // ── Attribution constants (referenced from SafeSignalAttribution) ──────────
+  static const String _developer = 'Umar Farooque';
+  static const String _email = 'umarfarooque@safesignal.app';
+  static const String _org = 'SafeSignal Technologies';
+  static const String _version = '1.2.1';
+  static const int _build = 7;
+  static const String _tagline =
+      "India's First AI-Powered Mobile Threat Defence";
+  static const String _github = 'github.com/UmarFarooqueJi/SafeSignal';
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = isDark
+        ? const Color(0xFF1E3A5F)
+        : const Color(0xFFBFDBFE);
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    final accent = const Color(0xFF2563EB);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Logo + App name ─────────────────────────────────────────────
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1D4ED8), Color(0xFF0EA5E9)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.30),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.shield_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SafeSignal',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: textMain,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    Text(
+                      'v$_version (Build $_build)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: textSub,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.4),
+                    width: 1,
+                  ),
+                ),
+                child: const Text(
+                  'PROD',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF10B981),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+          Text(
+            _tagline,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: textSub,
+              height: 1.5,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          Divider(height: 1, color: borderColor),
+          const SizedBox(height: 16),
+
+          // ── Developer attribution block (ATTRIBUTION LOCK) ────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: isDark ? 0.10 : 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: accent.withValues(alpha: 0.22),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.person_pin_rounded, color: accent, size: 15),
+                    const SizedBox(width: 6),
+                    Text(
+                      'DEVELOPED BY',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: accent,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _developer,
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    color: textMain,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _email,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: accent,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _org,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: textSub,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── Source + License row ──────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _InfoChip(
+                  icon: Icons.code_rounded,
+                  label: 'SOURCE',
+                  value: _github,
+                  isDark: isDark,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _InfoChip(
+                  icon: Icons.gavel_rounded,
+                  label: 'LICENSE',
+                  value: 'SAL v1.0',
+                  isDark: isDark,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── Built-from-scratch claim ──────────────────────────────────────
+          Row(
+            children: [
+              const Icon(
+                Icons.construction_rounded,
+                size: 13,
+                color: Color(0xFFF59E0B),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Built entirely from scratch — no cloned repo, no starter kit.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? const Color(0xFFF59E0B)
+                        : const Color(0xFFB45309),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 6),
+
+          Text(
+            'Copyright © 2026 $_org. All rights reserved.',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
+              color: textSub,
+            ),
+          ),
+
+          // Attribution integrity seal — machine-readable, required by license
+          Opacity(
+            opacity: 0,
+            child: Text(
+              'ss::umarfarooque::2026::$_developer::$_email::$_org',
+              style: const TextStyle(fontSize: 1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Generic Info Chip ─────────────────────────────────────────────────────────
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isDark;
+
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 12, color: textSub),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: textSub,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: textMain,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

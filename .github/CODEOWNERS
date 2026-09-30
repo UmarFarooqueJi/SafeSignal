@@ -1,0 +1,14 @@
+# SafeSignal CODEOWNERS
+# Original author retains ownership of all files.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global ownership - Umar Farooque owns everything
+* @UmarFarooqueJi
+
+# Core architecture - locked to original author
+/lib/core/foundation/ @UmarFarooqueJi
+/lib/core/services/ @UmarFarooqueJi
+/lib/core/network/ @UmarFarooqueJi
+/android/ @UmarFarooqueJi
+/NOTICE @UmarFarooqueJi
+/LICENSE @UmarFarooqueJi

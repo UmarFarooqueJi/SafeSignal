@@ -782,21 +782,6 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           ),
         ),
         centerTitle: false,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: TextButton.icon(
-              style: TextButton.styleFrom(
-                backgroundColor: const Color(0xFF3B82F6).withValues(alpha: 0.15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              ),
-              onPressed: () => context.push('/phone-osint'),
-              icon: const Icon(Icons.phone_android_rounded, size: 16, color: Color(0xFF3B82F6)),
-              label: const Text('Phone OSINT', style: TextStyle(color: Color(0xFF3B82F6), fontWeight: FontWeight.bold, fontSize: 12)),
-            ),
-          ),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -805,6 +790,10 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // OSINT Sub-Mode Switcher (Social vs Phone)
+              _buildOsintModeSwitcher(isDark),
+              const SizedBox(height: 14),
+
               // Search Box Card
               _buildSearchCard(isDark),
               const SizedBox(height: 16),
@@ -888,6 +877,80 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildOsintModeSwitcher(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : const Color(0xFFE2E8F0),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.person_search_rounded, size: 16, color: Color(0xFF2979FF)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Social Recon',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                      color: Color(0xFF2979FF),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: InkWell(
+              onTap: () => context.push('/phone-osint'),
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.phone_android_rounded,
+                      size: 16,
+                      color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Phone OSINT',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

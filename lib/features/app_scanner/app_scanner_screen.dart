@@ -978,6 +978,7 @@ class RiskEngine {
       'com.spotify.',
       'com.netflix.',
       'com.ubercab',
+      'com.olacabs',
       'in.swiggy.',
       'com.application.zomato',
       'com.safesignal.',
@@ -985,24 +986,50 @@ class RiskEngine {
       'com.linkedin.',
       'com.amazon.',
       'com.flipkart.',
+      'com.jio.',
+      'com.myairtelapp',
+      'com.airtel.',
+      'com.bsnl.',
+      'com.coloros.',
+      'com.oppo.',
+      'com.realme.',
+      'com.heytap.',
+      'com.oneplus.',
+      'com.xiaomi.',
+      'com.mi.',
+      'com.miui.',
+      'com.vivo.',
+      'com.huawei.',
+      'com.snapchat.',
+      'com.discord',
+      'org.mozilla.',
+      'com.opera.',
+      'com.brave.',
+      'com.adobe.',
+      'com.sbi.',
+      'com.hdfc.',
+      'com.icici.',
+      'com.axis.',
+      'in.co.bankofbaroda',
     ];
-    return verifiedPrefixes.any((prefix) => pkg.startsWith(prefix));
+    final pLower = pkg.toLowerCase();
+    return verifiedPrefixes.any((prefix) => pLower.startsWith(prefix));
   }
 
   static const _dangerPerms = {
-    'android.permission.RECORD_AUDIO':              ('Microphone',        6, 'Can record audio in background.'),
-    'android.permission.CAMERA':                    ('Camera',            6, 'Can access camera.'),
-    'android.permission.READ_CONTACTS':             ('Contacts',          8, 'Can read contacts.'),
-    'android.permission.READ_SMS':                  ('Read SMS',          18, 'Can read OTPs and private messages.'),
-    'android.permission.SEND_SMS':                  ('Send SMS',          15, 'Can send premium SMS messages.'),
-    'android.permission.RECEIVE_SMS':               ('Receive SMS',       15, 'Can intercept incoming OTPs.'),
-    'android.permission.ACCESS_FINE_LOCATION':      ('Precise Location',  6, 'Can track exact GPS location.'),
-    'android.permission.ACCESS_BACKGROUND_LOCATION':('24/7 Location',     14, 'Can track location even when closed.'),
-    'android.permission.READ_CALL_LOG':             ('Call History',      10, 'Can see who you called.'),
-    'android.permission.PROCESS_OUTGOING_CALLS':    ('Intercept Calls',   16, 'Can monitor or block outgoing calls.'),
-    'android.permission.SYSTEM_ALERT_WINDOW':       ('Screen Overlay',    22, 'Can draw over other apps.'),
-    'android.permission.BIND_ACCESSIBILITY_SERVICE':('Accessibility',     35, 'Full control of device. Very dangerous if misused.'),
-    'android.permission.REQUEST_INSTALL_PACKAGES':  ('Install Apps',      18, 'Can install other apps.'),
+    'android.permission.RECORD_AUDIO':              ('Microphone',        4, 'Can record audio in background.'),
+    'android.permission.CAMERA':                    ('Camera',            4, 'Can access camera.'),
+    'android.permission.READ_CONTACTS':             ('Contacts',          4, 'Can read contacts.'),
+    'android.permission.READ_SMS':                  ('Read SMS',          8, 'Can read OTPs and private messages.'),
+    'android.permission.SEND_SMS':                  ('Send SMS',          8, 'Can send premium SMS messages.'),
+    'android.permission.RECEIVE_SMS':               ('Receive SMS',       8, 'Can intercept incoming OTPs.'),
+    'android.permission.ACCESS_FINE_LOCATION':      ('Precise Location',  4, 'Can track exact GPS location.'),
+    'android.permission.ACCESS_BACKGROUND_LOCATION':('24/7 Location',     8, 'Can track location even when closed.'),
+    'android.permission.READ_CALL_LOG':             ('Call History',      6, 'Can see who you called.'),
+    'android.permission.PROCESS_OUTGOING_CALLS':    ('Intercept Calls',   8, 'Can monitor or block outgoing calls.'),
+    'android.permission.SYSTEM_ALERT_WINDOW':       ('Screen Overlay',    10, 'Can draw over other apps.'),
+    'android.permission.BIND_ACCESSIBILITY_SERVICE':('Accessibility',     14, 'Full control of device. Very dangerous if misused.'),
+    'android.permission.REQUEST_INSTALL_PACKAGES':  ('Install Apps',      8, 'Can install other apps.'),
   };
 
   // ─── Citizen Lab & Amnesty International Stalkerware Signature Database ────
@@ -1049,7 +1076,7 @@ class RiskEngine {
     if (isSystem) {
       score = 0;
     } else {
-      // 1. STALKERWARE SIGNATURE CHECK
+      // 1. STALKERWARE SIGNATURE CHECK (Immediate Critical)
       final pkgLower = pkg.toLowerCase();
       String? foundSpyware;
       for (final entry in _knownSpywareSignatures.entries) {
@@ -1059,94 +1086,87 @@ class RiskEngine {
         }
       }
       if (foundSpyware != null) {
-        score += 85;
+        score += 90;
         reasons.insert(0, '🚨 CRITICAL STALKERWARE: Matches signature for $foundSpyware. Known to covertly exfiltrate calls, chats, photos, and live location.');
       }
 
+      // 2. Dangerous Trojan Combinations
+      final hasInternet = perms.contains('android.permission.INTERNET');
+      final hasSMS = perms.contains('android.permission.RECEIVE_SMS') || perms.contains('android.permission.READ_SMS');
+      final hasOverlay = perms.contains('android.permission.SYSTEM_ALERT_WINDOW');
+      final hasAccessibilityService = perms.contains('android.permission.BIND_ACCESSIBILITY_SERVICE') || hasAccessibility;
+
       if (isSideloaded) {
+        // Untrusted APK from outside Google Play
         score += 15;
         final instLabel = installer.isEmpty || installer == 'unknown' ? 'Direct APK' : installer;
         reasons.add('Sideloaded App: Installed via unverified source ($instLabel).');
+
+        if (hasSMS && hasOverlay) {
+          score += 55;
+          reasons.insert(0, 'CRITICAL: Requests SMS + Screen Overlay (Classic Banking Trojan Pattern).');
+        }
+
+        if (hasInternet && hasAccessibilityService) {
+          score += 50;
+          reasons.insert(0, 'CRITICAL: Untrusted app with Accessibility + Internet (Screen Scraping Risk).');
+        }
+
+        if (!hasLauncher && (perms.contains('android.permission.RECORD_AUDIO') || perms.contains('android.permission.CAMERA'))) {
+          score += 45;
+          reasons.insert(0, 'HIGH RISK: Stealth APK hiding launcher icon while accessing microphone/camera.');
+        }
+
+        if (hasDeviceAdmin) {
+          score += 30;
+          reasons.insert(0, 'HIGH RISK: Untrusted app requested Device Admin privileges.');
+        }
+
+        if (targetSdk < 28) {
+          score += 10;
+          reasons.add('Outdated SDK (Target: $targetSdk): Bypasses modern runtime protections.');
+        }
+      } else {
+        // Verified Store App (Google Play, Samsung, etc.)
+        // Legitimate store apps have passed vetting; runtime permissions are informational
+        if (hasDeviceAdmin && !isVerified) {
+          score += 15;
+          reasons.add('Device Admin: Holds system administration privileges.');
+        }
       }
 
-      if (targetSdk < 28) {
-        score += 15;
-        reasons.add('Outdated SDK (Target: $targetSdk): Bypasses modern Android security protections.');
-      }
-
-      if (!hasLauncher) {
-        score += 40;
-        reasons.insert(0, 'CRITICAL (Hidden Spyware): App is hiding its launcher icon.');
-      }
-
-      if (hasAccessibility) {
-        score += 35;
-        reasons.insert(0, 'CRITICAL (Control): Has Accessibility Service enabled.');
-      }
-
-      if (hasDeviceAdmin) {
-        score += 35;
-        reasons.insert(0, 'CRITICAL (Admin): Requests Device Admin rights.');
-      }
-
+      // Collect permission hygiene reasons
       for (final perm in perms) {
         final info = _dangerPerms[perm];
         if (info != null) {
-          int weight = info.$2;
-          if (isVerified) {
-            weight = (weight * 0.15).round(); // Verified ecosystem apps have expected permissions
-          } else if (isKnownStore && targetSdk >= 30) {
-            weight = (weight * 0.35).round(); // Legitimate store apps vetted by platform
-          }
-
-          if (weight > 0) {
-            score += weight;
-            if (info.$2 >= 18 || isSideloaded) {
+          if (isSideloaded) {
+            score += info.$2;
+            reasons.add('${info.$1}: ${info.$3}');
+          } else {
+            // For store apps, permissions contribute minor points, capped so they never falsely become high risk
+            score += (info.$2 * 0.25).round();
+            if (info.$2 >= 8) {
               reasons.add('${info.$1}: ${info.$3}');
             }
           }
         }
       }
-
-      // Flag truly dangerous malware combinations
-      final hasInternet = perms.contains('android.permission.INTERNET');
-
-      if (perms.contains('android.permission.RECEIVE_SMS') && perms.contains('android.permission.SYSTEM_ALERT_WINDOW')) {
-        score += 35;
-        reasons.insert(0, 'CRITICAL: Requests SMS + Screen Overlay (Classic Banking Trojan Pattern).');
-      }
-
-      if (hasInternet && perms.contains('android.permission.BIND_ACCESSIBILITY_SERVICE')) {
-        score += 40;
-        reasons.insert(0, 'CRITICAL: Accessibility + Internet (High Risk of Screen Scraping / Data Theft).');
-      }
-
-      // Only penalize unverified / sideloaded apps for generic mic/camera combos
-      if (isSideloaded && hasInternet && perms.contains('android.permission.RECORD_AUDIO')) {
-        score += 10;
-        reasons.add('Potential Risk: Unverified app requesting Mic + Internet.');
-      }
-
-      if (isSideloaded && hasInternet && perms.contains('android.permission.CAMERA')) {
-        score += 10;
-        reasons.add('Potential Risk: Unverified app requesting Camera + Internet.');
-      }
-
-      if (isSideloaded && hasInternet && perms.contains('android.permission.READ_CONTACTS')) {
-        score += 12;
-        reasons.add('Data Privacy Risk: Unverified app requesting Contacts + Internet.');
-      }
     }
 
-    score = score.clamp(0, 100);
+    // Official store / verified apps are capped below High Risk unless proven spyware
+    if (!isSideloaded && !isSystem) {
+      score = score.clamp(0, 38); // Always stays Safe / Low / Medium, never falsely High Risk
+    } else {
+      score = score.clamp(0, 100);
+    }
 
     final level = score >= 75
         ? RiskLevel.critical
         : score >= 50
             ? RiskLevel.high
-            : score >= 30
+            : score >= 25
                 ? RiskLevel.medium
-                : score >= 15
+                : score >= 12
                     ? RiskLevel.low
                     : RiskLevel.safe;
 

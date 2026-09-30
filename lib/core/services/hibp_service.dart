@@ -1,3 +1,10 @@
+// -----------------------------------------------------------------------------
+// SafeSignal Mobile Security Suite
+// Module: Identity Exposure & Dark Web Intelligence Service
+// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// XposedOrNot breach analytics for dark-web credential monitoring.
+// -----------------------------------------------------------------------------
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -30,14 +37,18 @@ class BreachInfo {
 }
 
 class HibpService {
-  final Dio _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 12),
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) SafeSignal/1.0',
-      'Accept': 'application/json',
-    },
-  ));
+  final Dio _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 12),
+      validateStatus: (status) => true,
+      headers: {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) SafeSignal/1.0',
+        'Accept': 'application/json',
+      },
+    ),
+  );
 
   Future<List<BreachInfo>> checkEmail(String email) async {
     final cleanEmail = email.trim().toLowerCase();
@@ -53,49 +64,73 @@ class HibpService {
         final data = res.data as Map;
 
         // Check if no breach found
-        if (data.containsKey('Error') && data['Error'].toString().toLowerCase().contains('not found')) {
+        if (data.containsKey('Error') &&
+            data['Error'].toString().toLowerCase().contains('not found')) {
           return [];
         }
 
         final exposed = data['ExposedBreaches'];
+        if (exposed == null) {
+          // Clean email: no breaches recorded on dark web databases
+          return [];
+        }
         if (exposed is Map && exposed['breaches_details'] is List) {
           final list = exposed['breaches_details'] as List;
           final result = <BreachInfo>[];
 
           for (final item in list) {
             if (item is Map) {
-              final title = item['breach']?.toString().trim() ?? 'Unknown Breach';
+              final title =
+                  item['breach']?.toString().trim() ?? 'Unknown Breach';
               final domain = item['domain']?.toString().trim() ?? '';
-              final details = item['details']?.toString().trim() ?? 'Data records compromised in unauthorized access.';
+              final details =
+                  item['details']?.toString().trim() ??
+                  'Data records compromised in unauthorized access.';
               final logo = item['logo']?.toString().trim() ?? '';
-              final industry = item['industry']?.toString().trim() ?? 'Technology';
-              final passRisk = item['password_risk']?.toString().trim() ?? 'unknown';
+              final industry =
+                  item['industry']?.toString().trim() ?? 'Technology';
+              final passRisk =
+                  item['password_risk']?.toString().trim() ?? 'unknown';
               final rawDate = item['xposed_date']?.toString().trim() ?? '';
               final date = rawDate.isNotEmpty ? rawDate : 'Historical';
-              final records = int.tryParse(item['xposed_records']?.toString() ?? '0') ?? 0;
+              final records =
+                  int.tryParse(item['xposed_records']?.toString() ?? '0') ?? 0;
               final ref = item['references']?.toString().trim();
-              final verified = item['verified']?.toString().toLowerCase() == 'yes';
+              final verified =
+                  item['verified']?.toString().toLowerCase() == 'yes';
 
-              final rawData = item['xposed_data']?.toString() ?? 'Email addresses;Passwords';
+              final rawData =
+                  item['xposed_data']?.toString() ??
+                  'Email addresses;Passwords';
               final dataClasses = rawData
                   .split(';')
                   .map((e) => e.trim())
                   .where((e) => e.isNotEmpty)
                   .toList();
 
-              result.add(BreachInfo(
-                title: title,
-                domain: domain.isNotEmpty ? domain : '$title.com'.toLowerCase(),
-                breachDate: date,
-                pwnCount: records,
-                description: details,
-                dataClasses: dataClasses.isNotEmpty ? dataClasses : ['Email addresses', 'Passwords'],
-                isVerified: verified,
-                logoPath: logo.isNotEmpty ? logo : 'https://xposedornot.com/static/logos/$title.png',
-                industry: industry,
-                passwordRisk: passRisk,
-                referenceUrl: (ref != null && ref.startsWith('http')) ? ref : null,
-              ));
+              result.add(
+                BreachInfo(
+                  title: title,
+                  domain: domain.isNotEmpty
+                      ? domain
+                      : '$title.com'.toLowerCase(),
+                  breachDate: date,
+                  pwnCount: records,
+                  description: details,
+                  dataClasses: dataClasses.isNotEmpty
+                      ? dataClasses
+                      : ['Email addresses', 'Passwords'],
+                  isVerified: verified,
+                  logoPath: logo.isNotEmpty
+                      ? logo
+                      : 'https://xposedornot.com/static/logos/$title.png',
+                  industry: industry,
+                  passwordRisk: passRisk,
+                  referenceUrl: (ref != null && ref.startsWith('http'))
+                      ? ref
+                      : null,
+                ),
+              );
             }
           }
 
@@ -114,7 +149,8 @@ class HibpService {
 
       if (res.statusCode == 200 && res.data is Map) {
         final data = res.data as Map;
-        if (data['Error'] != null && data['Error'].toString().toLowerCase().contains('not found')) {
+        if (data['Error'] != null &&
+            data['Error'].toString().toLowerCase().contains('not found')) {
           return [];
         }
 
@@ -132,8 +168,13 @@ class HibpService {
                 domain: domain,
                 breachDate: 'Verified Leak Record',
                 pwnCount: 0,
-                description: 'Your account credentials associated with $strName were identified in public dark web leak databases.',
-                dataClasses: ['Email addresses', 'Encrypted Passwords', 'Account Credentials'],
+                description:
+                    'Your account credentials associated with $strName were identified in public dark web leak databases.',
+                dataClasses: [
+                  'Email addresses',
+                  'Encrypted Passwords',
+                  'Account Credentials',
+                ],
                 isVerified: true,
                 logoPath: 'https://xposedornot.com/static/logos/$strName.png',
                 industry: 'Online Service',

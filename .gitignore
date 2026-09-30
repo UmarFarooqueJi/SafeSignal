@@ -119,3 +119,12 @@ rewrite_*.py
 scratch_*.dart
 analyze_out.txt
 .metadata
+# SafeSignal: Dev tools and temporary artifacts
+screencap.py
+*.raw
+temp_apks/
+build_*.py
+fix_*.py
+rewrite_*.py
+test_cap.png
+*.apk

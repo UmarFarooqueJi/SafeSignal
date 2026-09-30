@@ -1,3 +1,12 @@
+// -----------------------------------------------------------------------------
+// SafeSignal Mobile Security Suite
+// Module: Domain-Specialized AI Expert Engine
+// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Domain experts: WebGuard, NetShield, AppGuard, DeviceShield,
+// BreachWatch, FraudShield, TelecomShield AI personas.
+// Failover: OpenRouter → DeepSeek → Grok → Gemini → Cloudflare → Pollinations
+// -----------------------------------------------------------------------------
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -17,49 +26,57 @@ class AiExpertService {
 
   static const Map<String, String> _expertPrompts = {
     // URL / Website Security Expert
-    'url': '''You are WebGuard AI — a world-class web security analyst specializing in phishing, malware URLs, brand impersonation, and dark pattern websites. 
+    'url':
+        '''You are WebGuard AI — a world-class web security analyst specializing in phishing, malware URLs, brand impersonation, and dark pattern websites. 
 You know: TLS certificates, domain age tricks, homograph attacks, URL shortener abuse, redirect chains, WHOIS analysis, Google Safe Browsing signals, VirusTotal patterns.
 When analyzing a URL security report, give a PRECISE, TECHNICAL explanation in 3-5 bullet points. Be direct. No fluff. Focus on WHY this URL is safe or dangerous.
 Always mention: domain age relevance, certificate status, redirect risks, and exact threat type if present.''',
 
-    // WiFi Network Security Expert  
-    'wifi': '''You are NetShield AI — an expert in wireless network security, 802.11 protocols, rogue AP detection, evil twin attacks, MITM vulnerabilities, and home router security.
+    // WiFi Network Security Expert
+    'wifi':
+        '''You are NetShield AI — an expert in wireless network security, 802.11 protocols, rogue AP detection, evil twin attacks, MITM vulnerabilities, and home router security.
 You know: WEP/WPA/WPA2/WPA3 encryption differences, SSID spoofing tactics, open network risks, captive portals, DNS poisoning on public WiFi, VPN tunneling, network sniffing.
 When analyzing a WiFi scan result, explain EXACTLY what the security risk is, what data can be stolen, and precise steps to protect the user.
 Keep it under 5 bullets. Be technical but understandable. Always mention encryption type risk and practical protection steps.''',
 
     // App Permission & Spyware Expert
-    'app': '''You are AppGuard AI — a mobile security specialist in Android app permission abuse, stalkerware patterns, data harvesting SDKs, and spyware detection.
+    'app':
+        '''You are AppGuard AI — a mobile security specialist in Android app permission abuse, stalkerware patterns, data harvesting SDKs, and spyware detection.
 You know: Android permission groups, dangerous permission combinations (e.g., READ_SMS + INTERNET = data exfiltration), accessibility service abuse, overlay attack vectors, background location stalking, clipboard monitoring.
 When analyzing an app's permission set, identify the SPECIFIC attack vector this combination enables, name the stalkerware/adware category, and give clear removal advice.
 Be precise: name the permission, explain the abuse, rate the threat.''',
 
     // Device Hardware & OS Security Expert
-    'device': '''You are DeviceShield AI — a specialist in Android device security hardening, root exploit detection, bootloader vulnerabilities, and OS-level attack surfaces.
+    'device':
+        '''You are DeviceShield AI — a specialist in Android device security hardening, root exploit detection, bootloader vulnerabilities, and OS-level attack surfaces.
 You know: root detection methods, Magisk/SuperSU indicators, emulator fingerprinting (ro.kernel, /dev/socket/qemud), ADB attack vectors, developer mode risks, Zygisk module injection, SELinux policy bypass.
 When analyzing device security flags, explain what each vulnerability MEANS for the user's data, which attacks it enables, and give a prioritized hardening checklist.
 Be technical. Name specific CVEs or exploit techniques where relevant. Always provide a risk-ranked action list.''',
 
     // Dark Web / Data Breach Expert
-    'breach': '''You are BreachWatch AI — a cybersecurity expert in data breach analysis, credential stuffing attacks, dark web marketplace monitoring, and identity theft prevention.
+    'breach':
+        '''You are BreachWatch AI — a cybersecurity expert in data breach analysis, credential stuffing attacks, dark web marketplace monitoring, and identity theft prevention.
 You know: HaveIBeenPwned database, breach severity tiers, password spray attacks, credential stuffing automation, PII exposure types (hashed vs plaintext passwords, email combos, SSN/Aadhaar exposure), dark web paste sites.
 When analyzing a data breach report for an email, explain EXACTLY what data was exposed, the specific attack risk for the user (account takeover, identity fraud, SIM swap), and a PRIORITIZED recovery checklist.
 Always rate breach severity (Critical/High/Medium/Low) and give India-specific advice (UIDAI, bank fraud helpline, cybercrime.gov.in).''',
 
     // UPI / QR Code Financial Fraud Expert
-    'upi': '''You are FraudShield AI — India's top expert in UPI payment fraud, QR code scams, PhonePe/Paytm/GPay vulnerabilities, and digital payment social engineering.
+    'upi':
+        '''You are FraudShield AI — India's top expert in UPI payment fraud, QR code scams, PhonePe/Paytm/GPay vulnerabilities, and digital payment social engineering.
 You know: UPI deep link abuse (upi://pay), QR code redirect attacks, collect request fraud, screen sharing scams, fake payment screenshot tricks, merchant ID spoofing, SIM swap for UPI, NPCI fraud patterns.
 When analyzing a UPI ID or QR code, identify the EXACT fraud pattern if suspicious (collect scam, fake merchant, compromised VPA), explain how the scam works step by step, and give immediate action steps.
 Be India-specific. Mention RBI guidelines, NPCI dispute process, and cybercrime.gov.in reporting.''',
 
     // General SMS/Chat Scam Expert
-    'sms': '''You are SafeSignal AI — India's top SMS and digital scam detection expert specializing in phishing, vishing, smishing, job fraud, lottery scams, and government impersonation.
+    'sms':
+        '''You are SafeSignal AI — India's top SMS and digital scam detection expert specializing in phishing, vishing, smishing, job fraud, lottery scams, and government impersonation.
 You know: TRAI DLT template abuse, OTP phishing patterns, fake KYC SMSes, Aadhaar/PAN impersonation, fake IRDAI/SEBI SMSes, WhatsApp link traps, courier scam scripts.
 When analyzing an SMS or message, identify the EXACT scam category, explain the psychological manipulation technique used, and give clear action steps in simple language.
 Always mention: the India-specific fraud type, what data the scammer wants, and how to report it (1930, cybercrime.gov.in).''',
 
     // Phone / Telecom Fraud & OSINT Expert
-    'phone': '''You are TelecomShield AI — India's premier expert on mobile phone reconnaissance, telecom fraud, VoIP burner detection, and caller impersonation syndicates.
+    'phone':
+        '''You are TelecomShield AI — India's premier expert on mobile phone reconnaissance, telecom fraud, VoIP burner detection, and caller impersonation syndicates.
 You know: DoT series allocations, TRAI regulations, Digital Arrest call scripts (Cambodia/Myanmar/Pakistan syndicates), Wangiri callback fraud, VoIP spoofing (Twilio/TextNow), UPI VPA mapping, and Chakshu reporting.
 When analyzing a phone number telemetry report, explain in 3-4 bullets:
 1. Origin & Carrier credibility (Is it an Indian GSM number or virtual VoIP burner / high-risk international scam compound?).
@@ -83,10 +100,12 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
         ? 'Respond in Hindi (Hinglish is fine). Keep it simple for a general Indian audience.'
         : 'Respond in clear, simple English. Avoid jargon where possible.';
 
-    final fullSystem = '$systemPrompt\n\n$langInstruction\n\nFormat your response as plain text with bullet points (use • symbol). Max 5 bullets. Be concise.';
+    final fullSystem =
+        '$systemPrompt\n\n$langInstruction\n\nFormat your response as plain text with bullet points (use • symbol). Max 5 bullets. Be concise.';
 
     // 1. Try user-configured OpenRouter if valid key present
-    if (AppConstants.openRouterApiKey.isNotEmpty && !AppConstants.openRouterApiKey.contains('your-')) {
+    if (AppConstants.openRouterApiKey.isNotEmpty &&
+        !AppConstants.openRouterApiKey.contains('your-')) {
       try {
         return await _callOpenRouter(fullSystem, context);
       } catch (e) {
@@ -95,7 +114,8 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
     }
 
     // 2. Try user-configured DeepSeek if valid key present
-    if (AppConstants.deepSeekApiKey.isNotEmpty && !AppConstants.deepSeekApiKey.contains('your-')) {
+    if (AppConstants.deepSeekApiKey.isNotEmpty &&
+        !AppConstants.deepSeekApiKey.contains('your-')) {
       try {
         return await _callDeepSeek(fullSystem, context);
       } catch (e) {
@@ -104,7 +124,8 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
     }
 
     // 3. Try user-configured Grok if valid key present
-    if (AppConstants.grokApiKey.isNotEmpty && !AppConstants.grokApiKey.contains('your-')) {
+    if (AppConstants.grokApiKey.isNotEmpty &&
+        !AppConstants.grokApiKey.contains('your-')) {
       try {
         return await _callGrok(fullSystem, context);
       } catch (e) {
@@ -113,7 +134,8 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
     }
 
     // 4. Try user-configured Gemini if valid key present
-    if (AppConstants.geminiApiKey.isNotEmpty && !AppConstants.geminiApiKey.contains('your-')) {
+    if (AppConstants.geminiApiKey.isNotEmpty &&
+        !AppConstants.geminiApiKey.contains('your-')) {
       try {
         return await _callGemini(fullSystem, context);
       } catch (e) {
@@ -125,14 +147,18 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
     try {
       return await _callCloudflareWorkersAI(fullSystem, context);
     } catch (e) {
-      debugPrint('[AiExpert] Cloudflare Workers AI failed: $e, trying Pollinations...');
+      debugPrint(
+        '[AiExpert] Cloudflare Workers AI failed: $e, trying Pollinations...',
+      );
     }
 
     // 6. Keyless Secondary: Pollinations AI
     try {
       return await _callPollinationsAI(fullSystem, context);
     } catch (e) {
-      debugPrint('[AiExpert] Pollinations failed: $e, using offline heuristics fallback');
+      debugPrint(
+        '[AiExpert] Pollinations failed: $e, using offline heuristics fallback',
+      );
     }
 
     // 7. Complete Offline Fallback
@@ -141,7 +167,10 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
 
   // ─── Cloudflare Workers AI Call ──────────────────────────────────────────
 
-  Future<String> _callCloudflareWorkersAI(String systemPrompt, String userContent) async {
+  Future<String> _callCloudflareWorkersAI(
+    String systemPrompt,
+    String userContent,
+  ) async {
     final cfAccount = AppConstants.cloudflareAccountId;
     final cfToken = AppConstants.cloudflareAiToken;
     const model = '@cf/meta/llama-3.1-8b-instruct';
@@ -176,7 +205,10 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
 
   // ─── Pollinations Keyless Public AI Call ──────────────────────────────────
 
-  Future<String> _callPollinationsAI(String systemPrompt, String userContent) async {
+  Future<String> _callPollinationsAI(
+    String systemPrompt,
+    String userContent,
+  ) async {
     final response = await _dio.post(
       'https://text.pollinations.ai/',
       options: Options(
@@ -203,7 +235,10 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
 
   // ─── OpenRouter API Call ───────────────────────────────────────────────────
 
-  Future<String> _callOpenRouter(String systemPrompt, String userContent) async {
+  Future<String> _callOpenRouter(
+    String systemPrompt,
+    String userContent,
+  ) async {
     final response = await _dio.post(
       'https://openrouter.ai/api/v1/chat/completions',
       options: Options(
@@ -289,17 +324,18 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
       queryParameters: {'key': AppConstants.geminiApiKey},
       data: {
         'system_instruction': {
-          'parts': [{'text': systemPrompt}]
+          'parts': [
+            {'text': systemPrompt},
+          ],
         },
         'contents': [
           {
-            'parts': [{'text': userContent}]
-          }
+            'parts': [
+              {'text': userContent},
+            ],
+          },
         ],
-        'generationConfig': {
-          'temperature': 0.2,
-          'maxOutputTokens': 500,
-        }
+        'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 500},
       },
       options: Options(
         headers: {'Content-Type': 'application/json'},
@@ -307,7 +343,8 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
         receiveTimeout: const Duration(seconds: 20),
       ),
     );
-    return response.data['candidates'][0]['content']['parts'][0]['text'] as String;
+    return response.data['candidates'][0]['content']['parts'][0]['text']
+        as String;
   }
 
   // ─── Offline Fallback ──────────────────────────────────────────────────────

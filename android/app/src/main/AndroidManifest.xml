@@ -21,26 +21,20 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
-    <!-- Call Screening & Contacts — detect incoming calls and identify safe contacts -->
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.READ_CALL_LOG" />
-    <uses-permission android:name="android.permission.READ_CONTACTS" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
     <!-- SMS Scam Detection -->
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
-
-    <!-- Overlay — show call screening popup on top of incoming call UI -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:label="SafeSignal"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        tools:targetApi="31">
 
         <activity
             android:name=".MainActivity"
@@ -61,32 +55,22 @@
             </intent-filter>
         </activity>
 
-        <!-- SMS Scam Detection BroadcastReceiver -->
+        <!-- SMS Scam Detection BroadcastReceiver (Clean standard receiver, no priority 999) -->
         <receiver
             android:name=".SmsReceiver"
-            android:exported="true"
-            android:permission="android.permission.BROADCAST_SMS">
-            <intent-filter android:priority="999">
+            android:exported="true">
+            <intent-filter>
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>
         </receiver>
 
-        <!-- Call Screening BroadcastReceiver -->
-        <receiver
-            android:name=".CallReceiver"
-            android:exported="false"
-            android:permission="android.permission.READ_PHONE_STATE">
-            <intent-filter>
-                <action android:name="android.intent.action.PHONE_STATE" />
-            </intent-filter>
-        </receiver>
-
-        <!-- Auto-start on boot (to keep call + SMS screening active) -->
+        <!-- Auto-start on boot -->
         <receiver
             android:name=".BootReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 
@@ -94,13 +78,13 @@
         <service
             android:name=".SafeSignalService"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="dataSync" />
 
         <!-- Email / Notification Scanner Service -->
         <service
             android:name=".EmailNotificationService"
             android:exported="true"
-            android:label="SafeSignal Email &amp; Notification Scanner"
+            android:label="SafeSignal Notification Scanner"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
@@ -110,18 +94,10 @@
                 android:value="conversations,alerting" />
         </service>
 
-        <!-- Live Link Shield (Accessibility Service) -->
-        <service
-            android:name=".LinkShieldAccessibilityService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
-        </service>
+        <!-- Use new Impeller flag (EnableImpeller deprecated) -->
+        <meta-data
+            android:name="io.flutter.embedding.android.ImpellerEnabled"
+            android:value="false" />
 
         <meta-data
             android:name="flutterEmbedding"
@@ -132,6 +108,10 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
         </intent>
     </queries>
 </manifest>

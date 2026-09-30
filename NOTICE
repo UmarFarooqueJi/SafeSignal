@@ -1,0 +1,72 @@
+SafeSignal Mobile Security Suite
+Copyright (c) 2026 SafeSignal Technologies
+Developed by Umar Farooque (umarfarooque@safesignal.app)
+
+=============================================================================
+REQUIRED ATTRIBUTION NOTICE
+=============================================================================
+
+This software was conceived, designed, and built entirely from scratch by
+Umar Farooque as an independent security research project targeting the
+Indian mobile threat landscape.
+
+This NOTICE file must be preserved in all copies and substantial portions
+of the Software, and must be displayed in the application's "About" section.
+
+Original Author:    Umar Farooque
+Contact:            umarfarooque@safesignal.app
+GitHub:             https://github.com/UmarFarooqueJi
+Repository:         https://github.com/UmarFarooqueJi/SafeSignal
+Organization:       SafeSignal Technologies
+Inception Date:     July 2026
+Platform:           Android (Flutter + Kotlin)
+
+=============================================================================
+TECHNICAL ATTRIBUTION
+=============================================================================
+
+The following proprietary innovations are the original work of Umar Farooque:
+
+  • 3-Tier Hybrid AI Threat Engine
+      Tier 1: SafeSignal Local Heuristics Engine (India-specific fraud rules)
+      Tier 2: LLM Orchestrator with circuit-breaker pattern
+      Tier 3: Domain-Expert AI Persona Engine (WebGuard, NetShield, etc.)
+
+  • India-Specific Rule Matrix (IN-TRAI-2026)
+      TRAI DLT header analysis, UPI payment scam detection, digital arrest
+      script identification, electricity bill scam regex patterns,
+      OTP theft detection, APK dropper payload analysis.
+
+  • SafeSignal Threat Intelligence Gateway
+      Unified API abstraction layer routing all threat intel through
+      a proprietary gateway with retry, timeout, and normalization.
+
+  • Native Kotlin Shield Layer
+      SmsReceiver, CallReceiver, LinkShieldAccessibilityService,
+      EmailNotificationService — all original Kotlin implementations.
+
+  • Incident Response Engine
+      FIR document generator, bank account freeze directory, cybercrime
+      reporting portal navigator.
+
+=============================================================================
+THIRD-PARTY LIBRARIES
+=============================================================================
+
+This project uses the following open-source libraries (not copied code):
+  - Flutter SDK (BSD 3-Clause) https://flutter.dev
+  - Dart SDK (BSD 3-Clause) https://dart.dev
+  - Supabase Flutter (MIT) https://supabase.com
+  - Riverpod (MIT) https://riverpod.dev
+  - Dio (MIT) https://pub.dev/packages/dio
+  - Hive (Apache 2.0) https://pub.dev/packages/hive
+  - GoRouter (BSD 3-Clause) https://pub.dev/packages/go_router
+  - Flutter Animate (MIT) https://pub.dev/packages/flutter_animate
+  - mobile_scanner (Apache 2.0) https://pub.dev/packages/mobile_scanner
+  - local_auth (BSD 3-Clause) https://pub.dev/packages/local_auth
+  - pdf + printing (Apache 2.0) https://pub.dev/packages/pdf
+
+All libraries are used via pub.dev dependency declarations. No source
+code from these libraries has been copied into this project.
+
+=============================================================================

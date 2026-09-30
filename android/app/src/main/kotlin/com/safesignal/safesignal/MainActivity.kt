@@ -1,3 +1,13 @@
+/*
+ * SafeSignal Mobile Security Suite
+ * Module: Main Activity & System Intelligence Bridge
+ * Author: Umar Farooque (umarfarooque@safesignal.app)
+ * Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+ *
+ * Flutter-Kotlin MethodChannel bridge: app auditing with SHA-256 binary
+ * hashing, WiFi security type detection, developer options state,
+ * and system settings navigation.
+ */
 package com.safesignal.safesignal
 
 import android.Manifest
@@ -37,54 +47,122 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "getInstalledApps" -> result.success(getInstalledApps())
-                    "getAppIcon" -> {
-                        val pkg = call.argument<String>("package")
-                        if (pkg != null) {
-                            result.success(getAppIcon(pkg))
-                        } else {
-                            result.error("INVALID_ARGUMENT", "Package name is required", null)
-                        }
+        
+        val appScannerHandler: (io.flutter.plugin.common.MethodCall, MethodChannel.Result) -> Unit = { call, result ->
+            when (call.method) {
+                "getInstalledApps" -> result.success(getInstalledApps())
+                "getAppIcon" -> {
+                    val pkg = call.argument<String>("package")
+                    if (pkg != null) {
+                        result.success(getAppIcon(pkg))
+                    } else {
+                        result.error("INVALID_ARGUMENT", "Package name is required", null)
                     }
-                    "getAppHash" -> {
-                        val pkg = call.argument<String>("package")
-                        if (pkg != null) {
-                            result.success(getAppHash(pkg))
-                        } else {
-                            result.error("INVALID_ARGUMENT", "Package name is required", null)
-                        }
-                    }
-                    "getWifiSecurityType" -> result.success(getWifiSecurityType())
-                    "openWifiSettings" -> {
-                        openWifiSettings()
-                        result.success(null)
-                    }
-                    "requestOverlayPermission" -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
-                            val intent = Intent(
-                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                android.net.Uri.parse("package:$packageName")
-                            )
-                            startActivity(intent)
-                            result.success(false)
-                        } else {
-                            result.success(true)
-                        }
-                    }
-                    "isNotificationListenerEnabled" -> {
-                        result.success(isNotificationListenerEnabled())
-                    }
-                    "openNotificationSettings" -> {
-                        val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
-                        startActivity(intent)
-                        result.success(null)
-                    }
-                    else -> result.notImplemented()
                 }
+                "getAppHash" -> {
+                    val pkg = call.argument<String>("package")
+                    if (pkg != null) {
+                        result.success(getAppHash(pkg))
+                    } else {
+                        result.error("INVALID_ARGUMENT", "Package name is required", null)
+                    }
+                }
+                "getWifiSecurityType" -> result.success(getWifiSecurityType())
+                "openWifiSettings" -> {
+                    openWifiSettings()
+                    result.success(null)
+                }
+                "requestOverlayPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
+                        val intent = Intent(
+                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:$packageName")
+                        )
+                        startActivity(intent)
+                        result.success(false)
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "isNotificationListenerEnabled" -> {
+                    result.success(isNotificationListenerEnabled())
+                }
+                "openNotificationSettings" -> {
+                    val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+                    startActivity(intent)
+                    result.success(null)
+                }
+                "isDeveloperOptionsEnabled" -> {
+                    try {
+                        val dev = Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) != 0
+                        result.success(dev)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
+                "openDeveloperSettings" -> {
+                    try {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        try {
+                            val intent = Intent(Settings.ACTION_SETTINGS)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e2: Exception) {
+                            result.success(false)
+                        }
+                    }
+                }
+                "openSystemUpdateSettings" -> {
+                    try {
+                        val intent = Intent("android.settings.SYSTEM_UPDATE_SETTINGS")
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        try {
+                            val intent = Intent(Settings.ACTION_DEVICE_INFO_SETTINGS)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e2: Exception) {
+                            result.success(false)
+                        }
+                    }
+                }
+                "openAppSettings" -> {
+                    val pkg = call.argument<String>("package") ?: packageName
+                    try {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = android.net.Uri.parse("package:$pkg")
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
+                "openPermissionSettings" -> {
+                    try {
+                        val intent = Intent(Settings.ACTION_APPLICATION_SETTINGS)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
+                else -> result.notImplemented()
             }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler(appScannerHandler)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "safesignal/device").setMethodCallHandler(appScannerHandler)
     }
 
     // ─── Installed Apps ──────────────────────────────────────────────────────

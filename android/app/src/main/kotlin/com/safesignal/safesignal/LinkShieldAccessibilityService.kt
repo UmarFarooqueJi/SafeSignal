@@ -1,3 +1,12 @@
+/*
+ * SafeSignal Mobile Security Suite
+ * Module: LinkShield On-Screen URL Monitoring Service
+ * Author: Umar Farooque (umarfarooque@safesignal.app)
+ * Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+ *
+ * AccessibilityService scanning on-screen text for malicious URLs across
+ * any app: browsers, messaging apps, email clients.
+ */
 package com.safesignal.safesignal
 
 import android.accessibilityservice.AccessibilityService

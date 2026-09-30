@@ -25,11 +25,11 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
     final email = _emailCtrl.text.trim();
     if (email.isEmpty) return;
 
-    final emailPattern = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
+    final emailPattern = r'^[\w\.\-]+@([\w\-]+\.)+[a-zA-Z]{2,}$';
     if (!RegExp(emailPattern).hasMatch(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Are deva! Ye kaisa email address hai? Lagta hai keyboard pe so gaye the. Sahi email dalo yaar! 🤪"),
+          content: const Text("Kripya ek valid email address enter karein (e.g. name@example.com)."),
           backgroundColor: Colors.red.shade800,
           behavior: SnackBarBehavior.floating,
         ),
@@ -57,8 +57,20 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
       }
       score = score.clamp(0, 100);
 
+      // Instant authoritative verdict so user never sees empty loading
+      String instantVerdict;
+      if (breaches.isEmpty) {
+        instantVerdict = 'Great news! Your email was checked across 800+ dark web breaches and zero records were found.';
+      } else {
+        final hasPwd = breaches.any((b) => b.dataClasses.any((d) => d.toLowerCase().contains('password')));
+        instantVerdict = hasPwd
+            ? 'HIGH RISK: Passwords linked to this email were exposed in ' + breaches.length.toString() + ' security breaches. Change compromised passwords and enable 2FA immediately.'
+            : 'ALERT: Your email was found in ' + breaches.length.toString() + ' public data exposures. Verify linked accounts and monitor for suspicious communications.';
+      }
+
       setState(() {
         _breaches = breaches;
+        _verdict = instantVerdict;
         _phase = _Phase.done;
       });
 
