@@ -19,6 +19,10 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
 import android.telephony.TelephonyManager
+import android.app.ActivityManager
+import android.os.StatFs
+import android.os.Environment
+import java.io.File
 import android.os.Bundle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -155,6 +159,17 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(true)
                     } catch (e: Exception) {
                         result.success(false)
+                    }
+                }
+                "getMemoryInfo" -> result.success(getMemoryInfo())
+                "getStorageInfo" -> result.success(getStorageInfo())
+                "scanSuspiciousFiles" -> result.success(scanSuspiciousFiles())
+                "deleteSuspiciousFile" -> {
+                    val path = call.argument<String>("path")
+                    if (path != null) {
+                        result.success(deleteSuspiciousFile(path))
+                    } else {
+                        result.error("INVALID_ARGUMENT", "Path is required", null)
                     }
                 }
                 else -> result.notImplemented()
@@ -336,5 +351,147 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
         return false
+    }
+
+    // ─── Real RAM Telemetry ──────────────────────────────────────────────────
+    private fun getMemoryInfo(): Map<String, Any> {
+        return try {
+            val actManager = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            val memInfo = ActivityManager.MemoryInfo()
+            actManager?.getMemoryInfo(memInfo)
+            val total = memInfo.totalMem
+            val avail = memInfo.availMem
+            val used = if (total > avail) total - avail else 0L
+            mapOf(
+                "totalMem" to total,
+                "availMem" to avail,
+                "usedMem" to used,
+                "lowMemory" to memInfo.lowMemory,
+                "threshold" to memInfo.threshold
+            )
+        } catch (e: Exception) {
+            mapOf(
+                "totalMem" to 0L,
+                "availMem" to 0L,
+                "usedMem" to 0L,
+                "lowMemory" to false,
+                "threshold" to 0L
+            )
+        }
+    }
+
+    // ─── Real Storage Telemetry ──────────────────────────────────────────────
+    private fun getStorageInfo(): Map<String, Any> {
+        return try {
+            val dataDir = Environment.getDataDirectory()
+            val stat = StatFs(dataDir.path)
+            val blockSize = stat.blockSizeLong
+            val totalBlocks = stat.blockCountLong
+            val availableBlocks = stat.availableBlocksLong
+            val total = totalBlocks * blockSize
+            val free = availableBlocks * blockSize
+            val used = if (total > free) total - free else 0L
+            mapOf(
+                "totalStorage" to total,
+                "freeStorage" to free,
+                "usedStorage" to used
+            )
+        } catch (e: Exception) {
+            mapOf(
+                "totalStorage" to 0L,
+                "freeStorage" to 0L,
+                "usedStorage" to 0L
+            )
+        }
+    }
+
+    // ─── Real Suspicious & Sideloaded File Sweep ─────────────────────────────
+    private fun scanSuspiciousFiles(): List<Map<String, Any>> {
+        val results = mutableListOf<Map<String, Any>>()
+        val candidateDirs = mutableListOf<File>()
+
+        try {
+            val pubDownloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (pubDownloads != null && pubDownloads.exists()) candidateDirs.add(pubDownloads)
+        } catch (_: Exception) {}
+
+        val altDownload = File("/storage/emulated/0/Download")
+        if (altDownload.exists() && !candidateDirs.contains(altDownload)) candidateDirs.add(altDownload)
+
+        val altDocs = File("/storage/emulated/0/Documents")
+        if (altDocs.exists() && !candidateDirs.contains(altDocs)) candidateDirs.add(altDocs)
+
+        val doubleExtRegex = Regex("(?i).*\\.(pdf|jpg|jpeg|png|mp4|doc|docx|xls|xlsx|txt)\\.(apk|dex|exe|sh|bin|payload)$")
+        val executableExts = setOf("apk", "dex", "sh", "bin", "payload", "elf", "so", "bat")
+
+        for (dir in candidateDirs) {
+            scanDirectory(dir, results, doubleExtRegex, executableExts, depth = 0, maxDepth = 2)
+        }
+        return results
+    }
+
+    private fun scanDirectory(
+        dir: File,
+        out: MutableList<Map<String, Any>>,
+        doubleExtRegex: Regex,
+        executableExts: Set<String>,
+        depth: Int,
+        maxDepth: Int
+    ) {
+        if (depth > maxDepth || out.size >= 50) return
+        val files = dir.listFiles() ?: return
+
+        for (f in files) {
+            if (f.isDirectory) {
+                if (!f.name.startsWith(".")) {
+                    scanDirectory(f, out, doubleExtRegex, executableExts, depth + 1, maxDepth)
+                }
+            } else {
+                val name = f.name
+                val ext = name.substringAfterLast('.', "").lowercase()
+
+                var riskType: String? = null
+                var severity = "MEDIUM"
+
+                if (doubleExtRegex.matches(name)) {
+                    riskType = "Disguised Double-Extension Dropper"
+                    severity = "CRITICAL"
+                } else if (name.startsWith(".") && ext in executableExts) {
+                    riskType = "Hidden Executable Payload"
+                    severity = "CRITICAL"
+                } else if (ext == "apk") {
+                    riskType = "Sideloaded APK Package"
+                    severity = "HIGH"
+                } else if (ext in setOf("sh", "bin", "payload", "elf", "dex")) {
+                    riskType = "Executable Script / Binary Payload"
+                    severity = "HIGH"
+                }
+
+                if (riskType != null) {
+                    out.add(mapOf(
+                        "name" to name,
+                        "path" to f.absolutePath,
+                        "size" to f.length(),
+                        "lastModified" to f.lastModified(),
+                        "riskType" to riskType,
+                        "severity" to severity
+                    ))
+                }
+            }
+        }
+    }
+
+    // ─── Delete Suspicious File ──────────────────────────────────────────────
+    private fun deleteSuspiciousFile(path: String): Boolean {
+        return try {
+            val file = File(path)
+            if (file.exists()) {
+                file.delete()
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
     }
 }

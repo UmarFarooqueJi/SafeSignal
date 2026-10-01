@@ -49,6 +49,10 @@ class _AuditResult {
   final List<_AuditIssue> issues;
   final List<int> scoreHistory;
 
+  final Map<String, dynamic> memoryInfo;
+  final Map<String, dynamic> storageInfo;
+  final List<Map<String, dynamic>> suspiciousFiles;
+
   _AuditResult({
     this.deviceInfo,
     required this.allApps,
@@ -59,6 +63,9 @@ class _AuditResult {
     required this.safetyScore,
     required this.issues,
     required this.scoreHistory,
+    this.memoryInfo = const {},
+    this.storageInfo = const {},
+    this.suspiciousFiles = const [],
   });
 
   String get riskTierName {
@@ -189,9 +196,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
     'Auditing app manifests & sideload signatures...',
     'Checking OEM security patch & CVE exposure...',
     'Querying Developer Options & ADB state...',
-    'Evaluating sensor telemetry permissions...',
-    'Scanning network routing & DNS integrity...',
-    'Synthesizing CYBX-grade risk metrics...',
+    'Measuring active RAM & internal storage...',
+    'Scanning public storage for hidden/disguised payloads...',
+    'Synthesizing enterprise security posture...',
   ];
 
   @override
@@ -250,6 +257,76 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not uninstall: $e'), backgroundColor: Colors.red),
         );
+      }
+    }
+  }
+
+  String _formatBytes(num bytes) {
+    if (bytes <= 0) return '0 B';
+    if (bytes >= 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+    }
+    if (bytes >= 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    if (bytes >= 1024) {
+      return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    }
+    return '$bytes B';
+  }
+
+  Future<void> _confirmDeleteFile(String path, String fileName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
+            SizedBox(width: 8),
+            Text('Delete File?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete "$fileName"?\n\nPath: $path',
+          style: const TextStyle(fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete Permanently'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final deleted = await _scannerChannel.invokeMethod<bool>('deleteSuspiciousFile', {'path': path}) ?? false;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(deleted ? 'File deleted successfully.' : 'Could not delete file (permission restricted).'),
+              backgroundColor: deleted ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          if (deleted) _rescan();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Delete error: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
@@ -406,8 +483,35 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         return isSideloaded && hasDangerous;
       }).toList();
 
-      // Stage 6: Network & Final scoring
-      _updateStage(6, 92);
+      // Stage 6: RAM, Storage & Public File Payload Sweep
+      _updateStage(6, 90);
+      Map<String, dynamic> memoryInfo = {};
+      Map<String, dynamic> storageInfo = {};
+      List<Map<String, dynamic>> suspiciousFiles = [];
+
+      try {
+        final mem = await _scannerChannel.invokeMethod<Map<dynamic, dynamic>>('getMemoryInfo');
+        if (mem != null) memoryInfo = Map<String, dynamic>.from(mem);
+      } catch (e) {
+        debugPrint('Memory telemetry error: $e');
+      }
+
+      try {
+        final stor = await _scannerChannel.invokeMethod<Map<dynamic, dynamic>>('getStorageInfo');
+        if (stor != null) storageInfo = Map<String, dynamic>.from(stor);
+      } catch (e) {
+        debugPrint('Storage telemetry error: $e');
+      }
+
+      try {
+        final files = await _scannerChannel.invokeMethod<List<dynamic>>('scanSuspiciousFiles');
+        if (files != null) {
+          suspiciousFiles = files.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      } catch (e) {
+        debugPrint('Suspicious file sweep error: $e');
+      }
+
       await Future.delayed(const Duration(milliseconds: 250));
 
       // Calculate Quantitative Score (0 to 100)
@@ -415,6 +519,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       if (isRooted) score -= 40;
       if (devOptionsEnabled) score -= 15;
       if (isOutdated) score -= 15;
+      if (suspiciousFiles.isNotEmpty) {
+        score -= (suspiciousFiles.length * 10).clamp(10, 30);
+      }
       for (final app in riskyApps) {
         final matchesStalker = _stalkerSignatures.any((k) => app.packageName.toLowerCase().contains(k));
         if (matchesStalker) {
@@ -433,6 +540,28 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       await Future.delayed(const Duration(milliseconds: 200));
 
       final issues = <_AuditIssue>[];
+
+      // 0. Suspicious Files / Disguised Droppers
+      for (final sf in suspiciousFiles) {
+        final severity = sf['severity'] == 'CRITICAL'
+            ? _IssueSeverity.critical
+            : _IssueSeverity.high;
+        final name = sf['name']?.toString() ?? 'Unknown Payload';
+        final path = sf['path']?.toString() ?? '';
+        final size = sf['size'] as num? ?? 0;
+        final riskType = sf['riskType']?.toString() ?? 'Unverified File';
+
+        issues.add(_AuditIssue(
+          id: 'file_$path',
+          title: '$riskType: $name',
+          description: 'Found at: $path (${_formatBytes(size)})\nUnchecked binaries, APK droppers, or shell scripts in public directories can be exploited by rogue apps.',
+          category: _IssueCategory.device,
+          severity: severity,
+          actionLabel: 'Delete File',
+          actionIcon: Icons.delete_outline_rounded,
+          onAction: () => _confirmDeleteFile(path, name),
+        ));
+      }
 
       // 1. Root
       if (isRooted) {
@@ -538,6 +667,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         safetyScore: score,
         issues: issues,
         scoreHistory: history,
+        memoryInfo: memoryInfo,
+        storageInfo: storageInfo,
+        suspiciousFiles: suspiciousFiles,
       );
 
       // Save to Supabase telemetry
@@ -870,7 +1002,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         _buildHeroScoreCard(r),
         const SizedBox(height: 16),
 
-        // 2. Weekly Score Trend Bar Chart
+        // 2. Hardware RAM, Storage & Suspicious File Integrity
+        _buildHardwareStorageCard(r),
+        const SizedBox(height: 16),
+
+        // 3. Weekly Score Trend Bar Chart
         _buildWeeklyTrendCard(r),
         const SizedBox(height: 16),
 
@@ -1136,7 +1272,343 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
     );
   }
 
-  // ─── 2. Weekly Score Trend Bar Chart ───────────────────────────────────────
+  // ─── 2. Hardware RAM, Storage & Suspicious File Integrity ─────────────────
+  Widget _buildHardwareStorageCard(_AuditResult r) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final border = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+    final divider = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final progressBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+
+    final mem = r.memoryInfo;
+    final stor = r.storageInfo;
+    final suspicious = r.suspiciousFiles;
+
+    // RAM stats
+    final totalMem = (mem['totalMem'] as num?)?.toDouble() ?? 0;
+    final usedMem = (mem['usedMem'] as num?)?.toDouble() ?? 0;
+    final availMem = (mem['availMem'] as num?)?.toDouble() ?? 0;
+    final memPercent = totalMem > 0 ? (usedMem / totalMem).clamp(0.0, 1.0) : 0.0;
+    final isLowMem = mem['lowMemory'] as bool? ?? false;
+
+    // Storage stats
+    final totalStor = (stor['totalStorage'] as num?)?.toDouble() ?? 0;
+    final usedStor = (stor['usedStorage'] as num?)?.toDouble() ?? 0;
+    final freeStor = (stor['freeStorage'] as num?)?.toDouble() ?? 0;
+    final storPercent = totalStor > 0 ? (usedStor / totalStor).clamp(0.0, 1.0) : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.memory_rounded, color: Color(0xFF2563EB), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hardware & Storage Diagnostics',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: textMain,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    Text(
+                      'Real-time physical RAM, disk & suspicious file check',
+                      style: TextStyle(fontSize: 11.5, color: textSub),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // ── RAM Telemetry ─────────────────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.speed_rounded, size: 16, color: textSub),
+                  const SizedBox(width: 6),
+                  Text(
+                    'RAM Allocation',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textMain),
+                  ),
+                ],
+              ),
+              Text(
+                totalMem > 0
+                    ? '${_formatBytes(usedMem)} / ${_formatBytes(totalMem)} (${(memPercent * 100).toInt()}%)'
+                    : 'Reading...',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.bold,
+                  color: memPercent > 0.85 ? const Color(0xFFEF4444) : const Color(0xFF2563EB),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: memPercent > 0 ? memPercent : 0.05,
+              minHeight: 8,
+              backgroundColor: progressBg,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                memPercent > 0.85
+                    ? const Color(0xFFEF4444)
+                    : (memPercent > 0.70 ? const Color(0xFFF59E0B) : const Color(0xFF10B981)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Available: ${_formatBytes(availMem)}',
+                style: TextStyle(fontSize: 11, color: textSub),
+              ),
+              Text(
+                isLowMem ? '⚠️ Low Memory Warning' : 'Status: Optimal',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isLowMem ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+          Divider(height: 1, color: divider),
+          const SizedBox(height: 18),
+
+          // ── Storage Telemetry ─────────────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.sd_storage_rounded, size: 16, color: textSub),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Internal Storage',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textMain),
+                  ),
+                ],
+              ),
+              Text(
+                totalStor > 0
+                    ? '${_formatBytes(usedStor)} / ${_formatBytes(totalStor)} (${(storPercent * 100).toInt()}%)'
+                    : 'Reading...',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.bold,
+                  color: storPercent > 0.90 ? const Color(0xFFEF4444) : textMain,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: storPercent > 0 ? storPercent : 0.05,
+              minHeight: 8,
+              backgroundColor: progressBg,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                storPercent > 0.90
+                    ? const Color(0xFFEF4444)
+                    : (storPercent > 0.75 ? const Color(0xFFF59E0B) : const Color(0xFF3B82F6)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Free Space: ${_formatBytes(freeStor)}',
+                style: TextStyle(fontSize: 11, color: textSub),
+              ),
+              Text(
+                storPercent > 0.90 ? '⚠️ Storage Almost Full' : 'Health: Good',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: storPercent > 0.90 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+          Divider(height: 1, color: divider),
+          const SizedBox(height: 18),
+
+          // ── Suspicious File / Payload Sweep ───────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(
+                      suspicious.isEmpty ? Icons.verified_user_rounded : Icons.gpp_maybe_rounded,
+                      size: 16,
+                      color: suspicious.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Payload Integrity',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textMain),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (suspicious.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444)).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  suspicious.isEmpty ? 'CLEAN (0 Payloads)' : '${suspicious.length} SUSPICIOUS',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: suspicious.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (suspicious.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF062015) : const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDark ? const Color(0xFF0E4A30) : const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'No unverified APK droppers, disguised files (.pdf.apk), or hidden scripts found in storage.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF280B0E) : const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDark ? const Color(0xFF6B1D24) : const Color(0xFFFECACA)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Unverified or executable files found in storage:',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...suspicious.map((sf) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    sf['name']?.toString() ?? '',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textMain),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '${sf['riskType']} • ${_formatBytes(sf['size'] as num? ?? 0)}',
+                                    style: TextStyle(fontSize: 10.5, color: textSub),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626), size: 20),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => _confirmDeleteFile(
+                                sf['path']?.toString() ?? '',
+                                sf['name']?.toString() ?? '',
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ─── 3. Weekly Score Trend Bar Chart ───────────────────────────────────────
   Widget _buildWeeklyTrendCard(_AuditResult r) {
     final days = _getLast7DayLabels();
     final history = r.scoreHistory;

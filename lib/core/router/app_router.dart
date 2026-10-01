@@ -17,12 +17,10 @@ import '../../features/app_scanner/app_scanner_screen.dart';
 import '../../features/home/otp_guard_screen.dart';
 import '../../features/home/call_shield_screen.dart';
 import '../../features/home/sms_inbox_screen.dart';
-import '../../features/upi_scanner/upi_scanner_screen.dart';
 import '../../features/device_audit/device_audit_screen.dart';
 import '../../features/email_breach/email_breach_screen.dart';
 import '../../features/chat/chat_screen.dart';
 import '../../features/qr_scanner/qr_scanner_screen.dart';
-import '../../features/clipboard/clipboard_guard_screen.dart';
 import '../../features/vault/vault_screen.dart';
 import '../../features/vault/vault_lock_screen.dart';
 import '../../features/osint/social_osint_screen.dart';
@@ -91,10 +89,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SmsInboxScreen(),
       ),
       GoRoute(
-        path: '/upi-scanner',
-        builder: (context, state) => const UpiScannerScreen(),
-      ),
-      GoRoute(
         path: '/device-audit',
         builder: (context, state) => const DeviceAuditScreen(),
       ),
@@ -116,10 +110,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final phone = state.extra as String?;
           return PhoneOsintScreen(initialPhone: phone);
         },
-      ),
-      GoRoute(
-        path: '/clipboard',
-        builder: (context, state) => const ClipboardGuardScreen(),
       ),
       GoRoute(
         path: '/vault',

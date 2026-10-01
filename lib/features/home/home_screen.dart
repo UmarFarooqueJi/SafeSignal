@@ -24,6 +24,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with SingleTickerProviderStateMixin {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   double _securityScore = 4.85;
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
@@ -62,6 +63,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final scaffoldBg = isDark ? const Color(0xFF06090F) : _kScaffold;
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: scaffoldBg,
       endDrawer: _buildDrawer(context),
       body: AnnotatedRegion<SystemUiOverlayStyle>(
