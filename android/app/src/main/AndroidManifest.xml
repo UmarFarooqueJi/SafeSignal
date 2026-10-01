@@ -97,6 +97,16 @@
                 android:value="conversations,alerting" />
         </service>
 
+        <!-- Native Call Screening & Threat Interception Service (Android 10+) -->
+        <service
+            android:name=".SafeSignalCallScreeningService"
+            android:permission="android.permission.BIND_SCREEN_CALL_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
+
         <!-- Use new Impeller flag (EnableImpeller deprecated) -->
         <meta-data
             android:name="io.flutter.embedding.android.ImpellerEnabled"

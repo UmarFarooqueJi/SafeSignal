@@ -20,9 +20,15 @@ import android.os.Build
 import android.provider.Settings
 import android.telephony.TelephonyManager
 import android.app.ActivityManager
+import android.app.role.RoleManager
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.view.accessibility.AccessibilityManager
 import android.os.StatFs
 import android.os.Environment
 import java.io.File
+import java.io.BufferedReader
+import java.io.FileReader
+import java.net.InetAddress
 import android.os.Bundle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -178,6 +184,90 @@ class MainActivity : FlutterFragmentActivity() {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler(appScannerHandler)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "safesignal/device").setMethodCallHandler(appScannerHandler)
+
+        // ── Call Shield Channel (CallScreeningService Integration) ───────────────
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "safesignal/call_shield").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isCallScreeningActive" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val roleManager = getSystemService(Context.ROLE_SERVICE) as? RoleManager
+                        result.success(roleManager?.isRoleHeld(RoleManager.ROLE_CALL_SCREENING) == true)
+                    } else {
+                        result.success(false)
+                    }
+                }
+                "requestCallScreeningRole" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val roleManager = getSystemService(Context.ROLE_SERVICE) as? RoleManager
+                        if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) {
+                            if (!roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
+                                val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
+                                startActivityForResult(intent, 9021)
+                                result.success(true)
+                            } else {
+                                result.success(true)
+                            }
+                        } else {
+                            result.success(false)
+                        }
+                    } else {
+                        result.success(false)
+                    }
+                }
+                "getBlockedCalls" -> {
+                    val prefs = getSharedPreferences("safesignal_call_shield", Context.MODE_PRIVATE)
+                    val json = prefs.getString("blocked_calls_log", "[]") ?: "[]"
+                    result.success(json)
+                }
+                "clearBlockedCalls" -> {
+                    val prefs = getSharedPreferences("safesignal_call_shield", Context.MODE_PRIVATE)
+                    prefs.edit().remove("blocked_calls_log").apply()
+                    result.success(true)
+                }
+                "getCallShieldSettings" -> {
+                    val prefs = getSharedPreferences("safesignal_call_shield", Context.MODE_PRIVATE)
+                    val map = mapOf(
+                        "blockTrai" to prefs.getBoolean("block_trai", true),
+                        "blockInternational" to prefs.getBoolean("block_international", true),
+                        "blockUnknown" to prefs.getBoolean("block_unknown", false)
+                    )
+                    result.success(map)
+                }
+                "updateCallShieldSettings" -> {
+                    val prefs = getSharedPreferences("safesignal_call_shield", Context.MODE_PRIVATE)
+                    val editor = prefs.edit()
+                    call.argument<Boolean>("blockTrai")?.let { editor.putBoolean("block_trai", it) }
+                    call.argument<Boolean>("blockInternational")?.let { editor.putBoolean("block_international", it) }
+                    call.argument<Boolean>("blockUnknown")?.let { editor.putBoolean("block_unknown", it) }
+                    editor.apply()
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // ── Network Security & ARP Channel ───────────────────────────────────────
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "safesignal/network").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getNetworkSecurityTelemetry" -> {
+                    Thread {
+                        val data = getNetworkSecurityTelemetry()
+                        runOnUiThread { result.success(data) }
+                    }.start()
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // ── Banking Trojan & Accessibility / Overlay Abuse Channel ───────────────
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "safesignal/trojan_guard").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getTrojanVulnerabilities" -> {
+                    result.success(getTrojanVulnerabilities())
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     // ─── Installed Apps ──────────────────────────────────────────────────────
@@ -490,6 +580,153 @@ class MainActivity : FlutterFragmentActivity() {
             } else {
                 false
             }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    // ─── Network Security Telemetry ──────────────────────────────────────────
+    private fun getNetworkSecurityTelemetry(): Map<String, Any> {
+        val out = mutableMapOf<String, Any>()
+
+        // 1. ARP Table & Poisoning / Spoofing Check
+        var arpPoisoned = false
+        val arpEntries = mutableListOf<Map<String, String>>()
+        val macToIps = mutableMapOf<String, MutableList<String>>()
+
+        try {
+            val file = File("/proc/net/arp")
+            if (file.exists() && file.canRead()) {
+                BufferedReader(FileReader(file)).use { reader ->
+                    var line: String?
+                    var firstLine = true
+                    while (reader.readLine().also { line = it } != null) {
+                        if (firstLine) {
+                            firstLine = false
+                            continue
+                        }
+                        val tokens = line!!.trim().split("\\s+".toRegex())
+                        if (tokens.size >= 4) {
+                            val ip = tokens[0]
+                            val mac = tokens[3]
+                            if (mac != "00:00:00:00:00:00" && mac.length == 17) {
+                                arpEntries.add(mapOf("ip" to ip, "mac" to mac))
+                                val list = macToIps.getOrPut(mac) { mutableListOf() }
+                                list.add(ip)
+                                if (list.size > 1) {
+                                    arpPoisoned = true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Android 10+ SELinux may restrict /proc/net/arp
+        }
+
+        out["arpPoisoned"] = arpPoisoned
+        out["arpEntriesCount"] = arpEntries.size
+
+        // 2. DNS Canary / Poisoning Test
+        var dnsHealthy = true
+        var resolvedIp = "N/A"
+        try {
+            val canaryHost = "connectivitycheck.gstatic.com"
+            val address = InetAddress.getByName(canaryHost)
+            resolvedIp = address.hostAddress ?: "N/A"
+            if (resolvedIp.startsWith("127.") || resolvedIp.startsWith("192.168.") ||
+                resolvedIp.startsWith("10.") || resolvedIp == "0.0.0.0") {
+                dnsHealthy = false
+            }
+        } catch (e: Exception) {
+            // DNS resolution failure or network timeout
+        }
+
+        out["dnsHealthy"] = dnsHealthy
+        out["canaryResolvedIp"] = resolvedIp
+
+        // 3. Captive Portal check
+        var isCaptivePortal = false
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val network = cm?.activeNetwork
+                val caps = cm?.getNetworkCapabilities(network)
+                if (caps != null && caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)) {
+                    isCaptivePortal = true
+                }
+            }
+        } catch (e: Exception) {
+            // ignore
+        }
+        out["isCaptivePortal"] = isCaptivePortal
+
+        return out
+    }
+
+    // ─── Banking Trojan / Accessibility & Overlay Abuse ──────────────────────
+    private fun getTrojanVulnerabilities(): Map<String, Any> {
+        val pm = packageManager
+        val accessibilityAbusers = mutableListOf<Map<String, String>>()
+        val overlayAbusers = mutableListOf<Map<String, String>>()
+
+        // 1. Accessibility abusers (Trojan Vector: Keystroke & PIN Logging)
+        try {
+            val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
+            val enabledServices = am?.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK) ?: emptyList()
+            for (service in enabledServices) {
+                val pkgName = service.resolveInfo.serviceInfo.packageName
+                if (pkgName != packageName && !isSystemPackage(pkgName)) {
+                    val appLabel = try {
+                        pm.getApplicationLabel(pm.getApplicationInfo(pkgName, 0)).toString()
+                    } catch (e: Exception) { pkgName }
+
+                    accessibilityAbusers.add(mapOf(
+                        "packageName" to pkgName,
+                        "appName" to appLabel,
+                        "description" to "Active Accessibility Service — Can intercept screen text, keystrokes, and automated taps"
+                    ))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 2. High-risk non-system apps with SYSTEM_ALERT_WINDOW (Overlay capability)
+        try {
+            val installedPackages = pm.getInstalledPackages(PackageManager.GET_PERMISSIONS)
+            for (pkg in installedPackages) {
+                val pkgName = pkg.packageName
+                if (pkgName == packageName || isSystemPackage(pkgName)) continue
+                val appInfo = pkg.applicationInfo ?: continue
+                val permissions = pkg.requestedPermissions ?: continue
+                if (Manifest.permission.SYSTEM_ALERT_WINDOW in permissions) {
+                    val appLabel = try {
+                        pm.getApplicationLabel(appInfo).toString()
+                    } catch (e: Exception) { pkgName }
+
+                    overlayAbusers.add(mapOf(
+                        "packageName" to pkgName,
+                        "appName" to appLabel,
+                        "description" to "Floating Window Overlay — Can draw fake overlays over banking and UPI apps"
+                    ))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return mapOf(
+            "accessibilityAbusers" to accessibilityAbusers,
+            "overlayAbusers" to overlayAbusers
+        )
+    }
+
+    private fun isSystemPackage(packageName: String): Boolean {
+        return try {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
         } catch (e: Exception) {
             false
         }

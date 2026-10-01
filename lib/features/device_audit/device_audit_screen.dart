@@ -52,6 +52,7 @@ class _AuditResult {
   final Map<String, dynamic> memoryInfo;
   final Map<String, dynamic> storageInfo;
   final List<Map<String, dynamic>> suspiciousFiles;
+  final List<Map<String, dynamic>> trojanAbusers;
 
   _AuditResult({
     this.deviceInfo,
@@ -66,6 +67,7 @@ class _AuditResult {
     this.memoryInfo = const {},
     this.storageInfo = const {},
     this.suspiciousFiles = const [],
+    this.trojanAbusers = const [],
   });
 
   String get riskTierName {
@@ -512,6 +514,19 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         debugPrint('Suspicious file sweep error: $e');
       }
 
+      List<Map<String, dynamic>> trojanAbusers = [];
+      try {
+        const trojanChannel = MethodChannel('safesignal/trojan_guard');
+        final trojans = await trojanChannel.invokeMapMethod<String, dynamic>('getTrojanVulnerabilities');
+        if (trojans != null) {
+          final acc = trojans['accessibilityAbusers'] as List? ?? [];
+          final ovr = trojans['overlayAbusers'] as List? ?? [];
+          trojanAbusers = [...acc, ...ovr].map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      } catch (e) {
+        debugPrint('Trojan guard error: $e');
+      }
+
       await Future.delayed(const Duration(milliseconds: 250));
 
       // Calculate Quantitative Score (0 to 100)
@@ -521,6 +536,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       if (isOutdated) score -= 15;
       if (suspiciousFiles.isNotEmpty) {
         score -= (suspiciousFiles.length * 10).clamp(10, 30);
+      }
+      if (trojanAbusers.isNotEmpty) {
+        score -= (trojanAbusers.length * 15).clamp(15, 35);
       }
       for (final app in riskyApps) {
         final matchesStalker = _stalkerSignatures.any((k) => app.packageName.toLowerCase().contains(k));
@@ -560,6 +578,26 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           actionLabel: 'Delete File',
           actionIcon: Icons.delete_outline_rounded,
           onAction: () => _confirmDeleteFile(path, name),
+        ));
+      }
+
+      // 0.1 Banking Trojan Vector / Dangerous Overlays & Accessibility Abusers
+      for (final abuser in trojanAbusers) {
+        final pkg = abuser['packageName']?.toString() ?? '';
+        final appName = abuser['appName']?.toString() ?? pkg;
+        final risk = abuser['risk']?.toString() ?? 'High Risk Permission Abuser';
+        final type = abuser['type']?.toString() ?? 'Trojan Vector';
+        final isOverlay = type.contains('Overlay');
+
+        issues.add(_AuditIssue(
+          id: 'trojan_$pkg',
+          title: '$type: $appName',
+          description: '$risk\nPackage: $pkg. This is an active vector used by banking trojans to steal credentials or hijack your screen.',
+          category: _IssueCategory.apps,
+          severity: _IssueSeverity.critical,
+          actionLabel: isOverlay ? 'Review Overlay' : 'Review Access',
+          actionIcon: Icons.warning_amber_rounded,
+          onAction: () => _openAppSettings(pkg),
         ));
       }
 
@@ -670,6 +708,7 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         memoryInfo: memoryInfo,
         storageInfo: storageInfo,
         suspiciousFiles: suspiciousFiles,
+        trojanAbusers: trojanAbusers,
       );
 
       // Save to Supabase telemetry
@@ -681,6 +720,7 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           details: {
             'safetyScore': score,
             'riskyAppsCount': riskyApps.length,
+            'trojanAbusersCount': trojanAbusers.length,
             'developerOptions': devOptionsEnabled,
             'totalApps': allApps.length,
             'issuesCount': issues.length,
@@ -1595,6 +1635,131 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                                 sf['path']?.toString() ?? '',
                                 sf['name']?.toString() ?? '',
                               ),
+                            ),
+                          ],
+                        ),
+                      )),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 18),
+          Divider(height: 1, color: divider),
+          const SizedBox(height: 18),
+
+          // ── Banking Trojan & Overlay Vector Sweep ─────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(
+                      r.trojanAbusers.isEmpty ? Icons.security_rounded : Icons.shield_moon_rounded,
+                      size: 16,
+                      color: r.trojanAbusers.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Banking Trojan Defense',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textMain),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (r.trojanAbusers.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444)).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  r.trojanAbusers.isEmpty ? 'PROTECTED (0 Vectors)' : '${r.trojanAbusers.length} AT RISK',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: r.trojanAbusers.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (r.trojanAbusers.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF062015) : const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDark ? const Color(0xFF0E4A30) : const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'No rogue apps holding screen overlay or accessibility hijacking hooks.',
+                      style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534)),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF2D1214) : const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDark ? const Color(0xFF5C1D24) : const Color(0xFFFECACA)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Apps with high-risk privileges (Accessibility / Overlay):',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...r.trojanAbusers.map((ta) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    ta['appName']?.toString() ?? ta['packageName']?.toString() ?? '',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textMain),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '${ta['type']} • ${ta['packageName']}',
+                                    style: TextStyle(fontSize: 10.5, color: textSub),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => _openAppSettings(ta['packageName']?.toString() ?? ''),
+                              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                              child: const Text('Review', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
                             ),
                           ],
                         ),

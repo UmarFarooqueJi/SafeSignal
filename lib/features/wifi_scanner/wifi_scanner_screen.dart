@@ -107,42 +107,51 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
       ));
     }
 
-    // Public network name check
-    final publicKw = ['free', 'public', 'open', 'guest', 'cafe', 'hotel', 'airport'];
-    if (publicKw.any((k) => ssid.toLowerCase().contains(k))) {
-      score -= 30;
-      checks.add(_Check(
-        label: 'Network Type',
-        detail: 'Public network — banking aur UPI BILKUL mat karo',
-        level: _Level.danger,
-        icon: Icons.public_off,
-      ));
-    } else {
-      checks.add(_Check(
-        label: 'Network Type',
-        detail: 'Private network — likely aapka ghar/office WiFi',
-        level: _Level.safe,
-        icon: Icons.home_outlined,
-      ));
-    }
+    // ─── Native ARP & Subnet Integrity Check ──────────────────────────────
+    try {
+      const netChannel = MethodChannel('safesignal/network');
+      final telemetry = await netChannel.invokeMapMethod<String, dynamic>('getNetworkSecurityTelemetry');
+      if (telemetry != null) {
+        final arpPoisoned = telemetry['arpPoisoned'] as bool? ?? false;
+        final dnsHealthy = telemetry['dnsHealthy'] as bool? ?? true;
+        final canaryIp = telemetry['canaryResolvedIp'] as String? ?? 'N/A';
 
-    // Default router name check
-    final defaultNames = ['dlink', 'netgear', 'tp-link', 'tplink', 'linksys', 'asus', 'belkin'];
-    if (defaultNames.any((k) => ssid.toLowerCase().contains(k))) {
-      score -= 15;
-      checks.add(_Check(
-        label: 'Router Configuration',
-        detail: 'Default router naam se lagta hai iska password kabhi change nahi hua',
-        level: _Level.warning,
-        icon: Icons.router_outlined,
-      ));
-    } else {
-      checks.add(_Check(
-        label: 'Router Configuration',
-        detail: 'Custom network naam — properly configured lagta hai',
-        level: _Level.safe,
-        icon: Icons.router,
-      ));
+        if (arpPoisoned) {
+          score -= 50;
+          checks.add(const _Check(
+            label: 'ARP Cache Integrity',
+            detail: 'CRITICAL: Multiple IPs share identical MAC addresses! Active ARP Spoofing / Man-In-The-Middle attack detected on this subnet.',
+            level: _Level.critical,
+            icon: Icons.security_update_warning,
+          ));
+        } else {
+          checks.add(const _Check(
+            label: 'ARP Subnet Integrity',
+            detail: 'Subnet neighbor table verified. Zero duplicate MAC spoofing detected.',
+            level: _Level.safe,
+            icon: Icons.verified_user_outlined,
+          ));
+        }
+
+        if (!dnsHealthy) {
+          score -= 40;
+          checks.add(_Check(
+            label: 'DNS Canary Tampering',
+            detail: 'CRITICAL: Canary domain resolved to private/loopback IP ($canaryIp). Local router DNS is poisoned or hijacked!',
+            level: _Level.danger,
+            icon: Icons.dns_outlined,
+          ));
+        } else {
+          checks.add(const _Check(
+            label: 'DNS Integrity',
+            detail: 'Canary domain resolved cleanly. No local DNS redirection found.',
+            level: _Level.safe,
+            icon: Icons.dns,
+          ));
+        }
+      }
+    } catch (_) {
+      // Fallback if platform method unavailable
     }
 
     // IP range check
@@ -150,15 +159,15 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
     if (!isPrivateIp && ip != 'N/A') {
       score -= 20;
       checks.add(_Check(
-        label: 'IP Address',
-        detail: 'Unusual IP range ($ip) — suspicious',
+        label: 'Subnet IP Address',
+        detail: 'Unusual IP configuration ($ip) — non-standard private assignment',
         level: _Level.warning,
         icon: Icons.router_outlined,
       ));
     } else {
       checks.add(_Check(
-        label: 'IP Address',
-        detail: 'Normal private IP ($ip) — theek hai',
+        label: 'Subnet IP Address',
+        detail: 'Standard private subnet assignment ($ip)',
         level: _Level.safe,
         icon: Icons.router,
       ));

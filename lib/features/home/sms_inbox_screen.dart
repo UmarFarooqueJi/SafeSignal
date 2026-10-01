@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../core/services/crowd_intel_service.dart';
@@ -126,6 +127,11 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
         ),
         centerTitle: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.phonelink_lock_rounded, color: Color(0xFF0D1117)),
+            onPressed: () => context.push('/otp-guard'),
+            tooltip: 'SIM Hijack & USSD Tools',
+          ),
           if (_allSms.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Color(0xFF0D1117)),

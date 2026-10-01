@@ -257,15 +257,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         route: '/sms-inbox',
       ),
       _CardData(
-        title: 'OTP & SIM\nHijack Guard',
-        subtitle: 'SIM Swap & Forwarding',
-        icon: Icons.phonelink_lock_rounded,
+        title: 'Hardware\nSecurity Vault',
+        subtitle: 'AES-256 Secret Storage',
+        icon: Icons.shield_rounded,
         gradient: const LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,
           colors: [Color(0xFF0B1B15), Color(0xFF0D3326)],
         ),
         accentColor: const Color(0xFF10B981),
-        route: '/otp-guard',
+        route: '/vault',
       ),
       _CardData(
         title: 'Data Breach\nCheck',
