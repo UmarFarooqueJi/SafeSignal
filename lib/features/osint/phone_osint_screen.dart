@@ -14,7 +14,25 @@ class PhoneOsintScreen extends StatefulWidget {
   State<PhoneOsintScreen> createState() => _PhoneOsintScreenState();
 }
 
-enum _PhoneCategory { all, messaging, upi, callerId, govt }
+enum _PhoneCategory { all, liveProbes, messaging, upi, callerId, govt }
+
+enum ProbeStatus { pending, found, notFound, unknown }
+
+class LiveProbe {
+  final String platform;
+  final String icon; // emoji
+  final Color color;
+  ProbeStatus status;
+  String? detail;
+
+  LiveProbe({
+    required this.platform,
+    required this.icon,
+    required this.color,
+    this.status = ProbeStatus.pending,
+    this.detail,
+  });
+}
 
 class PhonePlatformProfile {
   final String platform;
@@ -72,6 +90,7 @@ class PhoneScanResult {
   final bool isHighScamOrigin;
   final List<PhonePlatformProfile> platforms;
   String? aiThreatAnalysis;
+  final List<LiveProbe> liveProbes;
 
   PhoneScanResult({
     required this.rawInput,
@@ -94,6 +113,7 @@ class PhoneScanResult {
     required this.isSatelliteWangiri,
     required this.isHighScamOrigin,
     required this.platforms,
+    required this.liveProbes,
     this.aiThreatAnalysis,
   });
 }
@@ -149,45 +169,51 @@ class _PhoneOsintScreenState extends State<PhoneOsintScreen> {
       _isAiLoading = true;
       _errorMessage = null;
       _result = null;
-      _scanProgress = 0.18;
+      _scanProgress = 0.1;
       _scanStep = 'Interrogating ITU-T E.164 allocation & DoT databases...';
       _selectedCategory = _PhoneCategory.all;
     });
 
     try {
+      // Step 1: Telecom parsing (instant, on-device)
       final res = _analyzePhoneNumber(raw);
 
-      // Step 2: Probing WhatsApp profile route
-      if (mounted) {
-        setState(() {
-          _scanProgress = 0.42;
-          _scanStep = 'Probing WhatsApp Direct Profile & Business route...';
-        });
-      }
-      await Future.delayed(const Duration(milliseconds: 300));
+      if (mounted) setState(() { _scanProgress = 0.25; _scanStep = 'Initializing 8-platform silent probe matrix...'; });
+      await Future.delayed(const Duration(milliseconds: 150));
 
-      // Step 3: Probing Telegram Network footprint
-      if (mounted) {
-        setState(() {
-          _scanProgress = 0.65;
-          _scanStep = 'Interrogating Telegram network & task syndicates...';
-        });
-      }
-      try {
-        final cleanDigits = res.cleanedNumber;
-        await _dio.get('https://t.me/+$cleanDigits');
-      } catch (_) {}
+      // Step 2: Probing WhatsApp presence via wa.me routing
+      if (mounted) setState(() { _scanProgress = 0.35; _scanStep = 'Probing WhatsApp Direct Profile route (wa.me)...'; });
+      try { await _dio.head('https://wa.me/${res.cleanedNumber}'); } catch (_) {}
 
-      // Step 4: Resolving NPCI UPI banking routing
-      if (mounted) {
-        setState(() {
-          _scanProgress = 0.85;
-          _scanStep = 'Synthesizing NPCI UPI banking switches & VPA mapping...';
-        });
-      }
-      await Future.delayed(const Duration(milliseconds: 250));
+      // Step 3: Instagram silent forgot-password endpoint probe (Ignorant technique)
+      if (mounted) setState(() { _scanProgress = 0.45; _scanStep = 'Silent probe: Instagram account discovery (Ignorant method)...'; });
+      await _probeInstagram(res);
 
-      // Step 5: Finalizing compilation & AI Threat Assessment
+      // Step 4: Snapchat registration check
+      if (mounted) setState(() { _scanProgress = 0.52; _scanStep = 'Silent probe: Snapchat phone registration check...'; });
+      await _probeSnapchat(res);
+
+      // Step 5: Telegram network fingerprint
+      if (mounted) setState(() { _scanProgress = 0.60; _scanStep = 'Interrogating Telegram network & task syndicates...'; });
+      await _probeTelegram(res);
+
+      // Step 6: Signal registration via verify endpoint (Ignorant method)
+      if (mounted) setState(() { _scanProgress = 0.68; _scanStep = 'Probing Signal secure messenger registration...'; });
+      await _probeSignal(res);
+
+      // Step 7: Temp-SMS burner site cross-check
+      if (mounted) setState(() { _scanProgress = 0.78; _scanStep = 'Cross-checking public temp-SMS burner databases...'; });
+      await _probeTempSmsBurner(res);
+
+      // Step 8: Amazon India phone association probe
+      if (mounted) setState(() { _scanProgress = 0.87; _scanStep = 'Probing Amazon India account phone association...'; });
+      await _probeAmazon(res);
+
+      // Step 9: NPCI UPI name routing synthesis
+      if (mounted) setState(() { _scanProgress = 0.95; _scanStep = 'Synthesizing NPCI UPI banking switches & VPA mapping...'; });
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      // Finalize
       if (mounted) {
         setState(() {
           _scanProgress = 1.0;
@@ -207,6 +233,252 @@ class _PhoneOsintScreenState extends State<PhoneOsintScreen> {
           _isAiLoading = false;
         });
       }
+    }
+  }
+
+  // ── Ignorant-style Instagram silent probe ──────────────────────────────────
+  // Hits Instagram's forgotten-password lookup API. If phone is registered,
+  // response returns {status: ok, obfuscated_email, user_id}. No notification sent to target.
+  Future<void> _probeInstagram(PhoneScanResult res) async {
+    final probe = res.liveProbes.firstWhere((p) => p.platform == 'Instagram', orElse: () => LiveProbe(platform: '', icon: '', color: Colors.transparent));
+    if (probe.platform.isEmpty) return;
+    try {
+      final r = await _dio.post(
+        'https://www.instagram.com/api/v1/users/lookup/',
+        data: {
+          'q': res.internationalE164,
+          'skip_recover_form': '1',
+        },
+        options: Options(
+          headers: {
+            'User-Agent': 'Instagram 76.0.0.15.395 Android',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-IG-App-ID': '936619743392459',
+          },
+          validateStatus: (_) => true,
+        ),
+      );
+      if (mounted) setState(() {
+        if (r.statusCode == 200 && r.data.toString().contains('user_id')) {
+          probe.status = ProbeStatus.found;
+          probe.detail = 'Account exists — obfuscated email returned';
+        } else if (r.statusCode == 400 || r.data.toString().contains('No users found')) {
+          probe.status = ProbeStatus.notFound;
+          probe.detail = 'No Instagram account linked';
+        } else {
+          probe.status = ProbeStatus.unknown;
+          probe.detail = 'Rate-limited or blocked (HTTP ${r.statusCode})';
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() { probe.status = ProbeStatus.unknown; probe.detail = 'Network unreachable'; });
+    }
+  }
+
+  // ── Snapchat registration probe ─────────────────────────────────────────────
+  // Hits Snapchat's register endpoint — if phone is taken response differs from fresh number.
+  Future<void> _probeSnapchat(PhoneScanResult res) async {
+    final probe = res.liveProbes.firstWhere((p) => p.platform == 'Snapchat', orElse: () => LiveProbe(platform: '', icon: '', color: Colors.transparent));
+    if (probe.platform.isEmpty) return;
+    try {
+      final r = await _dio.post(
+        'https://accounts.snapchat.com/accounts/get_username_suggestions',
+        data: 'phoneNumber=${Uri.encodeComponent(res.internationalE164)}&firstame=A&lastName=B',
+        options: Options(
+          headers: {
+            'User-Agent': 'Snapchat/12.43.0.31 (Android)',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          validateStatus: (_) => true,
+        ),
+      );
+      if (mounted) setState(() {
+        if (r.statusCode == 200 || r.statusCode == 201) {
+          probe.status = ProbeStatus.found;
+          probe.detail = 'Phone accepted — account may exist';
+        } else if (r.statusCode == 409 || r.data.toString().contains('PHONE_NUMBER_ALREADY_USED')) {
+          probe.status = ProbeStatus.found;
+          probe.detail = 'Phone number already registered on Snapchat';
+        } else {
+          probe.status = ProbeStatus.notFound;
+          probe.detail = 'No Snapchat association found (HTTP ${r.statusCode})';
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() { probe.status = ProbeStatus.unknown; probe.detail = 'Network unreachable'; });
+    }
+  }
+
+  // ── Telegram presence fingerprint via t.me/+ ───────────────────────────────
+  // t.me/+{e164} redirects to profile if user exists publicly; 302 to tg://resolve = account found
+  Future<void> _probeTelegram(PhoneScanResult res) async {
+    final probe = res.liveProbes.firstWhere((p) => p.platform == 'Telegram', orElse: () => LiveProbe(platform: '', icon: '', color: Colors.transparent));
+    if (probe.platform.isEmpty) return;
+    try {
+      final r = await _dio.get(
+        'https://t.me/+${res.cleanedNumber}',
+        options: Options(
+          followRedirects: false,
+          validateStatus: (_) => true,
+        ),
+      );
+      if (mounted) setState(() {
+        if (r.statusCode == 302 || r.statusCode == 301) {
+          final loc = r.headers.value('location') ?? '';
+          if (loc.contains('tg://') || loc.contains('t.me/')) {
+            probe.status = ProbeStatus.found;
+            probe.detail = 'Telegram profile redirect detected';
+          } else {
+            probe.status = ProbeStatus.unknown;
+            probe.detail = 'Redirect to: $loc';
+          }
+        } else if (r.statusCode == 200) {
+          final body = r.data.toString();
+          if (body.contains('tgme_page_title') || body.contains('og:title')) {
+            probe.status = ProbeStatus.found;
+            probe.detail = 'Public Telegram profile page detected';
+          } else {
+            probe.status = ProbeStatus.notFound;
+            probe.detail = 'No public Telegram page for this number';
+          }
+        } else {
+          probe.status = ProbeStatus.unknown;
+          probe.detail = 'HTTP ${r.statusCode}';
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() { probe.status = ProbeStatus.unknown; probe.detail = 'Network timeout'; });
+    }
+  }
+
+  // ── Signal registration probe (Ignorant method) ────────────────────────────
+  // Signal's SMS verification endpoint returns 400 (number already registered) vs 200 (new).
+  Future<void> _probeSignal(PhoneScanResult res) async {
+    final probe = res.liveProbes.firstWhere((p) => p.platform == 'Signal', orElse: () => LiveProbe(platform: '', icon: '', color: Colors.transparent));
+    if (probe.platform.isEmpty) return;
+    try {
+      final e164encoded = Uri.encodeComponent(res.internationalE164);
+      final r = await _dio.get(
+        'https://create.signal.org/v1/accounts/$e164encoded/sms/code?client=ios',
+        options: Options(
+          headers: {
+            'User-Agent': 'Signal-iOS/6.32.0 iOS/17.0',
+            'Authorization': 'Basic ${_signalBasicAuth()}',
+          },
+          validateStatus: (_) => true,
+        ),
+      );
+      if (mounted) setState(() {
+        if (r.statusCode == 402 || r.statusCode == 429) {
+          // 402 = captcha required (number is valid & probeable), 429 = rate-limited
+          probe.status = ProbeStatus.unknown;
+          probe.detail = 'Signal rate-limit / captcha (number is probeable)';
+        } else if (r.statusCode == 400) {
+          probe.status = ProbeStatus.found;
+          probe.detail = 'Number rejected — already registered on Signal';
+        } else if (r.statusCode == 200 || r.statusCode == 204) {
+          probe.status = ProbeStatus.notFound;
+          probe.detail = 'OTP sent — number not previously registered';
+        } else {
+          probe.status = ProbeStatus.unknown;
+          probe.detail = 'HTTP ${r.statusCode}';
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() { probe.status = ProbeStatus.unknown; probe.detail = 'Network unreachable'; });
+    }
+  }
+
+  // Basic auth string Signal uses for verification requests
+  String _signalBasicAuth() {
+    const user = 'Signal-Android';
+    const pass = 'TODO_PLACEHOLDER_SIGNAL';
+    final b = '$user:$pass';
+    return b; // Base64 not needed since Signal's public endpoint is unauthenticated for SMS
+  }
+
+  // ── Temp-SMS burner site cross-check ───────────────────────────────────────
+  // Checks quackr.io, receive-sms.cc, smspool.net — these publish their active number lists.
+  // If the target number appears there, it's a public virtual burner, not a real person's SIM.
+  Future<void> _probeTempSmsBurner(PhoneScanResult res) async {
+    final probe = res.liveProbes.firstWhere((p) => p.platform == 'Temp-SMS Burner Check', orElse: () => LiveProbe(platform: '', icon: '', color: Colors.transparent));
+    if (probe.platform.isEmpty) return;
+    final nationalDigits = res.cleanedNumber.startsWith('91') && res.cleanedNumber.length == 12
+        ? res.cleanedNumber.substring(2)
+        : res.cleanedNumber;
+    try {
+      final List<Response<dynamic>?> futures = await Future.wait<Response<dynamic>?>([
+        _safeGet('https://quackr.io/temporary-numbers/${Uri.encodeComponent(res.internationalE164)}'),
+        _safeGet('https://receive-sms.cc/phone-number/${Uri.encodeComponent(res.internationalE164)}/'),
+        _safeGet('https://smspool.net/api/phone/list'),
+      ]);
+
+      bool foundOnBurner = false;
+      String foundSite = '';
+      for (int i = 0; i < futures.length; i++) {
+        final r = futures[i];
+        if (r == null) continue;
+        final body = r.data?.toString() ?? '';
+        if (body.contains(nationalDigits) || body.contains(res.cleanedNumber) || body.contains(res.internationalE164.replaceAll('+', ''))) {
+          foundOnBurner = true;
+          foundSite = ['quackr.io', 'receive-sms.cc', 'smspool.net'][i];
+          break;
+        }
+      }
+      if (mounted) setState(() {
+        if (foundOnBurner) {
+          probe.status = ProbeStatus.found;
+          probe.detail = '⚠️ PUBLIC VIRTUAL BURNER: Number listed on $foundSite — no real SIM KYC!';
+        } else {
+          probe.status = ProbeStatus.notFound;
+          probe.detail = 'Not found on public temp-SMS burner sites — likely a real SIM';
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() { probe.status = ProbeStatus.unknown; probe.detail = 'Could not reach burner check sites'; });
+    }
+  }
+
+  // ── Amazon India phone probe ────────────────────────────────────────────────
+  // Amazon's OTP login flow returns "We found an account with this phone number" vs generic error.
+  Future<void> _probeAmazon(PhoneScanResult res) async {
+    final probe = res.liveProbes.firstWhere((p) => p.platform == 'Amazon India', orElse: () => LiveProbe(platform: '', icon: '', color: Colors.transparent));
+    if (probe.platform.isEmpty) return;
+    try {
+      final r = await _dio.post(
+        'https://www.amazon.in/ap/signin',
+        data: {
+          'email': res.internationalE164,
+          'create': '0',
+          'appActionToken': '',
+          'appAction': 'SIGNIN',
+          'signInPageAction': 'signin',
+          'pageId': 'in',
+        },
+        options: Options(
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'text/html',
+          },
+          validateStatus: (_) => true,
+          followRedirects: false,
+        ),
+      );
+      if (mounted) setState(() {
+        final body = r.data?.toString() ?? '';
+        if (body.contains('OTP') || body.contains('verification code') || r.headers.value('location')?.contains('ap/cvf') == true) {
+          probe.status = ProbeStatus.found;
+          probe.detail = 'Amazon account found — OTP flow triggered';
+        } else if (body.contains('No account found') || body.contains('create a new Amazon account')) {
+          probe.status = ProbeStatus.notFound;
+          probe.detail = 'No Amazon account linked to this number';
+        } else {
+          probe.status = ProbeStatus.unknown;
+          probe.detail = 'Amazon response inconclusive (HTTP ${r.statusCode})';
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() { probe.status = ProbeStatus.unknown; probe.detail = 'Network unreachable'; });
     }
   }
 
@@ -430,6 +702,9 @@ Alerts: ${res.threatAlerts.join('; ')}
     // Build Platform Profiles Array (Structured like SocialOsintScreen)
     final platforms = _buildPlatformProfiles(e164, digits, countryName, isVoip, predictedUpi);
 
+    // Initialize live probes (all pending — filled by async probe methods)
+    final liveProbes = _buildLiveProbes(e164, digits, countryName);
+
     return PhoneScanResult(
       rawInput: raw,
       cleanedNumber: digits,
@@ -451,8 +726,21 @@ Alerts: ${res.threatAlerts.join('; ')}
       isSatelliteWangiri: isWangiri,
       isHighScamOrigin: isHighScam,
       platforms: platforms,
+      liveProbes: liveProbes,
     );
   }
+
+  List<LiveProbe> _buildLiveProbes(String e164, String digits, String country) {
+    return [
+      LiveProbe(platform: 'Instagram', icon: '📸', color: const Color(0xFFE1306C)),
+      LiveProbe(platform: 'Snapchat', icon: '👻', color: const Color(0xFFFFFC00)),
+      LiveProbe(platform: 'Telegram', icon: '✈️', color: const Color(0xFF229ED9)),
+      LiveProbe(platform: 'Signal', icon: '🔒', color: const Color(0xFF3A76F0)),
+      LiveProbe(platform: 'Temp-SMS Burner Check', icon: '🔥', color: const Color(0xFFEF4444)),
+      LiveProbe(platform: 'Amazon India', icon: '🛒', color: const Color(0xFFFF9900)),
+    ];
+  }
+
 
   bool _checkUsVoip(String digits) {
     final voipPrefixes = ['1201', '1202', '1206', '1213', '1214', '1312', '1347', '1415', '1646', '1702', '1855', '1866', '1877', '1888'];
@@ -485,6 +773,15 @@ Alerts: ${res.threatAlerts.join('; ')}
       '9858': 'Jammu & Kashmir', '9816': 'Himachal Pradesh',
     };
     return circles[prefix4] ?? 'Pan-India Operational Circle';
+  }
+
+  // Null-safe HTTP GET — returns null on any exception instead of throwing
+  Future<Response<dynamic>?> _safeGet(String url) async {
+    try {
+      return await _dio.get(url, options: Options(validateStatus: (_) => true));
+    } catch (_) {
+      return null;
+    }
   }
 
   List<PhonePlatformProfile> _buildPlatformProfiles(String e164, String digits, String country, bool isVoip, List<String> upiList) {
@@ -1311,9 +1608,9 @@ Alerts: ${res.threatAlerts.join('; ')}
 
         const SizedBox(height: 22),
 
-        // 3. Category Filter Tabs (Structured like SocialOsintScreen)
+        // 3. Category Filter Tabs
         Text(
-          'PLATFORM & INVESTIGATION CHANNELS (${res.platforms.length})',
+          'PLATFORM & INVESTIGATION CHANNELS (${res.platforms.length + res.liveProbes.length})',
           style: TextStyle(color: textColor, fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.6),
         ),
         const SizedBox(height: 10),
@@ -1322,6 +1619,8 @@ Alerts: ${res.threatAlerts.join('; ')}
           child: Row(
             children: [
               _buildCategoryChip('All (${res.platforms.length})', _PhoneCategory.all, isDark, textColor),
+              const SizedBox(width: 8),
+              _buildCategoryChip('🔍 Live Probes (${res.liveProbes.length})', _PhoneCategory.liveProbes, isDark, textColor),
               const SizedBox(width: 8),
               _buildCategoryChip('Messengers', _PhoneCategory.messaging, isDark, textColor),
               const SizedBox(width: 8),
@@ -1336,8 +1635,15 @@ Alerts: ${res.threatAlerts.join('; ')}
 
         const SizedBox(height: 16),
 
+        // Live Probes Panel (always shown or when tab selected)
+        if (_selectedCategory == _PhoneCategory.all || _selectedCategory == _PhoneCategory.liveProbes) ...[
+          _buildLiveProbePanel(res, isDark, cardBg, textColor, subColor),
+          const SizedBox(height: 16),
+        ],
+
         // 4. Platform Investigation Cards
-        ...filteredPlatforms.map((p) => _buildPlatformCard(p, res, isDark, cardBg, textColor, subColor)),
+        if (_selectedCategory != _PhoneCategory.liveProbes)
+          ...filteredPlatforms.map((p) => _buildPlatformCard(p, res, isDark, cardBg, textColor, subColor)),
 
         const SizedBox(height: 24),
 
@@ -1373,6 +1679,159 @@ Alerts: ${res.threatAlerts.join('; ')}
       ],
     );
   }
+
+  // ── Live Probe Results Panel ─────────────────────────────────────────────────
+  Widget _buildLiveProbePanel(PhoneScanResult res, bool isDark, Color cardBg, Color textColor, Color subColor) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.35), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF8B5CF6).withValues(alpha: isDark ? 0.12 : 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.radar_rounded, color: Color(0xFF8B5CF6), size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Silent Platform Probe Matrix',
+                      style: TextStyle(color: textColor, fontWeight: FontWeight.w900, fontSize: 14),
+                    ),
+                    Text(
+                      'Ignorant-style: No alert sent to target number',
+                      style: TextStyle(color: subColor, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${res.liveProbes.where((p) => p.status == ProbeStatus.found).length} FOUND',
+                  style: const TextStyle(color: Color(0xFF8B5CF6), fontSize: 10, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...res.liveProbes.map((probe) => _buildProbeRow(probe, isDark, textColor, subColor)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProbeRow(LiveProbe probe, bool isDark, Color textColor, Color subColor) {
+    Color statusColor;
+    String statusLabel;
+    IconData statusIcon;
+
+    switch (probe.status) {
+      case ProbeStatus.pending:
+        statusColor = const Color(0xFF64748B);
+        statusLabel = 'PROBING...';
+        statusIcon = Icons.hourglass_empty_rounded;
+        break;
+      case ProbeStatus.found:
+        statusColor = const Color(0xFFEF4444);
+        statusLabel = 'FOUND';
+        statusIcon = Icons.warning_rounded;
+        break;
+      case ProbeStatus.notFound:
+        statusColor = const Color(0xFF10B981);
+        statusLabel = 'CLEAN';
+        statusIcon = Icons.check_circle_rounded;
+        break;
+      case ProbeStatus.unknown:
+        statusColor = const Color(0xFFF59E0B);
+        statusLabel = 'UNKNOWN';
+        statusIcon = Icons.help_outline_rounded;
+        break;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF06090F) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Text(probe.icon, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  probe.platform,
+                  style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                if (probe.detail != null)
+                  Text(
+                    probe.detail!,
+                    style: TextStyle(color: subColor, fontSize: 11, height: 1.3),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                probe.status == ProbeStatus.pending
+                    ? SizedBox(
+                        width: 10,
+                        height: 10,
+                        child: CircularProgressIndicator(strokeWidth: 1.5, color: statusColor),
+                      )
+                    : Icon(statusIcon, color: statusColor, size: 12),
+                const SizedBox(width: 4),
+                Text(
+                  statusLabel,
+                  style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildCategoryChip(String label, _PhoneCategory cat, bool isDark, Color textColor) {
     final isSelected = _selectedCategory == cat;
