@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
+
+// ─── Theme Colors ────────────────────────────────────────────────────────────
+const _kScaffoldLight = Color(0xFFDEEBF7);
+const _kCardLight     = Colors.white;
+const _kTextMainLight = Color(0xFF0F172A);
+const _kBorderLight   = Color(0xFFCBDDF0);
+const _kBlue          = Color(0xFF0284C7);
+const _kRed           = Color(0xFFDC2626);
 
 class IncidentResponseScreen extends StatefulWidget {
   const IncidentResponseScreen({super.key});
@@ -16,9 +23,12 @@ class _IncidentResponseScreenState extends State<IncidentResponseScreen> {
   final TextEditingController _utrCtrl = TextEditingController();
   final TextEditingController _scammerInfoCtrl = TextEditingController();
   final TextEditingController _bankNameCtrl = TextEditingController();
-  String _generatedComplaint = '';
+  final TextEditingController _bankSearchCtrl = TextEditingController();
 
-  final List<Map<String, String>> _bankFreezeList = [
+  String _generatedComplaint = '';
+  String _bankQuery = '';
+
+  final List<Map<String, String>> _allBanks = [
     {
       'name': 'State Bank of India (SBI)',
       'tollFree': '18001234',
@@ -80,6 +90,16 @@ class _IncidentResponseScreenState extends State<IncidentResponseScreen> {
       'smsFreeze': '24x7 Helpdesk to lock Paytm wallet/account',
     },
   ];
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _utrCtrl.dispose();
+    _scammerInfoCtrl.dispose();
+    _bankNameCtrl.dispose();
+    _bankSearchCtrl.dispose();
+    super.dispose();
+  }
 
   void _generateComplaintText() {
     final amount = _amountCtrl.text.trim();
@@ -144,24 +164,36 @@ Aadhaar/ID: [LAST 4 DIGITS]
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scaffoldBg = isDark ? const Color(0xFF06090F) : _kScaffoldLight;
+    final textMain = isDark ? Colors.white : _kTextMainLight;
+
+    final filteredBanks = _allBanks.where((b) {
+      if (_bankQuery.isEmpty) return true;
+      final q = _bankQuery.toLowerCase();
+      return b['name']!.toLowerCase().contains(q) ||
+          b['tollFree']!.contains(q) ||
+          b['smsFreeze']!.toLowerCase().contains(q);
+    }).toList();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        title: const Text(
+        scrolledUnderElevation: 0,
+        title: Text(
           'Incident Response Kit',
           style: TextStyle(
             fontWeight: FontWeight.w900,
-            fontSize: 20,
-            color: Color(0xFF0F172A),
-            letterSpacing: -0.5,
+            fontSize: 18,
+            color: textMain,
+            letterSpacing: -0.3,
           ),
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0F172A), size: 20),
+          icon: Icon(Icons.arrow_back_ios_new, color: textMain, size: 20),
           onPressed: () => context.pop(),
         ),
       ),
@@ -174,22 +206,22 @@ Aadhaar/ID: [LAST 4 DIGITS]
             children: [
               // Hero Golden Hour Banner
               _buildGoldenHourBanner(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               // Emergency 1930 Helpline Tile
-              _buildEmergencyHelplineTile(),
+              _buildEmergencyHelplineTile(isDark),
               const SizedBox(height: 20),
 
               // Bank Nodal Freeze Directory
-              _buildBankFreezeSection(),
+              _buildBankFreezeSection(filteredBanks, isDark),
               const SizedBox(height: 20),
 
               // Instant FIR & Chakshu Complaint Formatter
-              _buildComplaintGenerator(),
+              _buildComplaintGenerator(isDark),
               const SizedBox(height: 20),
 
               // Evidence Preservation in Vault
-              _buildEvidenceVaultBanner(),
+              _buildEvidenceVaultBanner(isDark),
               const SizedBox(height: 32),
             ],
           ),
@@ -205,13 +237,13 @@ Aadhaar/ID: [LAST 4 DIGITS]
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF7F1D1D), Color(0xFF991B1B), Color(0xFF450A0A)],
+          colors: [Color(0xFF991B1B), Color(0xFFDC2626), Color(0xFF7F1D1D)],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFEF4444).withValues(alpha: 0.25),
-            blurRadius: 16,
+            color: const Color(0xFFDC2626).withValues(alpha: 0.35),
+            blurRadius: 18,
             offset: const Offset(0, 8),
           ),
         ],
@@ -224,13 +256,13 @@ Aadhaar/ID: [LAST 4 DIGITS]
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(
                   children: [
                     Icon(Icons.timer_outlined, size: 14, color: Colors.white),
-                    SizedBox(width: 4),
+                    SizedBox(width: 5),
                     Text(
                       'GOLDEN HOUR PROTOCOL',
                       style: TextStyle(
@@ -259,248 +291,371 @@ Aadhaar/ID: [LAST 4 DIGITS]
           ),
           const SizedBox(height: 8),
           const Text(
-            'Indian Cyber Crime Coordination Centre (I4C) reports that 80%+ of stolen funds can be frozen in the banking pipeline if 1930 is alerted within 120 minutes of transaction debit.',
-            style: TextStyle(fontSize: 13, color: Colors.white70, height: 1.45),
+            'Indian Cyber Crime Coordination Centre (I4C) data confirms that 80%+ of stolen funds can be frozen in the banking pipeline if 1930 is alerted within 120 minutes of unauthorized transaction debit.',
+            style: TextStyle(fontSize: 12.5, color: Colors.white, height: 1.45),
           ),
         ],
       ),
-    ).animate().fadeIn();
+    );
   }
 
-  Widget _buildEmergencyHelplineTile() {
+  Widget _buildEmergencyHelplineTile(bool isDark) {
+    final cardBg = isDark ? const Color(0xFF131926) : _kCardLight;
+    final textMain = isDark ? Colors.white : _kTextMainLight;
+
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFCA5A5), width: 1.5),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _kRed.withValues(alpha: 0.35), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFEE2E2),
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: _kRed.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFDC2626), size: 26),
+            child: const Icon(Icons.phone_in_talk_rounded, color: _kRed, size: 24),
           ),
-          const SizedBox(width: 14),
-          const Expanded(
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'Dial 1930 (Cyber Helpline)',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900, color: textMain),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   'CFCFRS National Anti-Fraud Gateway',
-                  style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
           ),
-          ElevatedButton(
-            onPressed: () => _callNumber('1930'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          const SizedBox(width: 10),
+          Material(
+            color: _kRed,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: () => _callNumber('1930'),
+              borderRadius: BorderRadius.circular(12),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.call, size: 14, color: Colors.white),
+                    SizedBox(width: 6),
+                    Text(
+                      'Call 1930',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            child: const Text('Call 1930', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBankFreezeSection() {
+  Widget _buildBankFreezeSection(List<Map<String, String>> banks, bool isDark) {
+    final textMain = isDark ? Colors.white : _kTextMainLight;
+    final cardBg = isDark ? const Color(0xFF131926) : _kCardLight;
+    final borderColor = isDark ? Colors.white12 : _kBorderLight;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'EMERGENCY BANK FREEZE DIRECTORY',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF64748B),
-            letterSpacing: 1.2,
-          ),
+        Row(
+          children: [
+            Text(
+              'EMERGENCY BANK FREEZE DIRECTORY',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                letterSpacing: 1.1,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${banks.length} Entities',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: _kBlue,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 10),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _bankFreezeList.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 10),
-          itemBuilder: (context, i) {
-            final b = _bankFreezeList[i];
+
+        // Search Bar for Banks
+        Container(
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderColor),
+          ),
+          child: TextField(
+            controller: _bankSearchCtrl,
+            onChanged: (val) => setState(() => _bankQuery = val),
+            style: TextStyle(fontSize: 13, color: textMain),
+            decoration: InputDecoration(
+              hintText: 'Search Bank or Payment App (SBI, HDFC, PhonePe)...',
+              hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+              prefixIcon: Icon(Icons.search_rounded, size: 18, color: isDark ? Colors.white54 : const Color(0xFF64748B)),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // List of Banks
+        if (banks.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(20),
+            alignment: Alignment.center,
+            child: Text(
+              'No bank found matching "$_bankQuery"',
+              style: TextStyle(color: isDark ? Colors.white38 : Colors.black45, fontSize: 13),
+            ),
+          )
+        else
+          ...banks.map((b) {
             return Container(
+              margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: borderColor),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const Icon(Icons.account_balance_rounded, size: 20, color: Color(0xFF2563EB)),
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: _kBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.account_balance_rounded, size: 19, color: _kBlue),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           b['name']!,
-                          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: textMain),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          b['smsFreeze']!,
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                        const SizedBox(height: 3),
+                        InkWell(
+                          onTap: () => _copyToClipboard(b['smsFreeze']!, 'SMS Protocol'),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.copy_rounded, size: 11, color: isDark ? Colors.white54 : const Color(0xFF64748B)),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  b['smsFreeze']!,
+                                  style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : const Color(0xFF64748B)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () => _callNumber(b['tollFree']!),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0F172A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(10),
+                    child: InkWell(
+                      onTap: () => _callNumber(b['tollFree']!),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.call, size: 12, color: Colors.white),
+                            const SizedBox(width: 5),
+                            Text(
+                              b['tollFree']!,
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    icon: const Icon(Icons.call, size: 14),
-                    label: Text(b['tollFree']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
             );
-          },
-        ),
+          }),
       ],
     );
   }
 
-  Widget _buildComplaintGenerator() {
+  Widget _buildComplaintGenerator(bool isDark) {
+    final textMain = isDark ? Colors.white : _kTextMainLight;
+    final cardBg = isDark ? const Color(0xFF131926) : _kCardLight;
+    final borderColor = isDark ? Colors.white12 : _kBorderLight;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.description_rounded, color: Color(0xFF2563EB), size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Instant Cybercrime Portal FIR Generator',
-                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _kBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.description_rounded, color: _kBlue, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Cybercrime FIR & Chakshu Generator',
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900, color: textMain),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Fills a legally formatted complaint statement ready to copy into cybercrime.gov.in and DoT Chakshu.',
-            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          Text(
+            'Automatically formats a legally grounded complaint statement ready to submit on cybercrime.gov.in and DoT Chakshu.',
+            style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : const Color(0xFF64748B)),
           ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _amountCtrl,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Stolen Amount (₹)',
-              labelStyle: const TextStyle(fontSize: 12),
-              isDense: true,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
+          const SizedBox(height: 16),
+          _buildTextField(_amountCtrl, 'Stolen Amount (₹)', 'e.g. 25000', TextInputType.number, isDark),
           const SizedBox(height: 10),
-          TextField(
-            controller: _utrCtrl,
-            decoration: InputDecoration(
-              labelText: 'Transaction UTR / Ref ID (12 digits)',
-              labelStyle: const TextStyle(fontSize: 12),
-              isDense: true,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
+          _buildTextField(_utrCtrl, 'Transaction UTR / Ref ID (12 digits)', 'e.g. 429381928472', TextInputType.text, isDark),
           const SizedBox(height: 10),
-          TextField(
-            controller: _scammerInfoCtrl,
-            decoration: InputDecoration(
-              labelText: 'Scammer Phone / UPI ID / Telegram handle',
-              labelStyle: const TextStyle(fontSize: 12),
-              isDense: true,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
+          _buildTextField(_scammerInfoCtrl, 'Scammer Phone / UPI ID / Handle', 'e.g. 9876543210 or scammer@upi', TextInputType.text, isDark),
           const SizedBox(height: 10),
-          TextField(
-            controller: _bankNameCtrl,
-            decoration: InputDecoration(
-              labelText: 'Your Bank / Payment App (SBI, GPay, etc.)',
-              labelStyle: const TextStyle(fontSize: 12),
-              isDense: true,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          _buildTextField(_bankNameCtrl, 'Your Bank / Payment App', 'e.g. SBI, HDFC, PhonePe', TextInputType.text, isDark),
+          const SizedBox(height: 16),
+          Material(
+            color: _kBlue,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: _generateComplaintText,
+              borderRadius: BorderRadius.circular(12),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 13),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.bolt_rounded, size: 18, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      'Generate Legal Complaint Draft',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
-          ElevatedButton.icon(
-            onPressed: _generateComplaintText,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              minimumSize: const Size.fromHeight(44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            icon: const Icon(Icons.bolt_rounded, size: 18),
-            label: const Text('Generate Pre-formatted Complaint', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
           ),
           if (_generatedComplaint.isNotEmpty) ...[
             const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFCBD5E1)),
+                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
                     children: [
-                      const Text(
-                        'FORMATTED STATEMENT',
-                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900, color: Color(0xFF64748B)),
+                      Text(
+                        'LEGAL STATEMENT FORMATTED',
+                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900, color: isDark ? Colors.white70 : const Color(0xFF64748B)),
                       ),
                       const Spacer(),
-                      ElevatedButton.icon(
-                        onPressed: () => _copyToClipboard(_generatedComplaint, 'Official Complaint Statement'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0F172A),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      Material(
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(8),
+                        child: InkWell(
+                          onTap: () => _copyToClipboard(_generatedComplaint, 'Official Complaint Statement'),
+                          borderRadius: BorderRadius.circular(8),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.copy_rounded, size: 12, color: Colors.white),
+                                SizedBox(width: 5),
+                                Text('Copy Draft', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
                         ),
-                        icon: const Icon(Icons.copy_rounded, size: 12),
-                        label: const Text('Copy Statement', style: TextStyle(fontSize: 11)),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
+                  const SizedBox(height: 10),
+                  SelectableText(
                     _generatedComplaint,
-                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Color(0xFF1E293B)),
+                    style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: isDark ? Colors.white : const Color(0xFF1E293B), height: 1.4),
                   ),
                 ],
               ),
@@ -513,10 +668,11 @@ Aadhaar/ID: [LAST 4 DIGITS]
                     onPressed: () => launchUrl(Uri.parse('https://cybercrime.gov.in/'), mode: LaunchMode.externalApplication),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      side: BorderSide(color: borderColor),
                     ),
-                    icon: const Icon(Icons.open_in_new_rounded, size: 14),
-                    label: const Text('cybercrime.gov.in', style: TextStyle(fontSize: 12)),
+                    icon: const Icon(Icons.open_in_new_rounded, size: 14, color: _kBlue),
+                    label: const Text('cybercrime.gov.in', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _kBlue)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -525,10 +681,11 @@ Aadhaar/ID: [LAST 4 DIGITS]
                     onPressed: () => launchUrl(Uri.parse('https://sancharsaathi.gov.in/sfc/'), mode: LaunchMode.externalApplication),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      side: BorderSide(color: borderColor),
                     ),
-                    icon: const Icon(Icons.open_in_new_rounded, size: 14),
-                    label: const Text('DoT Chakshu', style: TextStyle(fontSize: 12)),
+                    icon: const Icon(Icons.open_in_new_rounded, size: 14, color: _kBlue),
+                    label: const Text('DoT Chakshu', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _kBlue)),
                   ),
                 ),
               ],
@@ -539,22 +696,47 @@ Aadhaar/ID: [LAST 4 DIGITS]
     );
   }
 
-  Widget _buildEvidenceVaultBanner() {
+  Widget _buildTextField(TextEditingController ctrl, String label, String hint, TextInputType type, bool isDark) {
+    final borderColor = isDark ? Colors.white12 : _kBorderLight;
+    final textMain = isDark ? Colors.white : _kTextMainLight;
+
+    return TextField(
+      controller: ctrl,
+      keyboardType: type,
+      style: TextStyle(fontSize: 13, color: textMain),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : const Color(0xFF64748B)),
+        hintText: hint,
+        hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white24 : Colors.black26),
+        isDense: true,
+        filled: true,
+        fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: borderColor)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: borderColor)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _kBlue, width: 1.5)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      ),
+    );
+  }
+
+  Widget _buildEvidenceVaultBanner(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFF0B1B15),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: const Color(0xFF10B981).withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 24),
+            child: const Icon(Icons.shield_rounded, color: Color(0xFF10B981), size: 24),
           ),
           const SizedBox(width: 14),
           const Expanded(
@@ -562,26 +744,32 @@ Aadhaar/ID: [LAST 4 DIGITS]
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Preserve Evidence in Vault',
+                  'Hardware Security Vault',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Lock scam screenshots & transaction receipts behind biometric encryption.',
+                  'Lock scam evidence & UTR receipts behind AES-256 hardware biometric encryption.',
                   style: TextStyle(fontSize: 11.5, color: Colors.white70),
                 ),
               ],
             ),
           ),
-          ElevatedButton(
-            onPressed: () => context.push('/vault'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          const SizedBox(width: 10),
+          Material(
+            color: const Color(0xFF10B981),
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              onTap: () => context.push('/vault'),
+              borderRadius: BorderRadius.circular(10),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Text(
+                  'Open Vault',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
             ),
-            child: const Text('Open Vault', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

@@ -7,19 +7,52 @@
   [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)](#)
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-  [![Download APK](https://img.shields.io/badge/Download-Release%20APK%20(v1.1.0)-success?style=for-the-badge&logo=android&logoColor=white)](https://github.com/UmarFarooqueJi/SafeSignal/releases/latest)
+  [![Download APK](https://img.shields.io/badge/Download-Release%20APK%20(v1.2.6)-success?style=for-the-badge&logo=android&logoColor=white)](https://github.com/UmarFarooqueJi/SafeSignal/releases/latest)
   <br>
   <b>🚀 Powered by Hybrid AI Orchestration & Real-time Threat Intelligence</b>
 </div>
 
 <br>
 
+---
+
+## 📱 App Experience & Feature Showcase
+
 <div align="center">
-  <img src="docs/screenshots/home.png" alt="SafeSignal Home Dashboard" width="240" style="margin-right: 12px; border-radius: 16px;" />
-  <img src="docs/screenshots/sidebar.png" alt="SafeSignal Menu & Tools" width="240" style="border-radius: 16px;" />
-</div>
+
+### 🌟 Core Dashboard & Experience
+| Splash Screen | Threat Command Center | Security Tools Grid |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/01_splash_screen.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/02_home_screen.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/03_home_scrolled.png" width="230" style="border-radius: 14px;" /> |
+| **Instant Boot & Diagnostics** | **Real-Time Threat Score & Monitoring** | **One-Tap Access to 12+ Defense Modules** |
 
 <br>
+
+### 🚨 Rapid Incident Response (I4C Golden Hour Protocol)
+| Golden Hour & 1930 Helpline | Emergency Bank Freeze Directory | Legal FIR Complaint Generator |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/04_incident_response_top.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/05_incident_response_bank_directory.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/06_incident_response_complaint_generator.png" width="230" style="border-radius: 14px;" /> |
+| **Direct Gateway to National 1930 Helpline** | **One-Touch Dial & Freeze for 10+ Major Banks** | **Automated Section 66D IT Act Legal Draft** |
+
+<br>
+
+### 🛡️ Threat Defense & Detection Engines
+| Website & Phishing Shield | WiFi Network Guard | SMS Scam & Smishing Radar |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/07_website_analyzer.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/08_wifi_security_scanner.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/10_sms_inbox_scanner.png" width="230" style="border-radius: 14px;" /> |
+| **Heuristic URL & Spoofing Inspector** | **Rogue AP & MITM Encryption Verifier** | **Real-Time SMS & OTP Protection** |
+
+<br>
+
+### 🔐 Hardware Vault & Intelligence Engines
+| Biometric Hardware Vault | Digital OSINT Scanner | Social Footprint Scanner |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/11_hardware_vault.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/09_digital_osint.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/social_osint.png" width="230" style="border-radius: 14px;" /> |
+| **AES-256 Android Keystore Biometric Safe** | **Cross-Platform Digital Identity Tracing** | **Zero-Dependency Username Exposure Auditing** |
+
+</div>
+
+---
 
 ## 🌟 Overview & Mission
 
@@ -31,34 +64,49 @@ Whether it is a fake UPI QR code at a local store, a suspicious SMS claiming you
 
 ## ⚡ Core Capabilities & Features
 
-### 1. 🔍 Phishing & URL Shield
+### 1. 🚨 Financial Fraud Incident Response & Golden Hour Defense
+- Direct integration with **National Cyber Crime Reporting Portal (1930 Helpline)**.
+- **Emergency Nodal Bank Freeze Directory**: Instant one-touch direct dialer to freeze compromised accounts across SBI, HDFC, ICICI, Axis, PNB, Kotak, PhonePe, Paytm, Google Pay, and Airtel Payments Bank.
+- **Automated Police FIR Draft Generator**: Generates formal, legally-structured cybercrime complaints under **Section 66D of the Information Technology Act, 2000**.
+- **Golden Hour Guidelines**: Actionable immediate steps to stop illicit money siphoning within the crucial first 2 hours.
+
+### 2. 🔐 Hardware-Backed Biometric Security Vault
+- Military-grade **AES-256 encryption** backed by Android Keystore hardware security module (Keymaster/StrongBox).
+- Biometric authentication (fingerprint / face unlock) required to access confidential notes, passwords, and sensitive cards.
+- Complete offline local storage with zero cloud leaks.
+
+### 3. 🔍 Phishing & Malicious URL Shield
 - Deep inspection of URLs for homograph attacks, typosquatting, shortener abuse, and malicious redirect chains.
 - Multi-engine verification using **Google Safe Browsing** and **VirusTotal**.
 - AI-synthesized security verdict explaining technical risk indicators in plain language.
 
-### 2. 💸 UPI & QR Code Fraud Guard
+### 4. 💸 UPI & QR Code Fraud Guard
 - Instant scanning of UPI payment QR codes (`upi://pay`).
 - Verifies merchant VPA legitimacy and warns against common **UPI Collect Request Scams** and fake refund traps.
 - Integrated with local cache and real-time crowd-sourced threat intelligence.
 
-### 3. 📱 Deep Device Security Audit
+### 5. 📱 Deep Device Security Audit & Spyware Radar
 - Scans system integrity, root status, Magisk/SuperSU footprints, and bootloader status.
 - Detects unsafe developer options and USB debugging states.
 - Audits third-party applications against dangerous permission matrices (`READ_SMS`, `READ_CALL_LOG`, `SYSTEM_ALERT_WINDOW`).
 
-### 4. ✉️ Data Breach & Identity Monitor
+### 6. 🌐 Digital OSINT & Social Footprint Scanner
+- High-speed username enumeration and public profile footprint analysis across multiple major web platforms.
+- Completely serverless & local — no external paid subscriptions required.
+
+### 7. ✉️ Data Breach & Identity Monitor
 - Checks email credentials against public database leaks (via HaveIBeenPwned & XposedOrNot).
 - Prioritized recovery steps and tailored advisories for compromised accounts.
 
-### 5. 📶 WiFi Network Threat Inspector
+### 8. 📶 WiFi Network Threat Inspector
 - Identifies unencrypted open hotspots, captive portals (MITM traps), and rogue access points.
 - Analyzes gateway routing anomalies and DNS security settings.
 
-### 6. 🚨 Real-time SMS & Call Screening (Android)
+### 9. 🛡️ Real-time SMS & Call Screening (Android)
 - Automatic background screening of incoming SMS messages for smishing, fake KYC alerts, and OTP theft attempts.
 - Incoming call pattern detection for commercial/telemarketing prefixes and international scam spoofs.
 
-### 7. 📰 Live Cyber Threat Feed
+### 10. 📰 Live Cyber Threat Feed
 - Real-time aggregation of cybersecurity advisories, fraud trends, and vulnerability reports with language localization (Hindi / English).
 
 ---
