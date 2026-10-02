@@ -36,19 +36,11 @@
 
 <br>
 
-### 🛡️ Threat Defense & Detection Engines
-| Website & Phishing Shield | WiFi Network Guard | SMS Scam & Smishing Radar |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/07_website_analyzer.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/08_wifi_security_scanner.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/10_sms_inbox_scanner.png" width="230" style="border-radius: 14px;" /> |
-| **Heuristic URL & Spoofing Inspector** | **Rogue AP & MITM Encryption Verifier** | **Real-Time SMS & OTP Protection** |
-
-<br>
-
-### 🔐 Hardware Vault & Intelligence Engines
-| Biometric Hardware Vault | Digital OSINT Scanner | Social Footprint Scanner |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/11_hardware_vault.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/09_digital_osint.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/social_osint.png" width="230" style="border-radius: 14px;" /> |
-| **AES-256 Android Keystore Biometric Safe** | **Cross-Platform Digital Identity Tracing** | **Zero-Dependency Username Exposure Auditing** |
+### 🛡️ Live Threat Defense
+| SMS Scam & Smishing Radar |
+| :---: |
+| <img src="docs/screenshots/10_sms_inbox_scanner.png" width="230" style="border-radius: 14px;" /> |
+| **Real-Time SMS & OTP Protection** |
 
 </div>
 
