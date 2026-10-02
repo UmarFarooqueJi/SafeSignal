@@ -77,39 +77,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           bottom: false,
           child: FadeTransition(
             opacity: _fadeAnim,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Header (sticky — never scrolls) ─────────────────────
-                _buildHeader(context),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 60),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Header (scrolls smoothly with entire page) ──────────────
+                  _buildHeader(context),
 
-                // ── Scrollable content below header ──────────────────────
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const ClampingScrollPhysics(),
-                    padding: const EdgeInsets.only(bottom: 60),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 20),
+                  // ── Device Secured Banner ──────────────────────────────────
+                  _buildSecuredBanner(context),
 
-                        // ── Device Secured Banner ─────────────────────────────
-                        _buildSecuredBanner(context),
+                  const SizedBox(height: 24),
 
-                        const SizedBox(height: 24),
+                  // ── 2-col Feature Cards ────────────────────────────────────
+                  _buildCardGrid(context),
 
-                        // ── 2-col Feature Cards ───────────────────────────────
-                        _buildCardGrid(context),
+                  const SizedBox(height: 24),
 
-                        const SizedBox(height: 24),
-
-                        // ── Helpline ──────────────────────────────────────────
-                        _buildHelplineCard(context),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                  // ── Helpline ───────────────────────────────────────────────
+                  _buildHelplineCard(context),
+                ],
+              ),
             ),
           ),
         ),
