@@ -47,7 +47,7 @@
 ### 🚨 Rapid Incident Response (I4C Golden Hour Protocol)
 | Golden Hour & 1930 Helpline | Emergency Bank Freeze Directory | Legal FIR Complaint Generator |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/04_incident_response_top.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/05_incident_response_bank_directory.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/06_incident_response_complaint_generator.png" width="230" style="border-radius: 14px;" /> |
+| <img src="docs/screenshots/mockups/09_incident_response_top.png" width="235" /> | <img src="docs/screenshots/mockups/10_incident_response_bank_directory.png" width="235" /> | <img src="docs/screenshots/mockups/11_incident_response_complaint_generator.png" width="235" /> |
 | **Direct Gateway to National 1930 Helpline** | **One-Touch Dial & Freeze for 10+ Major Banks** | **Automated Section 66D IT Act Legal Draft** |
 
 <br>
@@ -55,7 +55,7 @@
 ### 🛡️ Live Threat Defense
 | SMS Scam & Smishing Radar |
 | :---: |
-| <img src="docs/screenshots/10_sms_inbox_scanner.png" width="230" style="border-radius: 14px;" /> |
+| <img src="docs/screenshots/mockups/12_sms_inbox_scanner.png" width="280" /> |
 | **Real-Time SMS & OTP Protection** |
 
 </div>
