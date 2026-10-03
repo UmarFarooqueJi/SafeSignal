@@ -56,7 +56,7 @@ class SafeSignalAttribution {
   static const String kLicense = 'SafeSignal Source-Available License v1.0';
 
   /// App version (canonical — update on every release).
-  static const String kVersion = '1.2.1';
+  static const String kVersion = '1.3.0';
 
   /// Build number.
   static const int kBuildNumber = 7;
