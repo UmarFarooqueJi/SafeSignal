@@ -1,7 +1,7 @@
 /*
  * SafeSignal Mobile Security Suite
  * Module: Hardware-Encrypted Security Vault & Document Guard
- * Author: Umar Farooque (umarfarooque@safesignal.app)
+ * Author: Umar Farooque (https://github.com/UmarFarooqueJi)
  * Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
  *
  * AES-256 hardware-backed vault using Android KeyStore, FlutterSecureStorage,

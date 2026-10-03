@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // SafeSignal Mobile Security Suite
 // Module: Hybrid AI Orchestration Engine with Circuit Breaker
-// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Author: Umar Farooque (https://github.com/UmarFarooqueJi)
 // Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
 // Circuit-breaker: OpenRouter → DeepSeek → Local Rule Engine (degraded)
 // -----------------------------------------------------------------------------
@@ -102,7 +102,7 @@ Write ALL text in $langName.
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${AppConstants.openRouterApiKey}',
-          'HTTP-Referer': 'https://safesignal.app',
+          'HTTP-Referer': 'https://github.com/UmarFarooqueJi/SafeSignal',
         },
         sendTimeout: const Duration(seconds: 20),
         receiveTimeout: const Duration(seconds: 20),

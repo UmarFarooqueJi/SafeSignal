@@ -1,7 +1,7 @@
 /*
  * SafeSignal Mobile Security Suite
  * Module: Hardware-Backed Vault Cryptographic Engine
- * Author: Umar Farooque (umarfarooque@safesignal.app)
+ * Author: Umar Farooque (https://github.com/UmarFarooqueJi)
  * Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
  *
  * Implements zero-cloud, hardware-isolated AES-256-CBC/GCM encryption

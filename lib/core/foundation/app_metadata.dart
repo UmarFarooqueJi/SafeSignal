@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // SafeSignal Mobile Security Suite
 // Module: Application Metadata & Build Registry
-// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Author: Umar Farooque (https://github.com/UmarFarooqueJi)
 // Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
 // -----------------------------------------------------------------------------
 
@@ -50,7 +50,8 @@ class AppMetadata {
   static const String releaseChannel = 'production';
 
   // ─── Support ──────────────────────────────────────────────────────────────
-  static const String supportEmail = 'support@safesignal.app';
+  static const String supportContact =
+      'https://github.com/UmarFarooqueJi/SafeSignal/issues';
   static const String privacyPolicyUrl =
       'https://github.com/UmarFarooqueJi/SafeSignal/blob/main/PRIVACY.md';
   static const String termsUrl =

@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // SafeSignal Mobile Security Suite
 // Module: Community Threat Intelligence Service (100% On-Device Engine)
-// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Author: Umar Farooque (https://github.com/UmarFarooqueJi)
 // Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
 // -----------------------------------------------------------------------------
 

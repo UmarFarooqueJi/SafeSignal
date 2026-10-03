@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // SafeSignal Mobile Security Suite
 // Module: Functional Error Handling (Result<T, E> Type)
-// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Author: Umar Farooque (https://github.com/UmarFarooqueJi)
 // Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
 //
 // Implements a type-safe Result monad replacing raw try/catch at API boundaries.

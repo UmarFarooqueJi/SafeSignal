@@ -307,7 +307,7 @@ User Note / Query: ${text.isEmpty || text == '[Screenshot Analysis Request]' ? '
     dio.options.headers = {
       'Authorization': 'Bearer $apiKey',
       'Content-Type': 'application/json',
-      if (AppConstants.openRouterApiKey.isNotEmpty) 'HTTP-Referer': 'https://safesignal.app',
+      if (AppConstants.openRouterApiKey.isNotEmpty) 'HTTP-Referer': 'https://github.com/UmarFarooqueJi/SafeSignal',
     };
     dio.options.connectTimeout = const Duration(seconds: 25);
     dio.options.receiveTimeout = const Duration(seconds: 25);

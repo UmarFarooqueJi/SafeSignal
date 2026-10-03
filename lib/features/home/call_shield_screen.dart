@@ -1,7 +1,7 @@
 /*
  * SafeSignal Mobile Security Suite
  * Module: Real Call Shield & Telecom Fraud Defense Center
- * Author: Umar Farooque (umarfarooque@safesignal.app)
+ * Author: Umar Farooque (https://github.com/UmarFarooqueJi)
  * Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
  *
  * Backed by native Android CallScreeningService:

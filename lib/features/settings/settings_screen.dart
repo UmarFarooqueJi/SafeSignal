@@ -868,13 +868,11 @@ class _AboutSafeSignalPanel extends StatelessWidget {
   const _AboutSafeSignalPanel({required this.isDark});
 
   // ── Attribution constants (referenced from SafeSignalAttribution) ──────────
-  static const String _developer = 'Umar Farooque';
-  static const String _email = 'umarfarooque@safesignal.app';
-  static const String _org = 'SafeSignal Technologies';
-  static const String _version = '1.2.1';
-  static const int _build = 7;
-  static const String _tagline =
-      "India's First AI-Powered Mobile Threat Defence";
+  static const String _developer = SafeSignalAttribution.kDeveloper;
+  static const String _org = SafeSignalAttribution.kOrganization;
+  static const String _version = SafeSignalAttribution.kVersion;
+  static const int _build = SafeSignalAttribution.kBuildNumber;
+  static const String _tagline = SafeSignalAttribution.kTagline;
   static const String _github = 'github.com/UmarFarooqueJi/SafeSignal';
 
   @override
@@ -1019,15 +1017,6 @@ class _AboutSafeSignalPanel extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                     color: textMain,
                     letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _email,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: accent,
                   ),
                 ),
                 const SizedBox(height: 2),

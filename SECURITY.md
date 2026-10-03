@@ -12,16 +12,15 @@
 
 SafeSignal is a security-focused application. We take vulnerability reports seriously.
 
-**Contact:** umarfarooque@safesignal.app
-**PGP:** Contact via email to request encrypted channel
+**Contact:** Open a confidential GitHub Security Advisory at [SafeSignal Security Advisories](https://github.com/UmarFarooqueJi/SafeSignal/security/advisories)
+**Discussions:** [GitHub Discussions](https://github.com/UmarFarooqueJi/SafeSignal/discussions)
 **Response SLA:** 72 hours acknowledgment, 7 days triage
 
 ### Scope
 
 In-scope for responsible disclosure:
-- Authentication bypass in Supabase integration
+- Authentication bypass in local vault
 - Data leakage from Hive encrypted vault
-- Man-in-the-middle vulnerabilities in threat API calls
 - Local privilege escalation via native Kotlin services
 - Biometric authentication bypass
 
@@ -32,7 +31,7 @@ Out-of-scope:
 
 ### Process
 
-1. Email `umarfarooque@safesignal.app` with subject `[SECURITY] SafeSignal <brief>`
+1. Submit a confidential advisory via [GitHub Security Advisories](https://github.com/UmarFarooqueJi/SafeSignal/security/advisories)
 2. Include: affected version, reproduction steps, impact assessment
 3. We will acknowledge within 72 hours
 4. Coordinated disclosure after patch release

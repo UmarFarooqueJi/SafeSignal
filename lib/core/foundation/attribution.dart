@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // SafeSignal Mobile Security Suite
 // Module: Attribution Identity Guard v1.0
-// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Author: Umar Farooque (https://github.com/UmarFarooqueJi)
 // Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
 //
 // This file is REQUIRED to be present and unmodified in all distributions.
@@ -28,9 +28,6 @@ class SafeSignalAttribution {
   // ─── Immutable Identity Record ───────────────────────────────────────────
   /// Primary developer identity — must not be modified.
   static const String kDeveloper = 'Umar Farooque';
-
-  /// Developer contact — must not be modified.
-  static const String kDeveloperEmail = 'umarfarooque@safesignal.app';
 
   /// Organization name — must not be modified.
   static const String kOrganization = 'SafeSignal Technologies';
@@ -73,7 +70,7 @@ class SafeSignalAttribution {
   static const String _seal1 = 'safesignal::umarfarooque::2026';
   static const String _seal2 = 'UmarFarooqueJi::SafeSignal::security::india';
   static const String _seal3 =
-      'umarfarooque@safesignal.app::founder::architect';
+      'umarfarooque::UmarFarooqueJi::founder::architect';
 
   /// Returns true when the attribution seal is intact.
   /// Called at app startup and displayed in Settings → About.
@@ -98,7 +95,7 @@ SafeSignal Mobile Security Suite
 Version $kVersion (Build $kBuildNumber)
 
 Architect & Developer
-$kDeveloper <$kDeveloperEmail>
+$kDeveloper ($kDeveloperGithub)
 
 Organization
 $kOrganization

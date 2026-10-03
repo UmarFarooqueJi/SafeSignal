@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // SafeSignal Mobile Security Suite
 // Module: Domain-Specialized AI Expert Engine
-// Author: Umar Farooque (umarfarooque@safesignal.app)
+// Author: Umar Farooque (https://github.com/UmarFarooqueJi)
 // Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
 // Domain experts: WebGuard, NetShield, AppGuard, DeviceShield,
 // BreachWatch, FraudShield, TelecomShield AI personas.
@@ -245,7 +245,7 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${AppConstants.openRouterApiKey}',
-          'HTTP-Referer': 'https://safesignal.app',
+          'HTTP-Referer': 'https://github.com/UmarFarooqueJi/SafeSignal',
           'X-Title': 'SafeSignal',
         },
         sendTimeout: const Duration(seconds: 20),
