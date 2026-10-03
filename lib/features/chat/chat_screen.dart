@@ -690,9 +690,90 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
         checkedAt: DateTime.now(),
       );
     }
-    if (scamScore == 1 && safeScore == 0) return VerdictModel.mockCaution();
-    if (safeScore >= 1 || isOtp) return VerdictModel.mockSafe();
-    if (lower.contains('http') || lower.contains('www.')) return VerdictModel.mockCaution();
+    if (scamScore == 1 && safeScore == 0) {
+      return VerdictModel(
+        checkId: 'local_caution_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'UNCERTAIN',
+        confidence: 0.65,
+        scamType: 'Unverified Communication',
+        escalated: false,
+        why: isHindi ? [
+          'Is message mein kuch suspicious ya unverified sanket hain',
+          'Bina official verification ke kisi bhi anjaan link ya request par vishwas na karein',
+        ] : [
+          'This message contains potential warning indicators',
+          'Always verify sender identity through official channels before acting',
+        ],
+        whatToDo: isHindi ? [
+          'Kisi bhi anjaan vyakti se OTP ya PIN share na karein',
+          'Doubt hone par 1930 Cyber Helpline par call karein',
+        ] : [
+          'Never share OTP, passwords, or personal credentials',
+          'Call 1930 Cyber Helpline if suspicious',
+        ],
+        trendNote: null,
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek AI assistant hai. Zaruri maamlon mein 1930 pe call karein.' : 'SafeSignal is an AI assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+    if (safeScore >= 1 || isOtp) {
+      return VerdictModel(
+        checkId: 'local_safe_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'LIKELY_SAFE',
+        confidence: 0.88,
+        scamType: 'none',
+        escalated: false,
+        why: isHindi ? [
+          'Message ka format standard transactional ya official communication se match karta hai',
+          'Isme koi suspicious threatening language ya unauthorized payment link nahi mila',
+        ] : [
+          'Standard transactional or official notification pattern',
+          'No malicious phishing links or coercive language detected',
+        ],
+        whatToDo: isHindi ? [
+          'Ye sandesh surakshit lag raha hai',
+          'Hamesha dhyan rahe: Apna OTP kisi ke kehne par share na karein',
+        ] : [
+          'This communication appears legitimate',
+          'Remember: Never share OTPs or login codes over the phone',
+        ],
+        trendNote: null,
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek AI assistant hai.' : 'SafeSignal is an AI assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+    if (lower.contains('http') || lower.contains('www.')) {
+      return VerdictModel(
+        checkId: 'local_link_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'UNCERTAIN',
+        confidence: 0.70,
+        scamType: 'Unverified URL Link',
+        escalated: false,
+        why: isHindi ? [
+          'Is message mein external web link mojud hai',
+          'Anjaan links phishing ya fake payment gateway ho sakte hain',
+        ] : [
+          'Message contains an external web link',
+          'Unverified links may route to phishing forms or credential stealers',
+        ],
+        whatToDo: isHindi ? [
+          'Link par seedha click na karein',
+          'Ise SafeSignal ke "Website Scanner" tool mein paste karke check karein',
+        ] : [
+          'Do not open the link directly',
+          'Scan it first in SafeSignal\'s Website Scanner tool',
+        ],
+        trendNote: null,
+        language: language,
+        disclaimer: '',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
 
     // Default conversational response
     return VerdictModel(
@@ -801,7 +882,28 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    return VerdictModel.mockSafe();
+    return VerdictModel(
+      checkId: 'img_safe_${DateTime.now().millisecondsSinceEpoch}',
+      verdict: 'LIKELY_SAFE',
+      confidence: 0.85,
+      scamType: 'none',
+      escalated: false,
+      why: isHindi ? [
+        'Image mein koi obvious phishing ya digital arrest threat pattern nahi mila',
+      ] : [
+        'No overt fraud or scam signatures detected in image',
+      ],
+      whatToDo: isHindi ? [
+        'Hamesha sender aur context verify karein',
+      ] : [
+        'Always verify context before sharing personal information',
+      ],
+      trendNote: null,
+      language: language,
+      disclaimer: '',
+      inputText: '[Image uploaded — ${sizeKb.toStringAsFixed(0)} KB]',
+      checkedAt: DateTime.now(),
+    );
   }
 
   void clear() {
