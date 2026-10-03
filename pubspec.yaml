@@ -1,5 +1,5 @@
 name: safesignal
-description: "SafeSignal by UmarFarooqueJi — 100% on-device air-gapped cyber defense and anti-fraud suite for Android."
+description: "100% on-device air-gapped cyber defense and anti-fraud suite for Android. Local phishing radar, biometric AES-256 vault, OS exploit audit & rapid 1930 incident response."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

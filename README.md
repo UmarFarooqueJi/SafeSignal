@@ -3,10 +3,8 @@
 # 🛡️ SafeSignal
 
 ### The 100% On-Device, Air-Gapped Cyber Defense Suite for Android
-**Authored & Maintained by [@UmarFarooqueJi](https://github.com/UmarFarooqueJi) ([Umar Farooque](https://github.com/UmarFarooqueJi))**
+**Client-Side Scam Detection • Biometric Hardware Vault (AES-256) • Rapid 1930 Incident Response**
 
-[![Author](https://img.shields.io/badge/Author-UmarFarooqueJi-0ea5e9?style=flat&logo=github)](https://github.com/UmarFarooqueJi)
-[![Repository](https://img.shields.io/badge/SafeSignal-UmarFarooqueJi%2FSafeSignal-blue?style=flat&logo=github)](https://github.com/UmarFarooqueJi/SafeSignal)
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)](https://dart.dev)
 [![Architecture](https://img.shields.io/badge/Architecture-100%25%20On--Device-10B981?style=flat&logo=shield)](https://github.com/UmarFarooqueJi/SafeSignal)
@@ -14,9 +12,10 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/Security-Hardware%20AES--256-orange.svg)](https://github.com/UmarFarooqueJi/SafeSignal)
 [![Emergency Helpline](https://img.shields.io/badge/I4C%20Helpline-1930%20Direct-red.svg)](https://cybercrime.gov.in)
+[![Author](https://img.shields.io/badge/Author-Umar%20Farooque-0ea5e9?style=flat&logo=github)](https://github.com/UmarFarooqueJi)
 
 <p align="center">
-  <b>SafeSignal</b> (by <a href="https://github.com/UmarFarooqueJi"><b>UmarFarooqueJi</b></a>) is an ultra-private, client-side mobile security suite engineered to defend citizens against financial fraud, digital arrest scams, predatory loan spyware, and phishing threats — <b>operating 100% locally with zero cloud dependencies, zero external telemetry, and zero third-party API keys required.</b>
+  <b>SafeSignal</b> is an ultra-private, client-side mobile security suite engineered to defend citizens against financial fraud, digital arrest scams, predatory loan spyware, and phishing threats — <b>operating 100% locally with zero cloud dependencies, zero external telemetry, and zero third-party API keys required.</b>
 </p>
 
 </div>
