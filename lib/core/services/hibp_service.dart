@@ -2,7 +2,7 @@
 // SafeSignal Mobile Security Suite
 // Module: Identity Exposure & Dark Web Intelligence Service
 // Author: Umar Farooque (https://github.com/UmarFarooqueJi)
-// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
 // XposedOrNot breach analytics for dark-web credential monitoring.
 // -----------------------------------------------------------------------------
 import 'package:dio/dio.dart';

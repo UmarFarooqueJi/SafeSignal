@@ -39,4 +39,4 @@ Out-of-scope:
 
 ### Attribution
 
-SafeSignal was developed by **Umar Farooque** and is maintained by SafeSignal Technologies.
+SafeSignal was developed and is maintained by **Umar Farooque**.

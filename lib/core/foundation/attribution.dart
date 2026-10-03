@@ -2,7 +2,7 @@
 // SafeSignal Mobile Security Suite
 // Module: Attribution Identity Guard v1.0
 // Author: Umar Farooque (https://github.com/UmarFarooqueJi)
-// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
 //
 // This file is REQUIRED to be present and unmodified in all distributions.
 // Modification or removal constitutes a violation of the SafeSignal
@@ -28,9 +28,6 @@ class SafeSignalAttribution {
   // ─── Immutable Identity Record ───────────────────────────────────────────
   /// Primary developer identity — must not be modified.
   static const String kDeveloper = 'Umar Farooque';
-
-  /// Organization name — must not be modified.
-  static const String kOrganization = 'SafeSignal Technologies';
 
   /// GitHub profile of the original author.
   static const String kDeveloperGithub = 'https://github.com/UmarFarooqueJi';
@@ -83,7 +80,7 @@ class SafeSignalAttribution {
 
   /// Full one-line copyright string.
   static String get copyrightLine =>
-      'Copyright © $kCopyrightYear $kOrganization. Developed by $kDeveloper.';
+      'Copyright © $kCopyrightYear $kDeveloper. All rights reserved.';
 
   /// Short attribution for display in UI.
   static String get displayAttribution => 'Developed by $kDeveloper';
@@ -96,9 +93,6 @@ Version $kVersion (Build $kBuildNumber)
 
 Architect & Developer
 $kDeveloper ($kDeveloperGithub)
-
-Organization
-$kOrganization
 
 $kAttributionStatement
 

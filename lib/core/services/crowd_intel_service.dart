@@ -2,7 +2,7 @@
 // SafeSignal Mobile Security Suite
 // Module: Community Threat Intelligence Service (100% On-Device Engine)
 // Author: Umar Farooque (https://github.com/UmarFarooqueJi)
-// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
 // -----------------------------------------------------------------------------
 
 import 'package:flutter/foundation.dart';

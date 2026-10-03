@@ -2,7 +2,7 @@
 // SafeSignal Mobile Security Suite
 // Module: SafeSignal Threat Intelligence Gateway v2.0
 // Author: Umar Farooque (https://github.com/UmarFarooqueJi)
-// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
 //
 // Unified threat intelligence gateway. All external API calls are routed
 // through this layer. Screens never reference raw endpoints directly.

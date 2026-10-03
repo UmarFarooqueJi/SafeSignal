@@ -2,7 +2,7 @@
  * SafeSignal Mobile Security Suite
  * Module: Native Call Screening & Threat Interception Service
  * Author: Umar Farooque (https://github.com/UmarFarooqueJi)
- * Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+ * Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
  *
  * Implements Android CallScreeningService (API 29+) to intercept incoming calls,
  * analyze phone metadata against TRAI 140/160 series telemarketing ranges,

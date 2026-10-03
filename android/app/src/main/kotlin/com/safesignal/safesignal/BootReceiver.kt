@@ -2,7 +2,7 @@
  * SafeSignal Mobile Security Suite
  * Module: Boot Persistence Receiver
  * Author: Umar Farooque (https://github.com/UmarFarooqueJi)
- * Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+ * Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
  *
  * Restores SafeSignal live protection services after device reboot.
  */

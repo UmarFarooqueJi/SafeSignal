@@ -2,7 +2,7 @@ SafeSignal Source-Available License v1.0
 =========================================
 
 Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi)
-Organization: SafeSignal Technologies
+
 
 Developed by Umar Farooque. All rights reserved.
 
@@ -28,7 +28,7 @@ You MAY NOT:
   • Redistribute this software (source or binary) without the
     original author's written permission
   • Use this software or any portion of it in a commercial product
-    without a separate commercial license from SafeSignal Technologies
+    without a separate commercial license from the original author
   • Remove the NOTICE file from any distribution
   • Claim original authorship of any part of this software
   • Use the SafeSignal name, logo, or branding in derivative works
@@ -53,7 +53,7 @@ Any permitted use MUST:
 THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-UMAR FAROOQUE OR SAFESIGNAL TECHNOLOGIES BE LIABLE FOR ANY CLAIM, DAMAGES
+UMAR FAROOQUE BE LIABLE FOR ANY CLAIM, DAMAGES
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.

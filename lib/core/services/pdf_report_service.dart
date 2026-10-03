@@ -2,7 +2,7 @@
 // SafeSignal Mobile Security Suite
 // Module: Legal Incident Report PDF Generator
 // Author: Umar Farooque (https://github.com/UmarFarooqueJi)
-// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
 // Generates Section 66D IT Act compliant FIR PDF documents.
 // -----------------------------------------------------------------------------
 import 'package:flutter/services.dart';

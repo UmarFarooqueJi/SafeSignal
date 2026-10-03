@@ -2,7 +2,7 @@
 // SafeSignal Mobile Security Suite
 // Module: Hybrid AI Orchestration Engine with Circuit Breaker
 // Author: Umar Farooque (https://github.com/UmarFarooqueJi)
-// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
 // Circuit-breaker: OpenRouter → DeepSeek → Local Rule Engine (degraded)
 // -----------------------------------------------------------------------------
 import 'dart:convert';

@@ -2,7 +2,7 @@
 // SafeSignal Mobile Security Suite
 // Module: Domain-Specialized AI Expert Engine
 // Author: Umar Farooque (https://github.com/UmarFarooqueJi)
-// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
 // Domain experts: WebGuard, NetShield, AppGuard, DeviceShield,
 // BreachWatch, FraudShield, TelecomShield AI personas.
 // Failover: OpenRouter → DeepSeek → Grok → Gemini → Cloudflare → Pollinations

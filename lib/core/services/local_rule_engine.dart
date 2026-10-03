@@ -3,7 +3,7 @@
 // Module: Tier-1 Local Threat Heuristics Engine
 // Spec: SafeSignal Rule Matrix IN-TRAI-2026
 // Author: Umar Farooque (https://github.com/UmarFarooqueJi)
-// Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
 // Proprietary pattern matching: Indian telecom fraud, digital arrest scripts,
 // banking impersonation, UPI payment scams, APK dropper detection.
 // -----------------------------------------------------------------------------

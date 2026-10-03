@@ -2,7 +2,7 @@
  * SafeSignal Mobile Security Suite
  * Module: Incoming Call Scam Detection & Overlay Shield
  * Author: Umar Farooque (https://github.com/UmarFarooqueJi)
- * Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+ * Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
  *
  * Proprietary BroadcastReceiver: TRAI telemarketing prefix detection (140-144),
  * international scam syndicate numbers, VoIP burner identification.

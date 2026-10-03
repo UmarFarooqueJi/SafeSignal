@@ -2,7 +2,7 @@
  * SafeSignal Mobile Security Suite
  * Module: Main Activity & System Intelligence Bridge
  * Author: Umar Farooque (https://github.com/UmarFarooqueJi)
- * Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
+ * Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
  *
  * Flutter-Kotlin MethodChannel bridge: app auditing with SHA-256 binary
  * hashing, WiFi security type detection, developer options state,
