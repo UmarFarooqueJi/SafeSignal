@@ -8,7 +8,6 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:dio/dio.dart';
 import '../../core/widgets/arc_gauge.dart';
-import '../../core/services/supabase_service.dart';
 class WifiScannerScreen extends StatefulWidget {
   const WifiScannerScreen({super.key});
 
@@ -282,21 +281,6 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
     final rating = (score / 20).clamp(0.0, 5.0); // 0-100 → 0-5
 
     final recommendations = _getRecommendations(securityType, encryptionLevel, ssid);
-
-    // Save to Supabase
-    try {
-      await SupabaseService().saveScanHistory(
-        scanType: 'WIFI_SCAN',
-        target: ssid,
-        status: score < 50 ? 'DANGER' : (score < 80 ? 'WARNING' : 'SAFE'),
-        details: {
-          'score': score,
-          'securityType': securityType,
-        },
-      );
-    } catch (e) {
-      debugPrint('Supabase save error: $e');
-    }
 
     setState(() {
       _phase = _Phase.done;

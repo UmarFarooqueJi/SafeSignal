@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../core/services/supabase_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/services/hibp_service.dart';
 import '../../core/services/llm_orchestrator.dart';
@@ -73,21 +72,6 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
         _verdict = instantVerdict;
         _phase = _Phase.done;
       });
-
-      // Save to Supabase
-      try {
-        await SupabaseService().saveScanHistory(
-          scanType: 'EMAIL',
-          target: email,
-          status: breaches.isEmpty ? 'SAFE' : 'DANGER',
-          details: {
-            'breachCount': breaches.length,
-            'breachNames': breaches.map((b) => b.title).toList(),
-          },
-        );
-      } catch (e) {
-        debugPrint('Supabase save error: $e');
-      }
 
       // Fetch LLM Verdict
       _fetchVerdict(email, breaches);

@@ -4,9 +4,6 @@ import 'dart:ui';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/services/supabase_service.dart';
-
 import '../../core/constants.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -45,23 +42,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
     
     try {
-      final client = SupabaseService.client;
-      if (client != null) {
-        AuthResponse response;
-        if (_isSignUpMode) {
-          response = await client.auth.signUp(
-            email: _emailCtrl.text.trim(),
-            password: _passCtrl.text,
-          );
-        } else {
-          response = await client.auth.signInWithPassword(
-            email: _emailCtrl.text.trim(),
-            password: _passCtrl.text,
-          );
-        }
-      } else {
-        debugPrint('Supabase offline or not initialized. Operating in local account mode.');
-      }
+      await Future.delayed(const Duration(milliseconds: 300));
       
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(AppConstants.prefOnboardingDone, true);

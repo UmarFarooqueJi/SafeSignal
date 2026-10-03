@@ -8,8 +8,6 @@ import 'package:installed_apps/installed_apps.dart';
 import 'package:installed_apps/app_info.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../core/services/supabase_service.dart';
-
 // ─── Enums & Models ──────────────────────────────────────────────────────────
 enum _IssueCategory { apps, device, permissions }
 enum _IssueSeverity { critical, high, medium, low }
@@ -668,24 +666,6 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         storageInfo: storageInfo,
         suspiciousFiles: suspiciousFiles,
       );
-
-      // Save to Supabase telemetry
-      try {
-        await SupabaseService().saveScanHistory(
-          scanType: 'DEVICE_AUDIT',
-          target: deviceInfo?.model ?? 'Android Device',
-          status: score >= 70 ? 'SAFE' : (score >= 50 ? 'WARNING' : 'DANGER'),
-          details: {
-            'safetyScore': score,
-            'riskyAppsCount': riskyApps.length,
-            'developerOptions': devOptionsEnabled,
-            'totalApps': allApps.length,
-            'issuesCount': issues.length,
-          },
-        );
-      } catch (e) {
-        debugPrint('Supabase save error: $e');
-      }
 
       if (mounted) {
         setState(() {

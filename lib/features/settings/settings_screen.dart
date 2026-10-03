@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/services/supabase_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/constants.dart';
 
@@ -448,14 +447,6 @@ class SettingsScreen extends ConsumerWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () async {
-          try {
-            final client = SupabaseService.client;
-            if (client != null) {
-              await client.auth.signOut();
-            }
-          } catch (e) {
-            debugPrint('Signout error: ');
-          }
           final prefs = await SharedPreferences.getInstance();
           await prefs.clear();
           if (context.mounted) {

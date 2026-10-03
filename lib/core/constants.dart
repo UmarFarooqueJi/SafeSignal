@@ -1,39 +1,27 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 // -----------------------------------------------------------------------------
 // SafeSignal Mobile Security Suite
-// Module: App Constants & Configuration
+// Module: App Constants & Configuration (100% On-Device & Zero-Cloud)
 // Author: Umar Farooque (umarfarooque@safesignal.app)
 // Copyright (c) 2026 SafeSignal Technologies. All rights reserved.
 // -----------------------------------------------------------------------------
 
 class AppConstants {
-  // ─── Network ────────────────────────────────────────────────────────────────
-  static const String apiBaseUrlRelease = 'https://your-backend.onrender.com';
+  // ─── Zero-Cloud / Air-Gapped Status ──────────────────────────────────────────
+  static const bool isAirGappedMode = true;
 
-  // ─── Supabase ────────────────────────────────────────────────────────────────
-  static String get supabaseUrl => dotenv.env['SUPABASE_URL'] ?? '';
-  static String get supabaseAnonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+  // ─── Legacy compatibility stubs (100% Local / Zero-Tracking) ───────────────
+  static String get newsDataApiKey => '';
+  static String get grokApiKey => '';
+  static String get deepSeekApiKey => '';
+  static String get openRouterApiKey => '';
+  static String get geminiApiKey => '';
+  static const String cloudflareAccountId = '';
+  static String get cloudflareAiToken => '';
+  static String get hibpApiKey => '';
+  static String get googleSafeBrowsingApiKey => '';
+  static String get virusTotalApiKey => '';
 
-  // ─── News ────────────────────────────────────────────────────────────────────
-  static String get newsDataApiKey => dotenv.env['NEWS_DATA_API_KEY'] ?? '';
-
-  // ─── AI Providers ────────────────────────────────────────────────────────────
-  static String get grokApiKey => dotenv.env['GROK_API_KEY'] ?? '';
-  static String get deepSeekApiKey => dotenv.env['DEEPSEEK_API_KEY'] ?? '';
-  static String get openRouterApiKey => dotenv.env['OPENROUTER_API_KEY'] ?? '';
-  static String get geminiApiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
-  static const String cloudflareAccountId = '5cbda16ddf6f9d6303f19b68b21da20e';
-  static String get cloudflareAiToken =>
-      dotenv.env['CLOUDFLARE_AI_TOKEN'] ?? '';
-
-  // ─── Security APIs ───────────────────────────────────────────────────────────
-  static String get hibpApiKey => dotenv.env['HIBP_API_KEY'] ?? '';
-  static String get googleSafeBrowsingApiKey =>
-      dotenv.env['SAFE_BROWSING_API_KEY'] ?? '';
-  static String get virusTotalApiKey => dotenv.env['VIRUSTOTAL_API_KEY'] ?? '';
-
-  // ─── Crowd Intel ─────────────────────────────────────────────────────────────
+  // ─── Crowd & Threat Intel ───────────────────────────────────────────────────
   static const int crowdReportThreshold = 5;
 
   // ─── AI Confidence Thresholds ────────────────────────────────────────────────
@@ -60,8 +48,8 @@ class AppConstants {
   static const String cyberHelpline = '1930';
 
   // ─── Timeouts ────────────────────────────────────────────────────────────────
-  static const int apiTimeoutSeconds = 30;
-  static const int deepAnalysisTimeoutSeconds = 60;
+  static const int apiTimeoutSeconds = 15;
+  static const int deepAnalysisTimeoutSeconds = 30;
 
   // ─── Pagination ──────────────────────────────────────────────────────────────
   static const int feedPageSize = 20;

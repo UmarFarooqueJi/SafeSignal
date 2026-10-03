@@ -7,9 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/services/supabase_service.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -48,28 +45,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       await prefs.setString('userName', _nameCtrl.text.trim());
       if (_imageFile != null) {
         final appDir = await getApplicationDocumentsDirectory();
-        final fileName = path.basename(_imageFile!.path);
+        final fileName = _imageFile!.path.split(Platform.isWindows ? r'\' : '/').last;
         final savedImage = await _imageFile!.copy('${appDir.path}/$fileName');
         await prefs.setString('userProfileImage', savedImage.path);
       }
       await prefs.setBool('isProfileSetupDone', true);
-      
-      // Update Supabase profile if logged in & connected
-      final client = SupabaseService.client;
-      if (client != null) {
-        final currentUser = client.auth.currentUser;
-        if (currentUser != null) {
-          try {
-            await client.from('profiles').upsert({
-              'id': currentUser.id,
-              'name': _nameCtrl.text.trim(),
-              'updated_at': DateTime.now().toIso8601String(),
-            });
-          } catch (dbError) {
-            debugPrint('Supabase profile upsert error: $dbError');
-          }
-        }
-      }
       
       if (mounted) context.go('/home');
     } catch (e) {

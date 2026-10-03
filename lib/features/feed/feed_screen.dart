@@ -53,45 +53,8 @@ class _FeedScreenState extends State<FeedScreen> {
 
       final allItems = <dynamic>[];
 
-      // 1. If user provided a custom NewsData key in .env, attempt paid/dev endpoint
-      final customKey = AppConstants.newsDataApiKey;
-      final bool hasCustomKey = customKey.isNotEmpty && !customKey.contains('your_newsdata');
-
-      if (hasCustomKey) {
-        try {
-          final results = await Future.wait([
-            dio.get(
-              'https://newsdata.io/api/1/news',
-              queryParameters: {
-                'apikey': customKey,
-                'q': 'scam OR fraud OR cybercrime OR cyber OR phishing OR "digital arrest" OR OTP',
-                'country': 'in',
-                'language': 'hi',
-              },
-            ),
-            dio.get(
-              'https://newsdata.io/api/1/news',
-              queryParameters: {
-                'apikey': customKey,
-                'q': 'scam OR fraud OR cybercrime OR cyber OR phishing OR "digital arrest" OR OTP',
-                'country': 'in',
-                'language': 'en',
-              },
-            ),
-          ]);
-          for (final r in results) {
-            if (r.statusCode == 200 && r.data['status'] == 'success') {
-              allItems.addAll(r.data['results'] as List? ?? []);
-            }
-          }
-        } catch (e) {
-          debugPrint('Custom NewsData API failed: $e, falling back to keyless open-source RSS');
-        }
-      }
-
-      // 2. Open-source Keyless Public Aggregator: Fetch live Indian Cyber Fraud & Hacker News RSS feeds
-      if (allItems.isEmpty) {
-        final inQuery = Uri.encodeComponent('https://news.google.com/rss/search?q=cyber+scam+OR+fraud+OR+"digital+arrest"+india&hl=en-IN&gl=IN&ceid=IN:en');
+      // Open-source Keyless Public Aggregator: Fetch live Indian Cyber Fraud & Hacker News RSS feeds
+      final inQuery = Uri.encodeComponent('https://news.google.com/rss/search?q=cyber+scam+OR+fraud+OR+"digital+arrest"+india&hl=en-IN&gl=IN&ceid=IN:en');
         final thnQuery = Uri.encodeComponent('https://feeds.feedburner.com/TheHackersNews');
 
         final rssResults = await Future.wait([
