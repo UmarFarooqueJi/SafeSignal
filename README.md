@@ -21,10 +21,26 @@
 <div align="center">
 
 ### 🌟 Core Dashboard & Experience
-| Splash Screen | Threat Command Center | Security Tools Grid |
+| Threat Command Center | Intelligence Drawer & Tools |
+| :---: | :---: |
+| <img src="docs/screenshots/mockups/01_home_screen.png" width="310" /> | <img src="docs/screenshots/mockups/02_sidebar_menu.png" width="310" /> |
+| **Real-Time Threat Score & Protection Status** | **Instant Access to Cyber Feed, History & Settings** |
+
+<br>
+
+### 📱 Deep Device & OS Security Audit
+| Exploit & Hardware Diagnostics | Sensor Privacy & Hardware Specs | App Spyware & Risk Rating |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/01_splash_screen.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/02_home_screen.png" width="230" style="border-radius: 14px;" /> | <img src="docs/screenshots/03_home_scrolled.png" width="230" style="border-radius: 14px;" /> |
-| **Instant Boot & Diagnostics** | **Real-Time Threat Score & Monitoring** | **One-Tap Access to 12+ Defense Modules** |
+| <img src="docs/screenshots/mockups/03_device_audit.png" width="235" /> | <img src="docs/screenshots/mockups/04_sensor_permissions.png" width="235" /> | <img src="docs/screenshots/mockups/05_app_audit.png" width="235" /> |
+| **35/100 Exploit Risk & RAM/Disk Health** | **Camera/Mic Stacking & System Specs** | **4.9/5 Safety Score & App Risk Scoring** |
+
+<br>
+
+### 🛡️ Web, Identity & Threat Intelligence
+| Phishing & URL Shield | Email & Data Breach Monitor | Live Cyber Scam Advisories |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/mockups/06_website_scanner.png" width="235" /> | <img src="docs/screenshots/mockups/07_email_breach.png" width="235" /> | <img src="docs/screenshots/mockups/08_cyber_feed.png" width="235" /> |
+| **Real-Time Malicious URL Scanning** | **Database Breach Exposure Verdict** | **Real-Time Fraud Alerts & Safety Updates** |
 
 <br>
 

@@ -67,6 +67,9 @@ dependencies:
   pdf: ^3.12.0
   printing: ^5.14.3
   local_auth: ^3.0.2
+  google_mlkit_document_scanner: ^0.5.0
+  encrypt: ^5.0.3
+  google_mlkit_text_recognition: ^0.16.0
 
 dev_dependencies:
   flutter_test:

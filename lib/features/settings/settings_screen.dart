@@ -198,39 +198,6 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 _buildDivider(isDark),
                 _ClassicSettingsTile(
-                  icon: Icons.translate_rounded,
-                  iconBg: const Color(0xFF3B82F6),
-                  title: 'Language',
-                  subtitle: settings.language == 'hi'
-                      ? 'हिंदी (Hindi)'
-                      : 'English',
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        settings.language == 'hi' ? 'HI' : 'EN',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: sectionTitleColor,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: sectionTitleColor,
-                      ),
-                    ],
-                  ),
-                  onTap: () {
-                    notifier.setLanguage(
-                      settings.language == 'hi' ? 'en' : 'hi',
-                    );
-                  },
-                ),
-                _buildDivider(isDark),
-                _ClassicSettingsTile(
                   icon: Icons.notifications_active_rounded,
                   iconBg: const Color(0xFFF59E0B),
                   title: 'Security Alerts',

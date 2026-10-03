@@ -22,14 +22,14 @@ class _FeedScreenState extends State<FeedScreen> {
 
   // Category definitions: (id, display label, emoji)
   static const _categoryDefs = [
-    ('all',            'Sab Alerts',       '🔔'),
-    ('new',            'Naya',             '🔴'),
-    ('digital_arrest', 'Arrest Scam',      '👮'),
-    ('investment',     'Investment Fraud', '💸'),
-    ('otp',            'OTP / SIM Scam',   '📱'),
-    ('lottery',        'Lottery Scam',     '🎰'),
-    ('phishing',       'Phishing',         '🎣'),
-    ('general',        'Cyber News',       '🛡️'),
+    ('all',            'All Alerts',       '🔔'),
+    ('new',            'Latest',           '⚡'),
+    ('digital_arrest', 'Digital Arrest',   '⚖️'),
+    ('investment',     'Investment Fraud', '📈'),
+    ('otp',            'OTP & SIM Swap',   '📱'),
+    ('lottery',        'Lottery Scams',    '🎁'),
+    ('phishing',       'Phishing Links',   '🎣'),
+    ('general',        'Cyber Intel',      '🛡️'),
   ];
 
   @override
@@ -207,17 +207,24 @@ class _FeedScreenState extends State<FeedScreen> {
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
+                      gradient: isSelected
+                          ? const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                            )
+                          : null,
                       color: isSelected
-                          ? const Color(0xFFE53935)
-                          : (isDark ? const Color(0xFF161B27) : Colors.white),
+                          ? null
+                          : (isDark ? const Color(0xFF131D32) : const Color(0xFFF1F5F9)),
                       borderRadius: BorderRadius.circular(50),
                       border: Border.all(
                         color: isSelected
-                            ? const Color(0xFFE53935)
-                            : (isDark ? const Color(0xFF30363D) : const Color(0xFFE8EEF8)),
+                            ? const Color(0xFF3B82F6)
+                            : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
                       ),
                       boxShadow: isSelected
-                          ? [BoxShadow(color: const Color(0xFFE53935).withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))]
+                          ? [BoxShadow(color: const Color(0xFF2563EB).withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))]
                           : [],
                     ),
                     child: Row(
@@ -228,7 +235,7 @@ class _FeedScreenState extends State<FeedScreen> {
                         Text(
                           cat.$2,
                           style: TextStyle(
-                            color: isSelected ? Colors.white : (isDark ? Colors.white.withValues(alpha: 0.8) : Colors.black87),
+                            color: isSelected ? Colors.white : (isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF334155)),
                             fontWeight: FontWeight.w800,
                             fontSize: 13,
                           ),
@@ -238,13 +245,13 @@ class _FeedScreenState extends State<FeedScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                             decoration: BoxDecoration(
-                              color: isSelected ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFE53935).withValues(alpha: 0.12),
+                              color: isSelected ? Colors.white.withValues(alpha: 0.22) : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
                               '$count',
                               style: TextStyle(
-                                color: isSelected ? Colors.white : const Color(0xFFE53935),
+                                color: isSelected ? Colors.white : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569)),
                                 fontWeight: FontWeight.w900,
                                 fontSize: 11,
                               ),
@@ -287,17 +294,17 @@ class _FeedScreenState extends State<FeedScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const CircularProgressIndicator(color: Color(0xFFE53935)),
+                        const CircularProgressIndicator(color: Color(0xFF2563EB)),
                         const SizedBox(height: 16),
                         Text(
-                          'Google News se scan ho raha hai...',
+                          'Aggregating real-time cyber threat feeds...',
                           style: TextStyle(color: isDark ? Colors.white60 : Colors.black54, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
                   )
                 : RefreshIndicator(
-                    color: const Color(0xFFE53935),
+                    color: const Color(0xFF2563EB),
                     onRefresh: _fetchNews,
                     child: _filtered.isEmpty
                         ? Center(
@@ -307,7 +314,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                 Icon(Icons.newspaper_rounded, size: 48, color: isDark ? Colors.white24 : Colors.black26),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'Is category mein koi alert nahi',
+                                  'No threat advisories found in this category',
                                   style: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 16),
                                 ),
                               ],

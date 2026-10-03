@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // ─── Color Palette ────────────────────────────────────────────────────────────
 const _kScaffold   = Color(0xFFDEEBF7); // light blue like reference
@@ -13,7 +12,6 @@ const _kCard       = Colors.white;
 const _kBlue       = Color(0xFF0284C7);
 const _kTextMain   = Color(0xFF0F172A);
 const _kOrange     = Color(0xFFEA580C);
-const _kSubtext    = Color(0xFFCBDDF0);
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -25,7 +23,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with SingleTickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  double _securityScore = 4.85;
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
 
@@ -37,23 +34,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       duration: const Duration(milliseconds: 600),
     )..forward();
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
-    _loadScore();
   }
 
   @override
   void dispose() {
     _fadeCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadScore() async {
-    final prefs = await SharedPreferences.getInstance();
-    final rawScore = prefs.getInt('last_device_audit_score');
-    if (rawScore != null && rawScore > 0) {
-      setState(() {
-        _securityScore = (rawScore / 20.0).clamp(1.0, 5.0);
-      });
-    }
   }
 
   @override
@@ -128,7 +114,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 'assets/images/logo_transparent.png',
                 width: 32,
                 height: 32,
-                errorBuilder: (_, __, ___) =>
+                errorBuilder: (_, _, _) =>
                     const Icon(Icons.shield_rounded, color: _kBlue, size: 30),
               ),
               const SizedBox(width: 8),
@@ -312,17 +298,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         accentColor: const Color(0xFFEF4444),
         route: '/incident-response',
       ),
-      _CardData(
-        title: 'App Lock\nVault',
-        subtitle: 'Biometric Guard',
-        icon: Icons.shield_rounded,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF0A0A1A), Color(0xFF1A1A3A)],
-        ),
-        accentColor: const Color(0xFF6366F1),
-        route: '/vault',
-      ),
     ];
 
     return Padding(
@@ -450,7 +425,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   'assets/images/logo_transparent.png',
                   width: 52,
                   height: 52,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, _, _) => const Icon(
                     Icons.shield_rounded,
                     color: Colors.white,
                     size: 48,
@@ -945,7 +920,7 @@ class _DeviceSecuredCardState extends State<_DeviceSecuredCard>
                                           alignment: Alignment.centerLeft,
                                           children: [
                                             ...previousChildren,
-                                            if (currentChild != null) currentChild,
+                                            ?currentChild,
                                           ],
                                         );
                                       },

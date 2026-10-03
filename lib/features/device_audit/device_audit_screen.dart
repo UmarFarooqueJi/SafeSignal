@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/supabase_service.dart';
 
 // ─── Enums & Models ──────────────────────────────────────────────────────────
-enum _IssueCategory { all, apps, device, permissions }
+enum _IssueCategory { apps, device, permissions }
 enum _IssueSeverity { critical, high, medium, low }
 
 class _AuditIssue {
@@ -52,7 +52,6 @@ class _AuditResult {
   final Map<String, dynamic> memoryInfo;
   final Map<String, dynamic> storageInfo;
   final List<Map<String, dynamic>> suspiciousFiles;
-  final List<Map<String, dynamic>> trojanAbusers;
 
   _AuditResult({
     this.deviceInfo,
@@ -67,7 +66,6 @@ class _AuditResult {
     this.memoryInfo = const {},
     this.storageInfo = const {},
     this.suspiciousFiles = const [],
-    this.trojanAbusers = const [],
   });
 
   String get riskTierName {
@@ -185,9 +183,6 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
   _AuditResult? _result;
   String _errorMsg = '';
 
-  // Tab & Filter State
-  _IssueCategory _selectedCategory = _IssueCategory.all;
-  String _selectedSeverityFilter = 'All'; // 'All', 'High/Crit', 'Medium', 'Low'
   String? _expandedSensor;
 
   static const _scannerChannel = MethodChannel('com.safesignal/app_scanner');
@@ -514,19 +509,6 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         debugPrint('Suspicious file sweep error: $e');
       }
 
-      List<Map<String, dynamic>> trojanAbusers = [];
-      try {
-        const trojanChannel = MethodChannel('safesignal/trojan_guard');
-        final trojans = await trojanChannel.invokeMapMethod<String, dynamic>('getTrojanVulnerabilities');
-        if (trojans != null) {
-          final acc = trojans['accessibilityAbusers'] as List? ?? [];
-          final ovr = trojans['overlayAbusers'] as List? ?? [];
-          trojanAbusers = [...acc, ...ovr].map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        }
-      } catch (e) {
-        debugPrint('Trojan guard error: $e');
-      }
-
       await Future.delayed(const Duration(milliseconds: 250));
 
       // Calculate Quantitative Score (0 to 100)
@@ -536,9 +518,6 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       if (isOutdated) score -= 15;
       if (suspiciousFiles.isNotEmpty) {
         score -= (suspiciousFiles.length * 10).clamp(10, 30);
-      }
-      if (trojanAbusers.isNotEmpty) {
-        score -= (trojanAbusers.length * 15).clamp(15, 35);
       }
       for (final app in riskyApps) {
         final matchesStalker = _stalkerSignatures.any((k) => app.packageName.toLowerCase().contains(k));
@@ -578,26 +557,6 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           actionLabel: 'Delete File',
           actionIcon: Icons.delete_outline_rounded,
           onAction: () => _confirmDeleteFile(path, name),
-        ));
-      }
-
-      // 0.1 Banking Trojan Vector / Dangerous Overlays & Accessibility Abusers
-      for (final abuser in trojanAbusers) {
-        final pkg = abuser['packageName']?.toString() ?? '';
-        final appName = abuser['appName']?.toString() ?? pkg;
-        final risk = abuser['risk']?.toString() ?? 'High Risk Permission Abuser';
-        final type = abuser['type']?.toString() ?? 'Trojan Vector';
-        final isOverlay = type.contains('Overlay');
-
-        issues.add(_AuditIssue(
-          id: 'trojan_$pkg',
-          title: '$type: $appName',
-          description: '$risk\nPackage: $pkg. This is an active vector used by banking trojans to steal credentials or hijack your screen.',
-          category: _IssueCategory.apps,
-          severity: _IssueSeverity.critical,
-          actionLabel: isOverlay ? 'Review Overlay' : 'Review Access',
-          actionIcon: Icons.warning_amber_rounded,
-          onAction: () => _openAppSettings(pkg),
         ));
       }
 
@@ -708,7 +667,6 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         memoryInfo: memoryInfo,
         storageInfo: storageInfo,
         suspiciousFiles: suspiciousFiles,
-        trojanAbusers: trojanAbusers,
       );
 
       // Save to Supabase telemetry
@@ -720,7 +678,6 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           details: {
             'safetyScore': score,
             'riskyAppsCount': riskyApps.length,
-            'trojanAbusersCount': trojanAbusers.length,
             'developerOptions': devOptionsEnabled,
             'totalApps': allApps.length,
             'issuesCount': issues.length,
@@ -907,17 +864,6 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
-            'Deep System & App Inspection',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -0.5),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Benchmarking device posture against enterprise Z9 & Citizen Lab IOCs…',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.black54, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 50),
           SizedBox(
             width: 200,
             height: 200,
@@ -1014,26 +960,6 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
 
   // ─── Report Screen (CYBX & MobiArmor Benchmark) ─────────────────────────────
   Widget _buildReport(_AuditResult r) {
-    // Filter issues based on category tab and severity chip
-    final categoryIssues = r.issues.where((i) {
-      if (_selectedCategory == _IssueCategory.all) return true;
-      return i.category == _selectedCategory;
-    }).toList();
-
-    final filteredIssues = categoryIssues.where((i) {
-      if (_selectedSeverityFilter == 'All') return true;
-      if (_selectedSeverityFilter == 'High/Crit') {
-        return i.severity == _IssueSeverity.critical || i.severity == _IssueSeverity.high;
-      }
-      if (_selectedSeverityFilter == 'Medium') return i.severity == _IssueSeverity.medium;
-      if (_selectedSeverityFilter == 'Low') return i.severity == _IssueSeverity.low;
-      return true;
-    }).toList();
-
-    final appIssuesCount = r.issues.where((i) => i.category == _IssueCategory.apps).length;
-    final deviceIssuesCount = r.issues.where((i) => i.category == _IssueCategory.device).length;
-    final permIssuesCount = r.issues.where((i) => i.category == _IssueCategory.permissions).length;
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 50),
       physics: const BouncingScrollPhysics(),
@@ -1050,52 +976,8 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         _buildWeeklyTrendCard(r),
         const SizedBox(height: 16),
 
-        // 3. Quick Action Toolbar (Developer Settings, Updates, Permissions)
+        // 4. Quick Action Toolbar (Developer Settings, Updates, Permissions)
         _buildQuickToolbar(r),
-        const SizedBox(height: 20),
-
-        // 4. Action Center Header & Category Segmented Tabs
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Action Center',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -0.3),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: r.issues.isNotEmpty ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: r.issues.isNotEmpty ? const Color(0xFFFCA5A5) : const Color(0xFF86EFAC)),
-              ),
-              child: Text(
-                '${r.issues.length} Issues Found',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: r.issues.isNotEmpty ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // Tabs
-        _buildCategoryTabs(r, appIssuesCount, deviceIssuesCount, permIssuesCount),
-        const SizedBox(height: 12),
-
-        // Severity Filter Chips
-        _buildSeverityFilters(),
-        const SizedBox(height: 14),
-
-        // Action Center Issue Cards
-        if (filteredIssues.isNotEmpty)
-          ...filteredIssues.map((issue) => _buildIssueCard(issue))
-        else
-          _buildNoIssuesNotice(),
-
         const SizedBox(height: 20),
 
         // 5. Sensor Permissions Cluster (MobiArmor Avatar Stacking Benchmark)
@@ -1644,130 +1526,6 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
             ),
           ],
 
-          const SizedBox(height: 18),
-          Divider(height: 1, color: divider),
-          const SizedBox(height: 18),
-
-          // ── Banking Trojan & Overlay Vector Sweep ─────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Icon(
-                      r.trojanAbusers.isEmpty ? Icons.security_rounded : Icons.shield_moon_rounded,
-                      size: 16,
-                      color: r.trojanAbusers.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Banking Trojan Defense',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textMain),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: (r.trojanAbusers.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444)).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  r.trojanAbusers.isEmpty ? 'PROTECTED (0 Vectors)' : '${r.trojanAbusers.length} AT RISK',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: r.trojanAbusers.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (r.trojanAbusers.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF062015) : const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDark ? const Color(0xFF0E4A30) : const Color(0xFFBBF7D0)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'No rogue apps holding screen overlay or accessibility hijacking hooks.',
-                      style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534)),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2D1214) : const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDark ? const Color(0xFF5C1D24) : const Color(0xFFFECACA)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Apps with high-risk privileges (Accessibility / Overlay):',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ...r.trojanAbusers.map((ta) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    ta['appName']?.toString() ?? ta['packageName']?.toString() ?? '',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textMain),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    '${ta['type']} • ${ta['packageName']}',
-                                    style: TextStyle(fontSize: 10.5, color: textSub),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () => _openAppSettings(ta['packageName']?.toString() ?? ''),
-                              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                              child: const Text('Review', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-                            ),
-                          ],
-                        ),
-                      )),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -1935,227 +1693,6 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       ),
     );
   }
-
-  // ─── 4. Category Tabs & Severity Filters ───────────────────────────────────
-  Widget _buildCategoryTabs(_AuditResult r, int appCount, int devCount, int permCount) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          _buildCategoryTabItem('All Issues (${r.issues.length})', _IssueCategory.all),
-          const SizedBox(width: 8),
-          _buildCategoryTabItem('App Risks ($appCount)', _IssueCategory.apps),
-          const SizedBox(width: 8),
-          _buildCategoryTabItem('Device & OS ($devCount)', _IssueCategory.device),
-          const SizedBox(width: 8),
-          _buildCategoryTabItem('Permissions ($permCount)', _IssueCategory.permissions),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryTabItem(String label, _IssueCategory cat) {
-    final isSelected = _selectedCategory == cat;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedCategory = cat),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0F172A) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: isSelected ? Colors.white : const Color(0xFF475569),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSeverityFilters() {
-    final filters = ['All', 'High/Crit', 'Medium', 'Low'];
-    return Row(
-      children: filters.map((f) {
-        final isSelected = _selectedSeverityFilter == f;
-        return Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: GestureDetector(
-            onTap: () => setState(() => _selectedSeverityFilter = f),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF2563EB).withValues(alpha: 0.1) : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1)),
-              ),
-              child: Text(
-                f,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B),
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  // ─── Issue Card with 1-Tap Direct Fix ──────────────────────────────────────
-  Widget _buildIssueCard(_AuditIssue issue) {
-    Color sevColor;
-    String sevLabel;
-    switch (issue.severity) {
-      case _IssueSeverity.critical:
-        sevColor = const Color(0xFFEF4444);
-        sevLabel = 'CRITICAL';
-        break;
-      case _IssueSeverity.high:
-        sevColor = const Color(0xFFF97316);
-        sevLabel = 'HIGH';
-        break;
-      case _IssueSeverity.medium:
-        sevColor = const Color(0xFFF59E0B);
-        sevLabel = 'MEDIUM';
-        break;
-      case _IssueSeverity.low:
-        sevColor = const Color(0xFF3B82F6);
-        sevLabel = 'LOW';
-        break;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 3)),
-        ],
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon or App Icon
-              if (issue.app?.icon != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.memory(issue.app!.icon!, width: 40, height: 40, fit: BoxFit.cover),
-                )
-              else
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: sevColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(issue.actionIcon, color: sevColor, size: 22),
-                ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: sevColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            sevLabel,
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: sevColor),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            issue.title,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      issue.description,
-                      style: const TextStyle(fontSize: 12, color: Colors.black54, height: 1.3),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          const SizedBox(height: 12),
-          // 1-Tap Action Button
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: issue.onAction,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: sevColor.withValues(alpha: 0.1),
-                foregroundColor: sevColor,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: sevColor.withValues(alpha: 0.3)),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              ),
-              icon: Icon(issue.actionIcon, size: 16),
-              label: Text(
-                issue.actionLabel,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoIssuesNotice() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: const Center(
-        child: Column(
-          children: [
-            Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 36),
-            SizedBox(height: 8),
-            Text('No Issues Under This Filter', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A))),
-            SizedBox(height: 4),
-            Text('All parameters in this category adhere to baseline safety standards.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.black54)),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ─── 5. Sensor Permissions Matrix (MobiArmor Avatar Stacking) ──────────────
   Widget _buildSensorPermissionsMatrix(_AuditResult r) {
     final permIcons = {
