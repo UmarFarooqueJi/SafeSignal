@@ -29,6 +29,9 @@ class SafeSignalAttribution {
   /// Primary developer identity — must not be modified.
   static const String kDeveloper = 'Umar Farooque';
 
+  /// Organization / Project label.
+  static const String kOrganization = 'Independent Cyber Defense Research';
+
   /// GitHub profile of the original author.
   static const String kDeveloperGithub = 'https://github.com/UmarFarooqueJi';
 

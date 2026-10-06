@@ -63,28 +63,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           bottom: false,
           child: FadeTransition(
             opacity: _fadeAnim,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 60),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Header (scrolls smoothly with entire page) ──────────────
-                  _buildHeader(context),
+            child: RefreshIndicator(
+              color: _kBlue,
+              backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+              displacement: 32,
+              onRefresh: () async {
+                HapticFeedback.lightImpact();
+                if (mounted) setState(() {});
+                await Future.delayed(const Duration(milliseconds: 600));
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: ClampingScrollPhysics(),
+                ),
+                padding: const EdgeInsets.only(bottom: 60),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Header (scrolls smoothly with entire page) ──────────────
+                    _buildHeader(context),
 
-                  // ── Device Secured Banner ──────────────────────────────────
-                  _buildSecuredBanner(context),
+                    // ── Device Secured Banner ──────────────────────────────────
+                    _buildSecuredBanner(context),
 
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                  // ── 2-col Feature Cards ────────────────────────────────────
-                  _buildCardGrid(context),
+                    // ── 2-col Feature Cards ────────────────────────────────────
+                    _buildCardGrid(context),
 
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                  // ── Helpline ───────────────────────────────────────────────
-                  _buildHelplineCard(context),
-                ],
+                    // ── Helpline ───────────────────────────────────────────────
+                    _buildHelplineCard(context),
+                  ],
+                ),
               ),
             ),
           ),

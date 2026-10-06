@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../core/constants.dart';
 import '../../data/models/alert_model.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -68,7 +67,6 @@ class _FeedScreenState extends State<FeedScreen> {
             allItems.addAll(items);
           }
         }
-      }
 
       if (allItems.isNotEmpty) {
         final parsed = _NewsDataParser.parse(allItems);

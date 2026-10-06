@@ -50,6 +50,7 @@ class _AuditResult {
   final Map<String, dynamic> memoryInfo;
   final Map<String, dynamic> storageInfo;
   final List<Map<String, dynamic>> suspiciousFiles;
+  final Map<String, dynamic> dangerousSettings;
 
   _AuditResult({
     this.deviceInfo,
@@ -64,6 +65,7 @@ class _AuditResult {
     this.memoryInfo = const {},
     this.storageInfo = const {},
     this.suspiciousFiles = const [],
+    this.dangerousSettings = const {},
   });
 
   String get riskTierName {
@@ -189,8 +191,8 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
     'Initializing deep audit engine...',
     'Interrogating hardware & Android kernel...',
     'Auditing app manifests & sideload signatures...',
-    'Checking OEM security patch & CVE exposure...',
-    'Querying Developer Options & ADB state...',
+    'Analyzing security patch age & CVE exposure...',
+    'Sweeping dangerous OS settings & Trojan vectors...',
     'Measuring active RAM & internal storage...',
     'Scanning public storage for hidden/disguised payloads...',
     'Synthesizing enterprise security posture...',
@@ -228,6 +230,36 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
   Future<void> _openPermissionSettings() async {
     try {
       await _scannerChannel.invokeMethod('openPermissionSettings');
+    } catch (_) {}
+  }
+
+  Future<void> _openAccessibilitySettings() async {
+    try {
+      await _scannerChannel.invokeMethod('openAccessibilitySettings');
+    } catch (_) {}
+  }
+
+  Future<void> _openSecuritySettings() async {
+    try {
+      await _scannerChannel.invokeMethod('openSecuritySettings');
+    } catch (_) {}
+  }
+
+  Future<void> _openDeviceAdminSettings() async {
+    try {
+      await _scannerChannel.invokeMethod('openDeviceAdminSettings');
+    } catch (_) {}
+  }
+
+  Future<void> _openInstallUnknownAppsSettings() async {
+    try {
+      await _scannerChannel.invokeMethod('openInstallUnknownAppsSettings');
+    } catch (_) {}
+  }
+
+  Future<void> _openNotificationSettings() async {
+    try {
+      await _scannerChannel.invokeMethod('openNotificationSettings');
     } catch (_) {}
   }
 
@@ -349,19 +381,56 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         debugPrint('InstalledApps error: $e');
       }
 
-      // Stage 3: Security Patch
+      // Stage 3: Dangerous Settings & Security Telemetry
       _updateStage(3, 52);
       final sdkInt = deviceInfo?.version.sdkInt ?? 0;
       final securityPatch = deviceInfo?.version.securityPatch ?? '';
-      bool isOutdated = sdkInt > 0 && sdkInt < 33; // Below Android 13
-      await Future.delayed(const Duration(milliseconds: 250));
 
-      // Stage 4: Developer Options
-      _updateStage(4, 68);
-      bool devOptionsEnabled = false;
+      Map<String, dynamic> dangerousSettings = {};
       try {
-        devOptionsEnabled = await _scannerChannel.invokeMethod<bool>('isDeveloperOptionsEnabled') ?? false;
-      } catch (_) {}
+        final rawDanger = await _scannerChannel.invokeMethod<Map<dynamic, dynamic>>('getDangerousSettings');
+        if (rawDanger != null) {
+          dangerousSettings = Map<String, dynamic>.from(rawDanger);
+        }
+      } catch (e) {
+        debugPrint('Dangerous settings query error: $e');
+      }
+
+      bool devOptionsEnabled = dangerousSettings['developerOptions'] == true;
+      bool adbEnabled = dangerousSettings['adbEnabled'] == true;
+      bool isDeviceSecure = dangerousSettings['isDeviceSecure'] != false;
+      bool selinuxEnforcing = dangerousSettings['selinuxEnforcing'] != false;
+      int patchAgeDays = (dangerousSettings['patchAgeDays'] as num?)?.toInt() ?? 0;
+      bool isEol = dangerousSettings['isEol'] == true || (sdkInt > 0 && sdkInt < 33);
+      final accessibilityAbusers = (dangerousSettings['accessibilityAbusers'] as List?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
+      final overlayAbusers = (dangerousSettings['overlayAbusers'] as List?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
+      final notificationListeners = (dangerousSettings['notificationListeners'] as List?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
+      final deviceAdmins = (dangerousSettings['deviceAdmins'] as List?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
+      final sideloadAllowedApps = (dangerousSettings['sideloadAllowedApps'] as List?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      // Stage 4: Developer Options verification
+      _updateStage(4, 68);
+      if (!devOptionsEnabled) {
+        try {
+          devOptionsEnabled = await _scannerChannel.invokeMethod<bool>('isDeveloperOptionsEnabled') ?? false;
+        } catch (_) {}
+      }
 
       // Stage 5: Permissions & Sideload Map
       _updateStage(5, 82);
@@ -512,8 +581,14 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       // Calculate Quantitative Score (0 to 100)
       int score = 100;
       if (isRooted) score -= 40;
-      if (devOptionsEnabled) score -= 15;
-      if (isOutdated) score -= 15;
+      if (!isDeviceSecure) score -= 20;
+      if (accessibilityAbusers.isNotEmpty) score -= (accessibilityAbusers.length * 15).clamp(15, 30);
+      if (sideloadAllowedApps.isNotEmpty) score -= 15;
+      if (notificationListeners.isNotEmpty) score -= 15;
+      if (deviceAdmins.isNotEmpty) score -= 15;
+      if (devOptionsEnabled || adbEnabled) score -= 15;
+      if (patchAgeDays > 180 || isEol) score -= 15;
+      if (!selinuxEnforcing) score -= 20;
       if (suspiciousFiles.isNotEmpty) {
         score -= (suspiciousFiles.length * 10).clamp(10, 30);
       }
@@ -572,35 +647,146 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         ));
       }
 
-      // 2. Developer Options
-      if (devOptionsEnabled) {
+      // 2. Lock Screen Security Not Set
+      if (!isDeviceSecure) {
+        issues.add(_AuditIssue(
+          id: 'dev_lock_screen',
+          title: 'Lock Screen Security Not Configured',
+          description: 'No PIN, Pattern, or Fingerprint lock is set. Physical access allows immediate extraction of private messages and banking data.',
+          category: _IssueCategory.device,
+          severity: _IssueSeverity.critical,
+          actionLabel: 'Set Screen Lock',
+          actionIcon: Icons.lock_outline_rounded,
+          onAction: _openSecuritySettings,
+        ));
+      }
+
+      // 3. Accessibility Service Abusers (Banking Trojan Vector)
+      for (final abuser in accessibilityAbusers) {
+        final pkg = abuser['packageName']?.toString() ?? '';
+        final appName = abuser['appName']?.toString() ?? pkg;
+        issues.add(_AuditIssue(
+          id: 'abuser_acc_$pkg',
+          title: 'Accessibility Trojan Vector: $appName',
+          description: 'Active accessibility service granted to non-system package ($pkg). This capability allows keystroke logging, credential harvesting, and automated tap hijacking.',
+          category: _IssueCategory.apps,
+          severity: _IssueSeverity.critical,
+          actionLabel: 'Revoke Access',
+          actionIcon: Icons.accessibility_new_rounded,
+          onAction: _openAccessibilitySettings,
+        ));
+      }
+
+      // 3b. Screen Overlay Abusers (Banking Fake Dialog Vector)
+      for (final abuser in overlayAbusers) {
+        final pkg = abuser['packageName']?.toString() ?? '';
+        final appName = abuser['appName']?.toString() ?? pkg;
+        issues.add(_AuditIssue(
+          id: 'abuser_overlay_$pkg',
+          title: 'Floating Screen Overlay: $appName',
+          description: 'Package ($pkg) holds draw-over-other-apps authority. Rogue apps can project transparent or deceptive dialogs over banking and UPI screens.',
+          category: _IssueCategory.apps,
+          severity: _IssueSeverity.medium,
+          actionLabel: 'App Info',
+          actionIcon: Icons.layers_clear_rounded,
+          onAction: () => _openAppSettings(pkg),
+        ));
+      }
+
+      // 4. Notification Listeners (OTP & SMS Interception)
+      for (final listener in notificationListeners) {
+        final pkg = listener['packageName']?.toString() ?? '';
+        final appName = listener['appName']?.toString() ?? pkg;
+        issues.add(_AuditIssue(
+          id: 'listener_notif_$pkg',
+          title: 'Notification Snooping Risk: $appName',
+          description: 'Package ($pkg) has full notification read access. Can intercept incoming two-factor authentication (2FA) SMS codes and transaction OTPs.',
+          category: _IssueCategory.permissions,
+          severity: _IssueSeverity.high,
+          actionLabel: 'Inspect Access',
+          actionIcon: Icons.notifications_paused_rounded,
+          onAction: _openNotificationSettings,
+        ));
+      }
+
+      // 5. Active Device Administrators
+      for (final admin in deviceAdmins) {
+        final pkg = admin['packageName']?.toString() ?? '';
+        final appName = admin['appName']?.toString() ?? pkg;
+        issues.add(_AuditIssue(
+          id: 'admin_$pkg',
+          title: 'Device Admin Privilege: $appName',
+          description: 'Third-party package ($pkg) has active Device Administrator authority. Can enforce lock policies, wipe device data, and resist uninstallation.',
+          category: _IssueCategory.device,
+          severity: _IssueSeverity.high,
+          actionLabel: 'Review Admins',
+          actionIcon: Icons.admin_panel_settings_rounded,
+          onAction: _openDeviceAdminSettings,
+        ));
+      }
+
+      // 6. Unknown App Installation Privileges (Sideload Dropper Vector)
+      for (final sl in sideloadAllowedApps) {
+        final pkg = sl['packageName']?.toString() ?? '';
+        final appName = sl['appName']?.toString() ?? pkg;
+        issues.add(_AuditIssue(
+          id: 'sideload_$pkg',
+          title: 'APK Installation Authority: $appName',
+          description: 'Non-system app ($pkg) is authorized to install unknown APK packages onto this device.',
+          category: _IssueCategory.apps,
+          severity: _IssueSeverity.high,
+          actionLabel: 'Revoke Permission',
+          actionIcon: Icons.install_mobile_rounded,
+          onAction: _openInstallUnknownAppsSettings,
+        ));
+      }
+
+      // 7. Developer Options / USB Debugging
+      if (devOptionsEnabled || adbEnabled) {
         issues.add(_AuditIssue(
           id: 'dev_options',
-          title: 'Developer Options Active',
-          description: 'USB debugging & dev tools are enabled. Untrusted computers can bridge access & inject commands.',
+          title: adbEnabled ? 'USB Debugging (ADB) Active' : 'Developer Options Enabled',
+          description: adbEnabled
+              ? 'ADB debugging is actively listening. Untrusted computers or public charging stations can execute arbitrary commands and extract databases.'
+              : 'Development settings are enabled on this device, exposing diagnostic interfaces.',
           category: _IssueCategory.device,
           severity: _IssueSeverity.high,
           actionLabel: 'Disable in Settings',
-          actionIcon: Icons.settings_rounded,
+          actionIcon: Icons.developer_mode_rounded,
           onAction: _openDeveloperSettings,
         ));
       }
 
-      // 3. Outdated OS
-      if (isOutdated) {
+      // 8. Outdated Security Patch & EOL Status
+      if (patchAgeDays > 180 || isEol) {
+        final ageStr = patchAgeDays > 0 ? '$patchAgeDays days ago' : 'Legacy';
         issues.add(_AuditIssue(
           id: 'dev_os_outdated',
-          title: 'OS Below Modern Standard (Android ${_sdkToVersion(sdkInt)})',
-          description: 'Security patch: $securityPatch. Your device lacks current monthly CVE mitigations.',
+          title: isEol ? 'OS End-Of-Life (Android ${_sdkToVersion(sdkInt)})' : 'Security Patch Outdated ($ageStr)',
+          description: 'Security patch: $securityPatch. Your device is missing modern monthly CVE vulnerability mitigations published in Android bulletins.',
           category: _IssueCategory.device,
-          severity: _IssueSeverity.medium,
-          actionLabel: 'Check Update',
+          severity: patchAgeDays > 365 ? _IssueSeverity.critical : _IssueSeverity.high,
+          actionLabel: 'Check OTA Update',
           actionIcon: Icons.system_update_rounded,
           onAction: _openSystemUpdateSettings,
         ));
       }
 
-      // 4. Risky & Sideloaded Apps
+      // 9. SELinux Permissive
+      if (!selinuxEnforcing) {
+        issues.add(_AuditIssue(
+          id: 'dev_selinux',
+          title: 'SELinux Permissive / Disabled',
+          description: 'Security-Enhanced Linux kernel enforcement is off. Crucial sandboxing boundaries between apps are not being enforced.',
+          category: _IssueCategory.device,
+          severity: _IssueSeverity.critical,
+          actionLabel: 'Kernel Warning',
+          actionIcon: Icons.warning_rounded,
+          onAction: () => _showRootAdviceDialog(),
+        ));
+      }
+
+      // 10. Risky & Sideloaded Apps
       for (final app in riskyApps) {
         final matchesStalker = _stalkerSignatures.any((k) => app.packageName.toLowerCase().contains(k));
 
@@ -619,7 +805,7 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         ));
       }
 
-      // 5. Excessive Permissions Review (Informational, NOT uninstall)
+      // 11. Excessive Permissions Review (Informational, NOT uninstall)
       if (smsApps.length > 6) {
         issues.add(_AuditIssue(
           id: 'perm_sms',
@@ -657,7 +843,7 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           'Contacts': contactApps,
           'Location': locationApps,
         },
-        developerOptionsEnabled: devOptionsEnabled,
+        developerOptionsEnabled: devOptionsEnabled || adbEnabled,
         isRooted: isRooted,
         safetyScore: score,
         issues: issues,
@@ -665,6 +851,7 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         memoryInfo: memoryInfo,
         storageInfo: storageInfo,
         suspiciousFiles: suspiciousFiles,
+        dangerousSettings: dangerousSettings,
       );
 
       if (mounted) {
@@ -942,29 +1129,43 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
   Widget _buildReport(_AuditResult r) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 50),
-      physics: const BouncingScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       children: [
         // 1. Hero Score & Multi-Tier Spectrum Card (CYBX Gauge)
         _buildHeroScoreCard(r),
         const SizedBox(height: 16),
 
-        // 2. Hardware RAM, Storage & Suspicious File Integrity
+        // 2. Action Center (Fix Immediate Threats)
+        if (r.issues.isNotEmpty) ...[
+          _buildActionCenterCard(r),
+          const SizedBox(height: 16),
+        ],
+
+        // 3. Dangerous OS Settings Radar
+        _buildDangerousSettingsRadar(r),
+        const SizedBox(height: 16),
+
+        // 4. OS Lifecycle & Security Patch Vulnerability
+        _buildSecurityPatchLifecycleCard(r),
+        const SizedBox(height: 16),
+
+        // 5. Hardware RAM, Storage & Suspicious File Integrity
         _buildHardwareStorageCard(r),
         const SizedBox(height: 16),
 
-        // 3. Weekly Score Trend Bar Chart
+        // 6. Weekly Score Trend Bar Chart
         _buildWeeklyTrendCard(r),
         const SizedBox(height: 16),
 
-        // 4. Quick Action Toolbar (Developer Settings, Updates, Permissions)
+        // 7. Quick Action Toolbar (Developer Settings, Updates, Permissions)
         _buildQuickToolbar(r),
         const SizedBox(height: 20),
 
-        // 5. Sensor Permissions Cluster (MobiArmor Avatar Stacking Benchmark)
+        // 8. Sensor Permissions Cluster (MobiArmor Avatar Stacking Benchmark)
         _buildSensorPermissionsMatrix(r),
         const SizedBox(height: 20),
 
-        // 6. Device Hardware & OS Specifications Card
+        // 9. Device Hardware & OS Specifications Card
         _buildHardwareCard(r),
         const SizedBox(height: 24),
 
@@ -1174,7 +1375,673 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
     );
   }
 
-  // ─── 2. Hardware RAM, Storage & Suspicious File Integrity ─────────────────
+  // ─── 2. Security Action Center (Fix Immediate Threats) ──────────────────────
+  Widget _buildActionCenterCard(_AuditResult r) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final border = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+
+    final criticalCount = r.issues.where((i) => i.severity == _IssueSeverity.critical).length;
+    final highCount = r.issues.where((i) => i.severity == _IssueSeverity.high).length;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: criticalCount > 0 ? const Color(0xFFEF4444).withValues(alpha: 0.4) : border),
+        boxShadow: [
+          BoxShadow(
+            color: (criticalCount > 0 ? const Color(0xFFEF4444) : Colors.black).withValues(alpha: 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (criticalCount > 0 ? const Color(0xFFEF4444) : const Color(0xFFF59E0B)).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.crisis_alert_rounded,
+                  color: criticalCount > 0 ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Action Center (${r.issues.length})',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: textMain,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    Text(
+                      criticalCount > 0
+                          ? '$criticalCount critical, $highCount high priority threat(s)'
+                          : '${r.issues.length} security recommendation(s)',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: criticalCount > 0 ? const Color(0xFFEF4444) : textSub,
+                        fontWeight: criticalCount > 0 ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (criticalCount > 0 ? const Color(0xFFEF4444) : const Color(0xFFF59E0B)).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  criticalCount > 0 ? 'ATTENTION' : 'REVIEW',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: criticalCount > 0 ? const Color(0xFFEF4444) : const Color(0xFFD97706),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...r.issues.map((issue) {
+            Color sevColor;
+            String sevLabel;
+            switch (issue.severity) {
+              case _IssueSeverity.critical:
+                sevColor = const Color(0xFFEF4444);
+                sevLabel = 'CRITICAL';
+                break;
+              case _IssueSeverity.high:
+                sevColor = const Color(0xFFF97316);
+                sevLabel = 'HIGH';
+                break;
+              case _IssueSeverity.medium:
+                sevColor = const Color(0xFFF59E0B);
+                sevLabel = 'MEDIUM';
+                break;
+              case _IssueSeverity.low:
+                sevColor = const Color(0xFF3B82F6);
+                sevLabel = 'INFO';
+                break;
+            }
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: sevColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          sevLabel,
+                          style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: sevColor),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          issue.title,
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textMain),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    issue.description,
+                    style: TextStyle(fontSize: 11.5, color: textSub, height: 1.35),
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: issue.severity == _IssueSeverity.critical
+                            ? const Color(0xFFEF4444)
+                            : (issue.severity == _IssueSeverity.high ? const Color(0xFFF97316) : const Color(0xFF2563EB)),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: issue.onAction,
+                      icon: Icon(issue.actionIcon, size: 14),
+                      label: Text(
+                        issue.actionLabel,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ─── 3. Dangerous OS Settings Radar ─────────────────────────────────────────
+  Widget _buildDangerousSettingsRadar(_AuditResult r) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final border = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+
+    final d = r.dangerousSettings;
+    final devOptions = r.developerOptionsEnabled;
+    final adbActive = d['adbEnabled'] == true;
+    final isDeviceSecure = d['isDeviceSecure'] != false;
+    final selinuxEnforcing = d['selinuxEnforcing'] != false;
+    final accAbusers = (d['accessibilityAbusers'] as List?) ?? [];
+    final notifListeners = (d['notificationListeners'] as List?) ?? [];
+    final devAdmins = (d['deviceAdmins'] as List?) ?? [];
+    final sideloadApps = (d['sideloadAllowedApps'] as List?) ?? [];
+
+    int riskySettingsCount = 0;
+    if (devOptions || adbActive) riskySettingsCount++;
+    if (!isDeviceSecure) riskySettingsCount++;
+    if (accAbusers.isNotEmpty) riskySettingsCount++;
+    if (notifListeners.isNotEmpty) riskySettingsCount++;
+    if (devAdmins.isNotEmpty) riskySettingsCount++;
+    if (sideloadApps.isNotEmpty) riskySettingsCount++;
+    if (!selinuxEnforcing) riskySettingsCount++;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: border),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 18, offset: const Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.radar_rounded, color: Color(0xFF7C3AED), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Dangerous OS Settings Radar',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: textMain,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    Text(
+                      'Live system & kernel privilege surface scan',
+                      style: TextStyle(fontSize: 11.5, color: textSub),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (riskySettingsCount > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  riskySettingsCount > 0 ? '$riskySettingsCount RISKS' : 'HARDENED',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: riskySettingsCount > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // Radar Items
+          _buildRadarRow(
+            icon: Icons.developer_mode_rounded,
+            title: 'USB Debugging & ADB',
+            subtitle: adbActive
+                ? 'ADB actively listening for shell commands'
+                : (devOptions ? 'Developer options active on phone' : 'Turned off (Safe from cable injection)'),
+            status: adbActive ? 'ACTIVE (RISK)' : (devOptions ? 'ENABLED' : 'DISABLED'),
+            isRisky: adbActive || devOptions,
+            onTap: _openDeveloperSettings,
+          ),
+          const SizedBox(height: 10),
+
+          _buildRadarRow(
+            icon: Icons.lock_rounded,
+            title: 'Device Lock Screen',
+            subtitle: isDeviceSecure
+                ? 'PIN, Pattern or Biometrics enforced'
+                : 'No screen lock! Phone is physically accessible',
+            status: isDeviceSecure ? 'ENFORCED' : 'NONE (CRITICAL)',
+            isRisky: !isDeviceSecure,
+            onTap: _openSecuritySettings,
+          ),
+          const SizedBox(height: 10),
+
+          _buildRadarRow(
+            icon: Icons.accessibility_new_rounded,
+            title: 'Accessibility Trojans Vector',
+            subtitle: accAbusers.isEmpty
+                ? '0 non-system apps with screen read privilege'
+                : '${accAbusers.length} third-party app(s) have screen read rights',
+            status: accAbusers.isEmpty ? 'CLEAN (0)' : '${accAbusers.length} ACTIVE',
+            isRisky: accAbusers.isNotEmpty,
+            onTap: _openAccessibilitySettings,
+          ),
+          const SizedBox(height: 10),
+
+          _buildRadarRow(
+            icon: Icons.notifications_active_rounded,
+            title: 'Notification & OTP Listeners',
+            subtitle: notifListeners.isEmpty
+                ? '0 third-party apps snooping notifications'
+                : '${notifListeners.length} app(s) can read incoming OTP SMS & alerts',
+            status: notifListeners.isEmpty ? 'CLEAN (0)' : '${notifListeners.length} ACTIVE',
+            isRisky: notifListeners.isNotEmpty,
+            onTap: _openNotificationSettings,
+          ),
+          const SizedBox(height: 10),
+
+          _buildRadarRow(
+            icon: Icons.admin_panel_settings_rounded,
+            title: 'Device Administrators',
+            subtitle: devAdmins.isEmpty
+                ? '0 non-OEM device admin packages'
+                : '${devAdmins.length} app(s) have device wipe/lock privileges',
+            status: devAdmins.isEmpty ? '0 NON-OEM' : '${devAdmins.length} ACTIVE',
+            isRisky: devAdmins.isNotEmpty,
+            onTap: _openDeviceAdminSettings,
+          ),
+          const SizedBox(height: 10),
+
+          _buildRadarRow(
+            icon: Icons.install_mobile_rounded,
+            title: 'App Sideloading (Unknown Sources)',
+            subtitle: sideloadApps.isEmpty
+                ? 'Third-party APK installation blocked'
+                : '${sideloadApps.length} app(s) allowed to install raw APKs',
+            status: sideloadApps.isEmpty ? 'RESTRICTED' : '${sideloadApps.length} ALLOWED',
+            isRisky: sideloadApps.isNotEmpty,
+            onTap: _openInstallUnknownAppsSettings,
+          ),
+          const SizedBox(height: 10),
+
+          _buildRadarRow(
+            icon: Icons.shield_rounded,
+            title: 'SELinux Kernel Mode',
+            subtitle: selinuxEnforcing
+                ? 'Enforcing — Mandatory access control active'
+                : 'Permissive/Disabled — Process sandbox bypassed',
+            status: selinuxEnforcing ? 'ENFORCING' : 'PERMISSIVE',
+            isRisky: !selinuxEnforcing,
+            onTap: _showRootAdviceDialog,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRadarRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String status,
+    required bool isRisky,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final color = isRisky ? const Color(0xFFEF4444) : const Color(0xFF10B981);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isRisky ? color.withValues(alpha: 0.3) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 16, color: color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textMain),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 11, color: textSub),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                status,
+                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: color),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.arrow_forward_ios_rounded, size: 11, color: isRisky ? color : Colors.black38),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── 4. OS Lifecycle & Security Patch Vulnerability Card ───────────────────
+  Widget _buildSecurityPatchLifecycleCard(_AuditResult r) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final border = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+
+    final d = r.dangerousSettings;
+    final patch = (d['securityPatch']?.toString().isNotEmpty == true)
+        ? d['securityPatch'].toString()
+        : (r.deviceInfo?.version.securityPatch ?? 'Unknown');
+    final patchAgeDays = (d['patchAgeDays'] as num?)?.toInt() ?? 0;
+    final sdk = r.deviceInfo?.version.sdkInt ?? 0;
+    final isEol = d['isEol'] == true || (sdk > 0 && sdk < 33);
+
+    final isPatchCriticallyOld = patchAgeDays > 180 || isEol;
+    final patchColor = isPatchCriticallyOld
+        ? const Color(0xFFEF4444)
+        : (patchAgeDays > 60 ? const Color(0xFFF59E0B) : const Color(0xFF10B981));
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: border),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 18, offset: const Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.verified_rounded, color: Color(0xFF0284C7), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'OS Lifecycle & Security Patch',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: textMain,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    Text(
+                      'Vendor CVE patch cadence & lifecycle exposure',
+                      style: TextStyle(fontSize: 11.5, color: textSub),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: patchColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isEol ? 'EOL OS' : (isPatchCriticallyOld ? 'OUTDATED' : 'PROTECTED'),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: patchColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // 3 Metric Pillars
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('PATCH DATE', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: textSub)),
+                      const SizedBox(height: 4),
+                      Text(
+                        patch,
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: patchColor),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        patchAgeDays > 0 ? '$patchAgeDays days old' : 'Recent patch',
+                        style: TextStyle(fontSize: 10, color: textSub),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('ANDROID BUILD', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: textSub)),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Android ${_sdkToVersion(sdk)}',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: textMain),
+                      ),
+                      const SizedBox(height: 2),
+                      Text('API Level $sdk', style: TextStyle(fontSize: 10, color: textSub)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('LIFECYCLE', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: textSub)),
+                      const SizedBox(height: 4),
+                      Text(
+                        isEol ? 'End Of Life' : 'Active Support',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: isEol ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(isEol ? 'Legacy API' : 'Google Maintained', style: TextStyle(fontSize: 10, color: textSub)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Explanatory CVE warning container
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isPatchCriticallyOld
+                  ? (isDark ? const Color(0xFF280B0E) : const Color(0xFFFEF2F2))
+                  : (isDark ? const Color(0xFF062015) : const Color(0xFFF0FDF4)),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isPatchCriticallyOld
+                    ? (isDark ? const Color(0xFF6B1D24) : const Color(0xFFFECACA))
+                    : (isDark ? const Color(0xFF0E4A30) : const Color(0xFFBBF7D0)),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  isPatchCriticallyOld ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
+                  size: 18,
+                  color: isPatchCriticallyOld ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    isPatchCriticallyOld
+                        ? 'High CVE Vulnerability Exposure: Android patches older than 6 months leave the device susceptible to published privilege-escalation, kernel binder UAF, and zero-day vulnerabilities documented in monthly Android Security Bulletins.'
+                        : 'Clean Patch Hygiene: Your Android system patch level is maintained within safe enterprise risk thresholds.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: isPatchCriticallyOld
+                          ? (isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B))
+                          : (isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534)),
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Check for Updates CTA Button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                side: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _openSystemUpdateSettings,
+              icon: const Icon(Icons.system_update_rounded, color: Color(0xFF2563EB), size: 18),
+              label: const Text(
+                'Check For Phone System Updates',
+                style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── 5. Hardware RAM, Storage & Suspicious File Integrity ─────────────────
   Widget _buildHardwareStorageCard(_AuditResult r) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;

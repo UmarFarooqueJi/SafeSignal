@@ -20,6 +20,8 @@ import android.os.Build
 import android.provider.Settings
 import android.telephony.TelephonyManager
 import android.app.ActivityManager
+import android.app.KeyguardManager
+import android.app.admin.DevicePolicyManager
 import android.app.role.RoleManager
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.view.accessibility.AccessibilityManager
@@ -28,7 +30,10 @@ import android.os.Environment
 import java.io.File
 import java.io.BufferedReader
 import java.io.FileReader
+import java.io.InputStreamReader
 import java.net.InetAddress
+import java.text.SimpleDateFormat
+import java.util.Locale
 import android.os.Bundle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -176,6 +181,66 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(deleteSuspiciousFile(path))
                     } else {
                         result.error("INVALID_ARGUMENT", "Path is required", null)
+                    }
+                }
+                "getDangerousSettings" -> result.success(getDangerousSettingsTelemetry())
+                "openAccessibilitySettings" -> {
+                    try {
+                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
+                "openSecuritySettings" -> {
+                    try {
+                        val intent = Intent(Settings.ACTION_SECURITY_SETTINGS).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
+                "openDeviceAdminSettings" -> {
+                    try {
+                        val intent = Intent().apply {
+                            component = android.content.ComponentName("com.android.settings", "com.android.settings.DeviceAdminSettings")
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        try {
+                            val intent = Intent(Settings.ACTION_SECURITY_SETTINGS).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e2: Exception) {
+                            result.success(false)
+                        }
+                    }
+                }
+                "openInstallUnknownAppsSettings" -> {
+                    try {
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                        } else {
+                            Intent(Settings.ACTION_SECURITY_SETTINGS).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.success(false)
                     }
                 }
                 else -> result.notImplemented()
@@ -730,5 +795,166 @@ class MainActivity : FlutterFragmentActivity() {
         } catch (e: Exception) {
             false
         }
+    }
+
+    // ─── Dangerous Settings & OS Telemetry ────────────────────────────────────
+    private fun isSelinuxEnforcing(): Boolean {
+        return try {
+            val process = Runtime.getRuntime().exec("getenforce")
+            val reader = BufferedReader(InputStreamReader(process.inputStream))
+            val line = reader.readLine()
+            reader.close()
+            process.waitFor()
+            line?.trim()?.equals("Enforcing", ignoreCase = true) ?: true
+        } catch (e: Exception) {
+            true
+        }
+    }
+
+    private fun getSecurityPatchAgeDays(): Long {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return 0L
+        val patch = Build.VERSION.SECURITY_PATCH
+        if (patch.isNullOrEmpty()) return 0L
+        return try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val patchDate = sdf.parse(patch)
+            if (patchDate != null) {
+                val diff = System.currentTimeMillis() - patchDate.time
+                (diff / (1000L * 60 * 60 * 24)).coerceAtLeast(0L)
+            } else {
+                0L
+            }
+        } catch (e: Exception) {
+            0L
+        }
+    }
+
+    private fun getDangerousSettingsTelemetry(): Map<String, Any> {
+        val pm = packageManager
+
+        // 1. Developer Options & ADB Debugging
+        val devOptions = try {
+            Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) != 0
+        } catch (e: Exception) { false }
+
+        val adbEnabled = try {
+            Settings.Global.getInt(contentResolver, Settings.Global.ADB_ENABLED, 0) != 0
+        } catch (e: Exception) { false }
+
+        // 2. Lock Screen Security (PIN/Pattern/Biometrics)
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        val isDeviceSecure = km?.isDeviceSecure ?: false
+
+        // 3. SELinux Status
+        val selinuxEnforcing = isSelinuxEnforcing()
+
+        // 4. Security Patch Age & Lifecycle
+        val securityPatch = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Build.VERSION.SECURITY_PATCH ?: "Unknown" else "Unknown"
+        val patchAgeDays = getSecurityPatchAgeDays()
+        val isEol = Build.VERSION.SDK_INT < 33
+
+        // 5. Notification Listeners (Can snoop OTPs and banking SMS)
+        val notificationListeners = mutableListOf<Map<String, String>>()
+        try {
+            val rawListeners = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: ""
+            if (rawListeners.isNotEmpty()) {
+                val components = rawListeners.split(":")
+                for (comp in components) {
+                    if (comp.isNotBlank()) {
+                        val pkg = comp.split("/").firstOrNull()?.trim() ?: comp.trim()
+                        if (pkg.isNotEmpty() && pkg != packageName && !isSystemPackage(pkg)) {
+                            val appLabel = try {
+                                pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                            } catch (e: Exception) { pkg }
+                            notificationListeners.add(mapOf(
+                                "packageName" to pkg,
+                                "appName" to appLabel,
+                                "risk" to "Notification Snooping — Can read private SMS, 2FA OTP codes and banking alerts"
+                            ))
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 6. Accessibility & Overlay Abusers
+        val trojans = getTrojanVulnerabilities()
+        val accessibilityAbusers = trojans["accessibilityAbusers"] as? List<Map<String, String>> ?: emptyList()
+        val overlayAbusers = trojans["overlayAbusers"] as? List<Map<String, String>> ?: emptyList()
+
+        // 7. Active Device Administrators
+        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
+        val activeAdminsList = mutableListOf<Map<String, String>>()
+        try {
+            val admins = dpm?.activeAdmins
+            if (admins != null) {
+                for (admin in admins) {
+                    val pkg = admin.packageName
+                    if (pkg != packageName && !isSystemPackage(pkg)) {
+                        val label = try {
+                            pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                        } catch (e: Exception) { pkg }
+                        activeAdminsList.add(mapOf(
+                            "packageName" to pkg,
+                            "appName" to label,
+                            "risk" to "Device Admin Privileges — Can lock device, wipe data, or prevent removal"
+                        ))
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 8. Unknown App Installation Privileges (Sideloaders)
+        val sideloadAllowedApps = mutableListOf<Map<String, String>>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                val appOps = getSystemService(Context.APP_OPS_SERVICE) as? android.app.AppOpsManager
+                val packages = pm.getInstalledPackages(PackageManager.GET_PERMISSIONS)
+                for (pkg in packages) {
+                    val pkgName = pkg.packageName
+                    if (pkgName == packageName || isSystemPackage(pkgName)) continue
+                    val perms = pkg.requestedPermissions ?: continue
+                    if (Manifest.permission.REQUEST_INSTALL_PACKAGES in perms) {
+                        val appInfo = pkg.applicationInfo ?: continue
+                        val mode = appOps?.checkOpNoThrow(
+                            "android:request_install_packages",
+                            appInfo.uid,
+                            pkgName
+                        )
+                        if (mode == android.app.AppOpsManager.MODE_ALLOWED) {
+                            val label = try {
+                                pm.getApplicationLabel(appInfo).toString()
+                            } catch (e: Exception) { pkgName }
+                            sideloadAllowedApps.add(mapOf(
+                                "packageName" to pkgName,
+                                "appName" to label,
+                                "risk" to "Package Installer — Authorized to silently prompt/install third-party APKs"
+                            ))
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        return mapOf(
+            "developerOptions" to devOptions,
+            "adbEnabled" to adbEnabled,
+            "isDeviceSecure" to isDeviceSecure,
+            "selinuxEnforcing" to selinuxEnforcing,
+            "securityPatch" to securityPatch,
+            "patchAgeDays" to patchAgeDays,
+            "isEol" to isEol,
+            "accessibilityAbusers" to accessibilityAbusers,
+            "overlayAbusers" to overlayAbusers,
+            "notificationListeners" to notificationListeners,
+            "deviceAdmins" to activeAdminsList,
+            "sideloadAllowedApps" to sideloadAllowedApps
+        )
     }
 }

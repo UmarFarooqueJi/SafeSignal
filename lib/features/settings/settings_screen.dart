@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/constants.dart';
+import '../../core/foundation/attribution.dart';
 
 // ─── Settings State ───────────────────────────────────────────────────────────
 class SettingsState {
@@ -1098,7 +1099,7 @@ class _AboutSafeSignalPanel extends StatelessWidget {
           Opacity(
             opacity: 0,
             child: Text(
-              'ss::umarfarooque::2026::$_developer::$_email::$_org',
+              'ss::umarfarooque::2026::$_developer::$_org',
               style: const TextStyle(fontSize: 1),
             ),
           ),

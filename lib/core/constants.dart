@@ -47,7 +47,8 @@ class AppConstants {
   // ─── India Cybercrime Helpline ────────────────────────────────────────────────
   static const String cyberHelpline = '1930';
 
-  // ─── Timeouts ────────────────────────────────────────────────────────────────
+  // ─── Timeouts & Endpoints ────────────────────────────────────────────────────
+  static const String apiBaseUrlRelease = 'https://api.safesignal.app';
   static const int apiTimeoutSeconds = 15;
   static const int deepAnalysisTimeoutSeconds = 30;
 
