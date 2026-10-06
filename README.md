@@ -7,12 +7,18 @@
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)](https://dart.dev)
+[![Official Website](https://img.shields.io/badge/Website-safesignal--dx8.pages.dev-0284c7?style=flat&logo=cloudflare)](https://safesignal-dx8.pages.dev)
+[![Download APK](https://img.shields.io/badge/Download-Release%20v1.4.2%20APK-22c55e?style=flat&logo=android)](https://safesignal-dx8.pages.dev)
 [![Architecture](https://img.shields.io/badge/Architecture-100%25%20On--Device-10B981?style=flat&logo=shield)](https://github.com/UmarFarooqueJi/SafeSignal)
 [![Telemetry](https://img.shields.io/badge/Telemetry-Zero%20Tracking-blueviolet?style=flat&logo=privacyguides)](https://github.com/UmarFarooqueJi/SafeSignal)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/Security-Hardware%20AES--256-orange.svg)](https://github.com/UmarFarooqueJi/SafeSignal)
 [![Emergency Helpline](https://img.shields.io/badge/I4C%20Helpline-1930%20Direct-red.svg)](https://cybercrime.gov.in)
 [![Author](https://img.shields.io/badge/Author-Umar%20Farooque-0ea5e9?style=flat&logo=github)](https://github.com/UmarFarooqueJi)
+
+<p align="center">
+  🌐 <b>Official Live Web Portal:</b> <a href="https://safesignal-dx8.pages.dev"><b>safesignal-dx8.pages.dev</b></a>
+</p>
 
 <p align="center">
   <b>SafeSignal</b> is an ultra-private, client-side mobile security suite engineered to defend citizens against financial fraud, digital arrest scams, predatory loan spyware, and phishing threats — <b>operating 100% locally with zero cloud dependencies, zero external telemetry, and zero third-party API keys required.</b>
@@ -146,7 +152,16 @@ Most cybersecurity and antivirus apps today behave exactly like the spyware they
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started & Downloads
+
+### 📥 Direct APK Download (No Build Required)
+Get the pre-compiled, signed production release APK directly from our official portal:
+- 🌐 **Web Portal:** [safesignal-dx8.pages.dev](https://safesignal-dx8.pages.dev)
+- 📦 **Download Link:** [SafeSignal-v1.4.2-Universal.apk](https://safesignal-dx8.pages.dev)
+
+---
+
+### 🛠️ Building from Source
 
 SafeSignal is designed for frictionless compilation with zero configuration hurdles.
 

@@ -13,11 +13,15 @@ import 'features/settings/settings_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Local Hive Storage
-  await Hive.initFlutter();
-  Hive.registerAdapter(VerdictModelAdapter());
-  Hive.registerAdapter(AlertModelAdapter());
-  Hive.registerAdapter(CheckHistoryModelAdapter());
+  // Initialize Local Hive Storage safely
+  try {
+    await Hive.initFlutter();
+    if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(VerdictModelAdapter());
+    if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(AlertModelAdapter());
+    if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(CheckHistoryModelAdapter());
+  } catch (e) {
+    debugPrint('SafeSignal: Hive initialization error: $e');
+  }
 
   // Initialize Notification Service
   try {

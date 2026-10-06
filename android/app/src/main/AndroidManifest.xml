@@ -107,9 +107,12 @@
             </intent-filter>
         </service>
 
-        <!-- Use new Impeller flag (EnableImpeller deprecated) -->
+        <!-- Disable Impeller across all Flutter versions to prevent Vulkan crashes on incompatible GPUs -->
         <meta-data
             android:name="io.flutter.embedding.android.ImpellerEnabled"
+            android:value="false" />
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
             android:value="false" />
 
         <meta-data

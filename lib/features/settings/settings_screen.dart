@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/constants.dart';
 import '../../core/foundation/attribution.dart';
@@ -401,45 +402,223 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data['name'] ?? 'Umar Farooque',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: textMain,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
+            child: InkWell(
+              onTap: () => _showEditNameDialog(
+                context,
+                ref,
+                data['name'] ?? 'Umar Farooque',
+                isDark,
+              ),
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            data['name'] ?? 'Umar Farooque',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: textMain,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.all(3.5),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF1E293B)
+                                : const Color(0xFFEFF6FF),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.edit_rounded,
+                            size: 13,
+                            color: isDark
+                                ? const Color(0xFF93C5FD)
+                                : const Color(0xFF2563EB),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'SafeSignal Guard Active',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF10B981),
-                      ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF10B981),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'SafeSignal Guard Active',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF10B981),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  void _showEditNameDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String currentName,
+    bool isDark,
+  ) {
+    final controller = TextEditingController(text: currentName);
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          backgroundColor: cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.edit_rounded,
+                  color: Color(0xFF2563EB),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Edit Profile Name',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: textMain,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Customize your name as it appears on SafeSignal security reports and alerts.',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: textSub,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                style: TextStyle(
+                  color: textMain,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Enter your name',
+                  hintStyle: TextStyle(color: textSub.withValues(alpha: 0.7)),
+                  filled: true,
+                  fillColor: isDark
+                      ? const Color(0xFF0F172A)
+                      : const Color(0xFFF1F5F9),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFCBD5E1),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF2563EB),
+                      width: 2,
+                    ),
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.person_outline_rounded,
+                    color: Color(0xFF2563EB),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: textSub,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+              ),
+              onPressed: () async {
+                final newName = controller.text.trim();
+                if (newName.isNotEmpty) {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('userName', newName);
+                  ref.invalidate(profileProvider);
+                }
+                if (dialogCtx.mounted) {
+                  Navigator.pop(dialogCtx);
+                }
+              },
+              child: const Text(
+                'Save',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -875,6 +1054,7 @@ class _AboutSafeSignalPanel extends StatelessWidget {
   static const int _build = SafeSignalAttribution.kBuildNumber;
   static const String _tagline = SafeSignalAttribution.kTagline;
   static const String _github = 'github.com/UmarFarooqueJi/SafeSignal';
+  static const String _website = 'safesignal-dx8.pages.dev';
 
   @override
   Widget build(BuildContext context) {
@@ -1035,23 +1215,48 @@ class _AboutSafeSignalPanel extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // ── Source + License row ──────────────────────────────────────────
+          // ── Website + Source + License rows ──────────────────────────────
           Row(
             children: [
+              Expanded(
+                child: _InfoChip(
+                  icon: Icons.language_rounded,
+                  label: 'WEBSITE',
+                  value: _website,
+                  isDark: isDark,
+                  onTap: () async {
+                    final uri = Uri.parse('https://$_website');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: _InfoChip(
                   icon: Icons.code_rounded,
                   label: 'SOURCE',
                   value: _github,
                   isDark: isDark,
+                  onTap: () async {
+                    final uri = Uri.parse('https://$_github');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
                 ),
               ),
-              const SizedBox(width: 10),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
               Expanded(
                 child: _InfoChip(
                   icon: Icons.gavel_rounded,
                   label: 'LICENSE',
-                  value: 'SAL v1.0',
+                  value: 'SAL v1.0 • 100% On-Device Air-Gapped',
                   isDark: isDark,
                 ),
               ),
@@ -1115,12 +1320,14 @@ class _InfoChip extends StatelessWidget {
   final String label;
   final String value;
   final bool isDark;
+  final VoidCallback? onTap;
 
   const _InfoChip({
     required this.icon,
     required this.label,
     required this.value,
     required this.isDark,
+    this.onTap,
   });
 
   @override
@@ -1129,11 +1336,15 @@ class _InfoChip extends StatelessWidget {
     final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
 
-    return Container(
+    Widget content = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1151,6 +1362,14 @@ class _InfoChip extends StatelessWidget {
                   letterSpacing: 0.5,
                 ),
               ),
+              if (onTap != null) ...[
+                const Spacer(),
+                Icon(
+                  Icons.open_in_new_rounded,
+                  size: 10,
+                  color: textSub.withValues(alpha: 0.8),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 4),
@@ -1167,5 +1386,17 @@ class _InfoChip extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: content,
+        ),
+      );
+    }
+    return content;
   }
 }

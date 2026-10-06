@@ -33,29 +33,39 @@ class SafeSignalService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        try {
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+            val pendingIntent = if (launchIntent != null) {
+                PendingIntent.getActivity(
+                    this, 0, launchIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            } else null
 
-        val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("🛡️ SafeSignal is Active")
-            .setContentText("Live SMS & Call Shield is protecting you.")
-            .setSmallIcon(android.R.drawable.ic_secure) // fallback icon
-            .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true)
-            .build()
+            val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("🛡️ SafeSignal is Active")
+                .setContentText("Live SMS & Call Shield is protecting you.")
+                .setSmallIcon(android.R.drawable.ic_secure) // fallback icon
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
 
-        if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+            if (pendingIntent != null) {
+                builder.setContentIntent(pendingIntent)
+            }
+
+            val notification: Notification = builder.build()
+
+            if (Build.VERSION.SDK_INT >= 34) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
 
         // Return START_STICKY to ensure the service restarts if killed by the OS

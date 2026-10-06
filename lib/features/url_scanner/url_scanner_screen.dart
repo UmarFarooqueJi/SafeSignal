@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
-import 'dart:convert';
 import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
-
-import '../../core/constants.dart';
 
 class UrlScannerScreen extends StatefulWidget {
   const UrlScannerScreen({super.key});

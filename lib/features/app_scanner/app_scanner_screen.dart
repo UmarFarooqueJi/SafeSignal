@@ -3,8 +3,6 @@ import '../../core/theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/widgets/arc_gauge.dart';
-import 'package:dio/dio.dart';
-import '../../core/constants.dart';
 class AppScannerScreen extends StatefulWidget {
   const AppScannerScreen({super.key});
 

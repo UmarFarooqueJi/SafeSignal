@@ -546,63 +546,6 @@ class _PremiumTextField extends StatelessWidget {
   }
 }
 
-class _SocialButton extends StatelessWidget {
-  final String label;
-  final String icon;
-  final Widget iconWidget;
-  final VoidCallback onTap;
-
-  const _SocialButton({
-    required this.label,
-    required this.icon,
-    required this.iconWidget,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.03) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade200, 
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.1 : 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            iconWidget,
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _PrimaryButton extends StatelessWidget {
   final String label;
   final bool isLoading;
@@ -661,30 +604,3 @@ class _PrimaryButton extends StatelessWidget {
   }
 }
 
-class _GoogleIcon extends StatelessWidget {
-  const _GoogleIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100),
-      ),
-      child: const Center(
-        child: Text(
-          'G',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF4285F4),
-          ),
-        ),
-      ),
-    );
-  }
-}
