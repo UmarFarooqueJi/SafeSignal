@@ -61,13 +61,12 @@ class SmsReceiver : BroadcastReceiver() {
                 // ── Save to SharedPreferences for Flutter to read ──────────
                 saveSmsToInbox(context, sender, body, analysis)
                 
-                // ── Show notification & overlay ───────────────────────────
+                // ── Show notification & overlay only on suspicious messages ───
                 if (analysis.isSuspicious) {
                     showScamNotification(context, sender, body, analysis)
                     showPremiumOverlay(context, sender, analysis)
-                } else {
-                    showSafeNotification(context, sender, body, analysis)
                 }
+                // Harmless messages do not spam the user with notifications
             }
         } catch (e: Exception) {
             // fail silently
@@ -83,9 +82,10 @@ class SmsReceiver : BroadcastReceiver() {
             val existing = prefs.getString(PREFS_KEY, "[]")
             val arr = JSONArray(existing)
 
+            val sanitizedBody = sanitizeSmsBody(body)
             val record = JSONObject().apply {
                 put("sender", sender)
-                put("body", body)
+                put("body", sanitizedBody)
                 put("verdict", analysis.verdict)
                 put("confidence", analysis.confidence)
                 put("reason", analysis.reason)
@@ -103,6 +103,21 @@ class SmsReceiver : BroadcastReceiver() {
         } catch (e: Exception) {
             // fail silently — never crash on SMS storage failure
         }
+    }
+
+    private fun sanitizeSmsBody(body: String): String {
+        // Redact OTP / 2FA numeric verification codes to prevent credential leakage in stored inbox logs
+        val otpPattern = Regex("""(?i)\b(?:otp|code|verification|passcode|one-time|pin|v-code)\b[:\s\-—]+([0-9]{4,8})\b""")
+        var sanitized = otpPattern.replace(body) { matchResult ->
+            val full = matchResult.value
+            val code = matchResult.groupValues[1]
+            full.replace(code, "[REDACTED-OTP]")
+        }
+        if (body.contains("otp", ignoreCase = true) || body.contains("verification code", ignoreCase = true)) {
+            val standaloneDigits = Regex("""\b\d{4,8}\b""")
+            sanitized = standaloneDigits.replace(sanitized, "[REDACTED-OTP]")
+        }
+        return sanitized
     }
 
     private fun showSafeNotification(
@@ -129,23 +144,22 @@ class SmsReceiver : BroadcastReceiver() {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.presence_online)
-            .setContentTitle("🟢 Safe SMS — $sender")
-            .setContentText("Message is secure. No scam detected.")
+            .setContentTitle("SMS Audit — $sender")
+            .setContentText("No known scam indicators detected.")
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .setBigContentTitle("🟢 SafeSignal: Message Verified Secure")
+                    .setBigContentTitle("SafeSignal: No Scam Indicators Detected")
                     .bigText(
                         "From: $sender\n\n" +
                         "Message: \"${body.take(200)}${if (body.length > 200) "..." else ""}\"\n\n" +
-                        "✅ Verdict: SECURE & CLEAN\n" +
-                        "SafeSignal analyzed this SMS and found no suspicious links or scam keywords."
+                        "Verdict: No suspicious links or known scam patterns detected in local analysis."
                     )
                     .setSummaryText("SafeSignal Shield")
             )
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
-            .setColor(android.graphics.Color.GREEN)
+            .setColor(android.graphics.Color.BLUE)
             .build()
 
         nm.notify(NOTIFICATION_ID_BASE + sender.hashCode(), notification)

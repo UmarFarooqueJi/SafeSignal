@@ -85,11 +85,12 @@ class _NewOnboardingScreenState extends State<NewOnboardingScreen> {
                   child: _currentPage < _slides.length - 1
                       ? TextButton(
                           onPressed: () async {
+                            final router = GoRouter.of(context);
                             final prefs =
                                 await SharedPreferences.getInstance();
                             await prefs.setBool(
                                 AppConstants.prefOnboardingDone, true);
-                            if (mounted) context.go('/signin');
+                            if (mounted) router.go('/signin');
                           },
                           child: Text(
                             'Skip',

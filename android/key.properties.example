@@ -1,0 +1,8 @@
+# SafeSignal Android Keystore Release Configuration Template
+# Copy this file to android/key.properties and replace with production credentials.
+# NEVER commit android/key.properties or your .jks/.keystore file to git.
+
+keyAlias=safesignal-release-key
+keyPassword=YOUR_KEY_PASSWORD_HERE
+storeFile=../keystore/safesignal-release.jks
+storePassword=YOUR_KEYSTORE_PASSWORD_HERE

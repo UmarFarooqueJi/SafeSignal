@@ -46,7 +46,7 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
 
   bool _isScreeningActive = false;
   bool _blockTrai = true;
-  bool _blockInternational = true;
+  bool _blockInternational = false;
   bool _isLoading = true;
   List<_BlockedCall> _blockedCalls = [];
 
@@ -87,7 +87,7 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
           _isScreeningActive = active;
           if (settings != null) {
             _blockTrai = settings['blockTrai'] as bool? ?? true;
-            _blockInternational = settings['blockInternational'] as bool? ?? true;
+            _blockInternational = settings['blockInternational'] as bool? ?? false;
           }
           _blockedCalls = logs;
           _isLoading = false;
@@ -291,7 +291,7 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                           SwitchListTile(
                             value: _blockTrai,
                             onChanged: (val) => _updateSetting(blockTrai: val),
-                            activeColor: const Color(0xFF10B981),
+                            activeThumbColor: const Color(0xFF10B981),
                             title: Text(
                               'Block TRAI 140/160 Telemarketers',
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textMain),
@@ -313,7 +313,7 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                           SwitchListTile(
                             value: _blockInternational,
                             onChanged: (val) => _updateSetting(blockInternational: val),
-                            activeColor: const Color(0xFF10B981),
+                            activeThumbColor: const Color(0xFF10B981),
                             title: Text(
                               'Block International VoIP Spoofing',
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textMain),
@@ -389,7 +389,7 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _blockedCalls.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        separatorBuilder: (context, index) => const SizedBox(height: 8),
                         itemBuilder: (context, idx) {
                           final call = _blockedCalls[idx];
                           return Container(

@@ -97,7 +97,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   height: 300,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF6C63FF).withOpacity(0.12),
+                    color: const Color(0xFF6C63FF).withValues(alpha: 0.12),
                   ),
                 ).animate(onPlay: (controller) => controller.repeat(reverse: true))
                  .scale(end: const Offset(1.2, 1.2), duration: 5.seconds, curve: Curves.easeInOut)
@@ -111,7 +111,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   height: 250,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF00F2FE).withOpacity(0.08),
+                    color: const Color(0xFF00F2FE).withValues(alpha: 0.08),
                   ),
                 ).animate(onPlay: (controller) => controller.repeat(reverse: true))
                  .scale(end: const Offset(1.3, 1.3), duration: 6.seconds, curve: Curves.easeInOut)
@@ -162,18 +162,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
                             decoration: BoxDecoration(
                               color: isDark 
-                                  ? Colors.white.withOpacity(0.04) 
-                                  : Colors.white.withOpacity(0.7),
+                                  ? Colors.white.withValues(alpha: 0.04) 
+                                  : Colors.white.withValues(alpha: 0.7),
                               borderRadius: BorderRadius.circular(28),
                               border: Border.all(
                                 color: isDark 
-                                    ? Colors.white.withOpacity(0.08) 
-                                    : Colors.white.withOpacity(0.3),
+                                    ? Colors.white.withValues(alpha: 0.08) 
+                                    : Colors.white.withValues(alpha: 0.3),
                                 width: 1.5,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                                   blurRadius: 30,
                                   offset: const Offset(0, 15),
                                 ),
@@ -202,7 +202,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                             ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: const Color(0xFF6C63FF).withOpacity(0.25),
+                                                color: const Color(0xFF6C63FF).withValues(alpha: 0.25),
                                                 blurRadius: 20,
                                                 offset: const Offset(0, 8),
                                               ),
@@ -284,22 +284,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                           fontSize: 14,
                                         ),
                                         filled: true,
-                                        fillColor: isDark ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
+                                        fillColor: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
                                         prefixIcon: Icon(
                                           Icons.badge_rounded, 
-                                          color: const Color(0xFF6C63FF).withOpacity(0.8),
+                                          color: const Color(0xFF6C63FF).withValues(alpha: 0.8),
                                           size: 20,
                                         ),
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(14),
                                           borderSide: BorderSide(
-                                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade200,
+                                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
                                           ),
                                         ),
                                         enabledBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(14),
                                           borderSide: BorderSide(
-                                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade200,
+                                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
                                           ),
                                         ),
                                         focusedBorder: OutlineInputBorder(
@@ -332,7 +332,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                       borderRadius: BorderRadius.circular(16),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFF6C63FF).withOpacity(0.35),
+                                          color: const Color(0xFF6C63FF).withValues(alpha: 0.35),
                                           blurRadius: 16,
                                           offset: const Offset(0, 6),
                                         ),

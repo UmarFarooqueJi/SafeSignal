@@ -31,16 +31,28 @@ class SafeSignalCallScreeningService : CallScreeningService() {
 
         val prefs = getSharedPreferences("safesignal_call_shield", Context.MODE_PRIVATE)
         val blockTrai = prefs.getBoolean("block_trai", true)
-        val blockInternational = prefs.getBoolean("block_international", true)
+        val blockInternational = prefs.getBoolean("block_international", false)
+
+        // 0. Whitelist check — never block numbers explicitly trusted by the user
+        val digitsOnly = cleanNumber.replace("[^0-9]".toRegex(), "")
+        val last10 = if (digitsOnly.length >= 10) digitsOnly.takeLast(10) else digitsOnly
+        val whitelist = prefs.getStringSet("custom_whitelist", emptySet()) ?: emptySet()
+        if (whitelist.contains(cleanNumber) || (last10.isNotEmpty() && whitelist.contains(last10))) {
+            val response = CallResponse.Builder()
+                .setDisallowCall(false)
+                .setRejectCall(false)
+                .setSkipCallLog(false)
+                .setSkipNotification(false)
+                .build()
+            respondToCall(callDetails, response)
+            return
+        }
 
         var shouldBlock = false
         var reason = ""
 
         // 1. Check TRAI 140 and 160 series commercial/telemarketing blocks
         // Indian TRAI allocates 140xxxxxxx and 160xxxxxxx specifically to commercial telemarketers
-        val digitsOnly = cleanNumber.replace("[^0-9]".toRegex(), "")
-        val last10 = if (digitsOnly.length >= 10) digitsOnly.takeLast(10) else digitsOnly
-
         if (blockTrai) {
             if (last10.startsWith("140") || last10.startsWith("160")) {
                 shouldBlock = true

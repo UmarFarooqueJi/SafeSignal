@@ -878,24 +878,24 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       final prefs = await SharedPreferences.getInstance();
       List<String>? stored = prefs.getStringList('safesignal_score_history_7d');
       List<int> history;
-      if (stored != null && stored.length >= 7) {
+      if (stored != null && stored.isNotEmpty) {
         history = stored.map((s) => int.tryParse(s) ?? currentScore).toList();
+        // If stored records are fewer than 7, pad baseline with currentScore without synthetic variation
+        while (history.length < 7) {
+          history.insert(0, currentScore);
+        }
+        if (history.length > 7) {
+          history = history.sublist(history.length - 7);
+        }
         history[history.length - 1] = currentScore;
       } else {
-        history = [
-          (currentScore - 8).clamp(15, 100),
-          (currentScore - 4).clamp(15, 100),
-          (currentScore - 12).clamp(15, 100),
-          (currentScore - 6).clamp(15, 100),
-          (currentScore + 3).clamp(15, 100),
-          (currentScore - 2).clamp(15, 100),
-          currentScore,
-        ];
+        // First audit run: establish honest baseline across the window
+        history = List.filled(7, currentScore);
       }
       await prefs.setStringList('safesignal_score_history_7d', history.map((e) => e.toString()).toList());
       return history;
     } catch (_) {
-      return [currentScore, currentScore, currentScore, currentScore, currentScore, currentScore, currentScore];
+      return List.filled(7, currentScore);
     }
   }
 
@@ -2403,7 +2403,7 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Weekly Score Trend', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
-                  Text('7-day posture hygiene history', style: TextStyle(fontSize: 11, color: Colors.black45)),
+                  Text('7-day posture audit history', style: TextStyle(fontSize: 11, color: Colors.black45)),
                 ],
               ),
               Container(
@@ -2412,7 +2412,7 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                   color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('Live Telemetry', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                child: const Text('Recorded Audits', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
               ),
             ],
           ),

@@ -43,6 +43,13 @@ class LlmOrchestrator {
       return ruleVerdict;
     }
 
+    // Zero-Cloud / Air-Gapped Mode: return local verdict immediately without network overhead
+    if (AppConstants.isAirGappedMode ||
+        (AppConstants.openRouterApiKey.isEmpty &&
+            AppConstants.deepSeekApiKey.isEmpty)) {
+      return ruleVerdict.copyWith(isOffline: true);
+    }
+
     // Try cloud providers in order: OpenRouter Claude (primary) → DeepSeek (secondary)
     final providers = [
       _Provider(name: 'openrouter', analyze: (t, l) => _callOpenRouter(t, l)),

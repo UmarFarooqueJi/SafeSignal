@@ -61,6 +61,8 @@ class _VaultDocumentViewerScreenState extends State<VaultDocumentViewerScreen> {
       final bytes = await VaultCryptoService().decryptDocument(
         relativePath: widget.item.documentFileName!,
         ivBase64: widget.item.documentIv!,
+        cipherMode: widget.item.cipherMode,
+        expectedSha256: widget.item.documentChecksum,
       );
 
       if (mounted) {
@@ -96,9 +98,17 @@ class _VaultDocumentViewerScreenState extends State<VaultDocumentViewerScreen> {
         ),
       );
 
-      // Clean up exported temp file after share prompt
+      // Best-effort overwrite before deletion to minimize residual plaintext
       Future.delayed(const Duration(seconds: 10), () async {
-        if (await tempFile.exists()) await tempFile.delete();
+        try {
+          if (await tempFile.exists()) {
+            final len = await tempFile.length();
+            if (len > 0 && len < 20 * 1024 * 1024) {
+              await tempFile.writeAsBytes(Uint8List(len), flush: true);
+            }
+            await tempFile.delete();
+          }
+        } catch (_) {}
       });
     } catch (e) {
       if (mounted) {

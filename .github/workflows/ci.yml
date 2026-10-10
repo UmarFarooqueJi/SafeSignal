@@ -1,0 +1,38 @@
+name: SafeSignal Continuous Integration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  analyze_and_test:
+    name: Code Quality & Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+        working-directory: .
+
+      - name: Verify Code Formatting
+        run: dart format --output=none --set-exit-if-changed .
+        working-directory: .
+
+      - name: Static Code Analysis
+        run: flutter analyze --no-fatal-infos
+        working-directory: .
+
+      - name: Execute Unit Test Suite
+        run: flutter test --coverage
+        working-directory: .

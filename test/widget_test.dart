@@ -15,7 +15,7 @@ void main() {
 
   testWidgets('SafeSignal app smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: SafeSignalApp()));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 2000));
     expect(find.byType(MaterialApp), findsOneWidget);
   });
 }

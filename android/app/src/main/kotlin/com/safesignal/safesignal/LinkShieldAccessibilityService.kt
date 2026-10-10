@@ -1,11 +1,14 @@
 /*
  * SafeSignal Mobile Security Suite
- * Module: LinkShield On-Screen URL Monitoring Service
+ * Module: LinkShield On-Screen URL Monitoring Service (Architectural Prototype / Reference)
  * Author: Umar Farooque (https://github.com/UmarFarooqueJi)
  * Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
  *
- * AccessibilityService scanning on-screen text for malicious URLs across
- * any app: browsers, messaging apps, email clients.
+ * NOTE: This service is an architectural reference and is intentionally NOT declared
+ * in AndroidManifest.xml. SafeSignal enforces strict zero-unsolicited-telemetry and
+ * local-first privacy. Accessibility service capabilities require explicit Play Store
+ * justification and user consent declarations before production enablement.
+ * Sensitive URLs are never emitted to system logcat to prevent cross-process data leakage.
  */
 package com.safesignal.safesignal
 
@@ -24,7 +27,7 @@ class LinkShieldAccessibilityService : AccessibilityService() {
 
         val source = event.source ?: return
         
-        // Only scan active apps (Chrome, WhatsApp, etc. can be filtered here if needed)
+        // Prototype only: inactive unless declared in manifest and granted by user
         scanNodeForUrls(source)
     }
 
@@ -33,13 +36,8 @@ class LinkShieldAccessibilityService : AccessibilityService() {
             val text = node.text.toString()
             val match = urlRegex.find(text)
             if (match != null) {
-                val foundUrl = match.value
-                // Check if we haven't already processed this URL very recently
-                // and then send it to Flutter (or trigger a local notification) for scanning
-                Log.d("SafeSignalLinkShield", "Found URL on screen: $foundUrl")
-                
-                // Note: Real app would dispatch to Flutter using MethodChannel, 
-                // but since AccessibilityService has its own context, we'd use a BroadcastReceiver or direct plugin call.
+                // Privacy guard: Never log raw URLs to Android logcat
+                // In production, dispatched locally and directly to on-device scanner
             }
         }
 

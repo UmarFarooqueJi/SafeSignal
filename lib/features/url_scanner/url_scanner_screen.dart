@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -102,6 +103,27 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
     'microsoft.com', 'apple.com', 'linkedin.com', 'twitter.com', 'x.com'
   };
 
+  bool _isPrivateOrReservedHost(String host) {
+    final lower = host.toLowerCase().trim();
+    if (lower == 'localhost' || lower == '127.0.0.1' || lower == '::1' || lower == '0.0.0.0') return true;
+
+    final ipParts = lower.split('.');
+    if (ipParts.length == 4) {
+      final nums = ipParts.map((p) => int.tryParse(p)).toList();
+      if (nums.every((n) => n != null && n >= 0 && n <= 255)) {
+        final n0 = nums[0]!;
+        final n1 = nums[1]!;
+        if (n0 == 127) return true; // Loopback
+        if (n0 == 10) return true;  // 10.0.0.0/8
+        if (n0 == 172 && n1 >= 16 && n1 <= 31) return true; // 172.16.0.0/12
+        if (n0 == 192 && n1 == 168) return true; // 192.168.0.0/16
+        if (n0 == 169 && n1 == 254) return true; // Link-local / metadata 169.254.169.254
+        if (n0 == 0) return true;
+      }
+    }
+    return false;
+  }
+
   Future<UrlResult> _analyzeUrl(String url) async {
     final uri = Uri.tryParse(url) ?? Uri(host: url);
     final domain = uri.host.toLowerCase().replaceAll('www.', '');
@@ -111,19 +133,60 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
     int riskScore = 0; // 0-100
     bool isAllowlisted = false;
 
+    // 0. SSRF & PRIVATE NETWORK GUARD
+    final isSsrfHost = _isPrivateOrReservedHost(domain);
+    if (isSsrfHost) {
+      riskScore += 75;
+      domainChecks.add(DomainCheckItem(
+        'SSRF & Private Network Guard',
+        false,
+        'Target points to a loopback, link-local, or private RFC-1918 internal address ($domain). Outbound network scraping blocked.',
+      ));
+    }
+
     // 1. LOCAL ALLOWLIST CHECK
     _setStatus('Checking local trusted registry...');
     if (_allowlist.contains(baseDomain) || _allowlist.contains(domain) || domain.endsWith('.gov.in') || domain.endsWith('.nic.in')) {
       isAllowlisted = true;
-      domainChecks.add(DomainCheckItem('Trusted Registry', true, 'Known safe organization/government domain.'));
+      domainChecks.add(DomainCheckItem('Trusted Registry (Local)', true, 'Recognized in local registry of verified institutional domains.'));
     } else {
-      domainChecks.add(DomainCheckItem('Trusted Registry', null, 'Not in local allowlist (Neutral).'));
+      domainChecks.add(DomainCheckItem('Trusted Registry (Local)', null, 'Not present in local allowlist (Neutral).'));
+    }
+
+    // If target is an internal private host, do not execute external scans
+    if (isSsrfHost) {
+      return UrlResult(
+        url: url,
+        domain: domain,
+        riskScore: riskScore.clamp(0, 100),
+        verdict: UrlVerdict.dangerous,
+        checks: {},
+        warnings: [],
+        positives: [],
+        domainChecks: domainChecks,
+        isVerifiedSafe: false,
+        siteTitle: 'Internal Host',
+        siteDescription: 'Direct connections to internal network hosts are blocked.',
+        serverCountry: 'Local',
+        serverCity: 'Private',
+        serverIsp: 'Private Loopback/LAN',
+        serverIp: domain,
+        serverSoftware: 'N/A',
+        poweredBy: 'N/A',
+        contentType: 'N/A',
+        securityHeaders: 0,
+        aRecords: [],
+        mxRecords: [],
+        nsRecords: [],
+        hasDmarc: false,
+        typosquattingWarning: null,
+      );
     }
 
     // Parallel API Futures
     Future<_HttpsResult> httpsFuture = _checkHttps(url, domain);
-    Future<_SafeBrowsingResult> safeBrowsingFuture = _checkSafeBrowsing(url);
-    Future<_VirusTotalResult> vtFuture = _checkVirusTotal(domain);
+    Future<_SafeBrowsingResult> safeBrowsingFuture = _checkLocalPhishingSignatures(url);
+    Future<_VirusTotalResult> vtFuture = _checkHomographAndEntropy(domain);
     Future<_UrlHausResult> urlHausFuture = _checkUrlHaus(url);
     Future<_DomainAgeResult> ageFuture = _checkDomainAge(domain);
     Future<_SiteMetaResult> metaFuture = _fetchSiteMeta(url, domain);
@@ -154,12 +217,12 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
     final headers = results[7] as _HeadersResult;
     final dns = results[8] as _DnsResult;
 
-    // 2. HTTPS RESOLUTION CHECK
+    // 2. HTTPS RESOLUTION CHECK (Genuine TLS Handshake)
     if (https.isSecure) {
-      domainChecks.add(DomainCheckItem('HTTPS Encryption', true, 'Valid SSL certificate verified.'));
+      domainChecks.add(DomainCheckItem('HTTPS & TLS Encryption', true, 'Valid SSL/TLS certificate verified via handshake.'));
     } else {
       riskScore += 20;
-      domainChecks.add(DomainCheckItem('HTTPS Encryption', false, 'Missing or invalid SSL certificate. Unsafe for data.'));
+      domainChecks.add(DomainCheckItem('HTTPS & TLS Encryption', false, 'Missing, expired, or invalid SSL certificate. Unencrypted transport.'));
     }
 
     // 2b. TYPOSQUATTING & BRAND SPOOFING CHECK
@@ -180,43 +243,42 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
     if (dns.hasDmarc) {
       domainChecks.add(DomainCheckItem('Email DMARC Security', true, 'DMARC policy active. Protected against email spoofing.'));
     } else {
-      domainChecks.add(DomainCheckItem('Email DMARC Security', null, 'DMARC policy not found.'));
+      domainChecks.add(DomainCheckItem('Email DMARC Security', null, 'DMARC policy not found (Neutral).'));
     }
 
-    // 3. GOOGLE SAFE BROWSING & CLOUD TELEMETRY
-    // 3. ON-DEVICE THREAT RADAR
+    // 3. ON-DEVICE HEURISTIC PHISHING RADAR
     if (sb.isMalicious) {
       riskScore += 50;
-      domainChecks.add(DomainCheckItem('On-Device Threat Radar', false, 'Matched high-risk phishing/brand spoofing signature (${sb.threatType}).'));
+      domainChecks.add(DomainCheckItem('Local Phishing Radar (Heuristic)', false, 'Matched suspicious keyword + high-risk TLD combination (${sb.threatType}).'));
     } else {
-      domainChecks.add(DomainCheckItem('On-Device Threat Radar', true, 'Zero malicious signatures found. 100% on-device verified.'));
+      domainChecks.add(DomainCheckItem('Local Phishing Radar (Heuristic)', true, 'No known scam keyword or disposable TLD patterns found.'));
     }
 
-    // 4. DEEP HEURISTIC ENGINE
+    // 4. HOMOGRAPH & DOMAIN ENTROPY
     if (vt.maliciousCount > 0) {
       riskScore += 30;
-      domainChecks.add(DomainCheckItem('Deep Heuristic Engine', false, 'Abnormal domain structure or homograph patterns detected.'));
+      domainChecks.add(DomainCheckItem('Homograph & Entropy (Heuristic)', false, 'Abnormal domain structure or punycode homograph patterns detected.'));
     } else {
-      domainChecks.add(DomainCheckItem('Deep Heuristic Engine', true, 'Domain pattern, TLD entropy, and syntax verified clean.'));
+      domainChecks.add(DomainCheckItem('Homograph & Entropy (Heuristic)', true, 'Domain pattern, TLD entropy, and syntax verified clean.'));
     }
 
-    // 5. URLHAUS
+    // 5. URLHAUS THREAT INTELLIGENCE (abuse.ch)
     if (urlHaus.isListed) {
       riskScore += 50;
-      domainChecks.add(DomainCheckItem('URLhaus Malware DB', false, 'Confirmed malware distribution site.'));
+      domainChecks.add(DomainCheckItem('URLhaus Malware DB (abuse.ch)', false, 'Confirmed active malware distribution URL in abuse.ch records.'));
     } else if (urlHaus.apiFailed) {
-      domainChecks.add(DomainCheckItem('URLhaus Malware DB', null, 'Service unreachable.'));
+      domainChecks.add(DomainCheckItem('URLhaus Malware DB (abuse.ch)', null, 'External database unreachable (Neutral/Unknown).'));
     } else {
-      domainChecks.add(DomainCheckItem('URLhaus Malware DB', true, 'Not listed in malware databases.'));
+      domainChecks.add(DomainCheckItem('URLhaus Malware DB (abuse.ch)', true, 'Not listed in abuse.ch active threat database.'));
     }
 
-    // 6. DOMAIN AGE / WHOIS
+    // 6. DOMAIN AGE / WHOIS (RDAP)
     if (age.apiFailed) {
-      domainChecks.add(DomainCheckItem('Domain Age (RDAP)', null, 'Could not fetch domain registration data.'));
+      domainChecks.add(DomainCheckItem('Domain Age (RDAP)', null, 'RDAP lookup unavailable or rate-limited (Neutral/Unknown).'));
     } else {
       if (age.daysOld >= 0 && age.daysOld < 30) {
         riskScore += 15;
-        domainChecks.add(DomainCheckItem('Domain Age (RDAP)', false, 'Registered very recently (${age.daysOld} days ago). High risk of scam.'));
+        domainChecks.add(DomainCheckItem('Domain Age (RDAP)', false, 'Registered very recently (${age.daysOld} days ago). Elevated scam risk.'));
       } else if (age.daysOld >= 30) {
         domainChecks.add(DomainCheckItem('Domain Age (RDAP)', true, 'Established domain (${age.daysOld} days old).'));
       }
@@ -233,24 +295,21 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
     final scamKeywords = ['prize', 'winner', 'free', 'lucky', 'jackpot', 'kyc', 'verify', 'urgent'];
     if (scamKeywords.any((k) => url.toLowerCase().contains(k))) {
       riskScore += 10;
-      domainChecks.add(DomainCheckItem('URL Pattern', false, 'Suspicious keywords found in URL.'));
+      domainChecks.add(DomainCheckItem('URL Pattern', false, 'Suspicious urgency keywords found in URL path.'));
     }
 
-    // Cap score at 100
-    riskScore = riskScore.clamp(0, 100);
-
-    // If it's a known top-level allowlisted domain, force score to 0 unless live APIs explicitly catch malware (highly unlikely for real google.com, but catches typos)
-    if (isAllowlisted && riskScore < 60) {
-      riskScore = 0;
+    // Proportional allowlist moderation (reduces baseline risk by 20, but does NOT suppress active malware/typosquatting)
+    if (isAllowlisted) {
+      riskScore = (riskScore - 20).clamp(0, 100);
+    } else {
+      riskScore = riskScore.clamp(0, 100);
     }
 
-    final verdict = isAllowlisted && riskScore == 0
-        ? UrlVerdict.safe
-        : riskScore >= 51
-            ? UrlVerdict.dangerous
-            : riskScore >= 21
-                ? UrlVerdict.caution
-                : UrlVerdict.safe;
+    final verdict = riskScore >= 51
+        ? UrlVerdict.dangerous
+        : riskScore >= 21
+            ? UrlVerdict.caution
+            : UrlVerdict.safe;
 
     return UrlResult(
       url: url,
@@ -283,22 +342,36 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
   // --- Pipeline Implementations ---
 
   Future<_HttpsResult> _checkHttps(String originalUrl, String domain) async {
-    _setStatus('Verifying SSL Certificate...');
+    _setStatus('Verifying SSL/TLS Certificate...');
+    final isHttps = originalUrl.toLowerCase().startsWith('https://');
+
     try {
-      final checkUrl = 'https://$domain';
-      final response = await _dio.get(checkUrl, options: Options(
-        validateStatus: (status) => true,
-        receiveTimeout: const Duration(seconds: 4),
-      ));
-      return _HttpsResult(isSecure: response.statusCode != null);
+      // Validate genuine TLS certificate validity via secure socket handshake with trusted CAs
+      final socket = await SecureSocket.connect(
+        domain,
+        443,
+        timeout: const Duration(seconds: 4),
+        onBadCertificate: (cert) => false, // Reject invalid or expired certificates
+      );
+      await socket.close();
+      return _HttpsResult(isSecure: isHttps);
     } catch (_) {
-      return _HttpsResult(isSecure: false);
+      try {
+        final checkUrl = 'https://$domain';
+        final response = await _dio.get(checkUrl, options: Options(
+          validateStatus: (status) => status != null && status < 500,
+          receiveTimeout: const Duration(seconds: 4),
+        ));
+        return _HttpsResult(isSecure: isHttps && response.statusCode != null);
+      } catch (_) {
+        return _HttpsResult(isSecure: false);
+      }
     }
   }
 
-  Future<_SafeBrowsingResult> _checkSafeBrowsing(String url) async {
+  Future<_SafeBrowsingResult> _checkLocalPhishingSignatures(String url) async {
     _setStatus('Scanning On-Device Threat Signatures...');
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 50));
     final lower = url.toLowerCase();
     final suspiciousPatterns = ['login', 'verify', 'update', 'banking', 'secure', 'wallet', 'free-recharge', 'gift', 'claim'];
     final highRiskTlds = ['.xyz', '.top', '.click', '.live', '.buzz', '.rest', '.quest', '.tk', '.ml', '.ga', '.cf', '.gq'];
@@ -313,9 +386,9 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
     return _SafeBrowsingResult(isMalicious: isMalicious, threatType: threat, apiFailed: false);
   }
 
-  Future<_VirusTotalResult> _checkVirusTotal(String domain) async {
+  Future<_VirusTotalResult> _checkHomographAndEntropy(String domain) async {
     _setStatus('Analyzing Domain Structure & Entropy...');
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 50));
     
     final hyphenCount = domain.split('-').length - 1;
     final dotCount = domain.split('.').length - 1;
@@ -370,6 +443,7 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
 
   // ─── Site Meta (OG tags / HTML title scrape) ────────────────────────────────
   Future<_SiteMetaResult> _fetchSiteMeta(String url, String domain) async {
+    if (_isPrivateOrReservedHost(domain)) return _SiteMetaResult();
     _setStatus('Fetching site metadata...');
     try {
       final response = await _dio.get(
@@ -427,20 +501,24 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
     }
   }
 
-  // ─── IP Geolocation (ip-api.com — free, no key needed) ──────────────────────
+  // ─── IP Geolocation (Secure HTTPS lookup) ──────────────────────
   Future<_IpGeoResult> _fetchIpGeo(String domain) async {
+    if (_isPrivateOrReservedHost(domain)) {
+      return _IpGeoResult(country: 'Private Network', city: 'LAN / Host', isp: 'Internal', ip: domain);
+    }
     _setStatus('Resolving server location...');
     try {
       final response = await _dio.get(
-        'http://ip-api.com/json/$domain?fields=status,country,city,isp,query',
+        'https://freeipapi.com/api/json/$domain',
         options: Options(receiveTimeout: const Duration(seconds: 4)),
       );
-      if (response.statusCode == 200 && response.data['status'] == 'success') {
+      if (response.statusCode == 200 && response.data is Map) {
+        final data = response.data as Map;
         return _IpGeoResult(
-          country: response.data['country']?.toString() ?? '',
-          city: response.data['city']?.toString() ?? '',
-          isp: response.data['isp']?.toString() ?? '',
-          ip: response.data['query']?.toString() ?? '',
+          country: data['countryName']?.toString() ?? '',
+          city: data['cityName']?.toString() ?? '',
+          isp: data['isp']?.toString() ?? '',
+          ip: data['ipAddress']?.toString() ?? '',
         );
       }
       return _IpGeoResult();
@@ -451,6 +529,10 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
 
   // ─── HTTP Headers Analysis ───────────────────────────────────────────────────
   Future<_HeadersResult> _fetchHeaders(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri != null && _isPrivateOrReservedHost(uri.host)) {
+      return _HeadersResult();
+    }
     _setStatus('Analyzing HTTP security headers...');
     try {
       final response = await _dio.head(

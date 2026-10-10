@@ -2,205 +2,217 @@
 
 # 🛡️ SafeSignal
 
-### The 100% On-Device, Air-Gapped Cyber Defense Suite for Android
-**Client-Side Scam Detection • Biometric Hardware Vault (AES-256) • Rapid 1930 Incident Response**
+### On-Device Mobile Cyber Defense & Incident Response Suite for Android
+**Client-Side Scam Detection • Hardware-Backed Vault (AES-256) • Golden Hour 1930 Incident Response**
 
-[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)](https://dart.dev)
-[![Official Website](https://img.shields.io/badge/Website-safesignal--dx8.pages.dev-0284c7?style=flat&logo=cloudflare)](https://safesignal-dx8.pages.dev)
-[![Download APK](https://img.shields.io/badge/Download-Release%20v1.4.2%20APK-22c55e?style=flat&logo=android)](https://safesignal-dx8.pages.dev)
-[![Architecture](https://img.shields.io/badge/Architecture-100%25%20On--Device-10B981?style=flat&logo=shield)](https://github.com/UmarFarooqueJi/SafeSignal)
-[![Telemetry](https://img.shields.io/badge/Telemetry-Zero%20Tracking-blueviolet?style=flat&logo=privacyguides)](https://github.com/UmarFarooqueJi/SafeSignal)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Security](https://img.shields.io/badge/Security-Hardware%20AES--256-orange.svg)](https://github.com/UmarFarooqueJi/SafeSignal)
-[![Emergency Helpline](https://img.shields.io/badge/I4C%20Helpline-1930%20Direct-red.svg)](https://cybercrime.gov.in)
-[![Author](https://img.shields.io/badge/Author-Umar%20Farooque-0ea5e9?style=flat&logo=github)](https://github.com/UmarFarooqueJi)
+[![Flutter](https://img.shields.io/badge/Flutter-3.38.8-02569B?logo=flutter)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.10.7-0175C2?logo=dart)](https://dart.dev)
+[![Android](https://img.shields.io/badge/Android-API%2026%20to%2035-3DDC84?logo=android)](https://developer.android.com)
+[![Website](https://img.shields.io/badge/Website-safesignal--dx8.pages.dev-0284c7?logo=cloudflare)](https://safesignal-dx8.pages.dev)
+[![AI Context](https://img.shields.io/badge/llms.txt-AI%20Standard-8A2BE2)](https://safesignal-dx8.pages.dev/llms.txt)
+[![Security Policy](https://img.shields.io/badge/security.txt-RFC%209116-green)](https://safesignal-dx8.pages.dev/.well-known/security.txt)
+[![I4C Helpline](https://img.shields.io/badge/Helpline-1930%20Direct-red.svg)](https://cybercrime.gov.in)
+[![Author](https://img.shields.io/badge/Author-Umar%20Farooque-0ea5e9?logo=github)](https://github.com/UmarFarooqueJi)
 
 <p align="center">
-  🌐 <b>Official Live Web Portal:</b> <a href="https://safesignal-dx8.pages.dev"><b>safesignal-dx8.pages.dev</b></a>
+  🌐 <b>Official Website:</b> <a href="https://safesignal-dx8.pages.dev"><b>safesignal-dx8.pages.dev</b></a> • 
+  🤖 <b>LLM / AI Spec:</b> <a href="https://safesignal-dx8.pages.dev/llms.txt"><b>llms.txt</b></a> • 
+  📦 <b>Application ID:</b> <code>com.safesignal.safesignal</code>
 </p>
 
 <p align="center">
-  <b>SafeSignal</b> is an ultra-private, client-side mobile security suite engineered to defend citizens against financial fraud, digital arrest scams, predatory loan spyware, and phishing threats — <b>operating 100% locally with zero cloud dependencies, zero external telemetry, and zero third-party API keys required.</b>
+  <b>SafeSignal</b> is an open-source, local-first Android security and cyber fraud response application designed to protect users against predatory financial fraud, banking trojans, smishing scams, malicious APK droppers, and privacy leaks. The core analysis engines and cryptographic vaults execute entirely on-device, preserving client privacy while providing instant Golden Hour response tools for cybercrime incidents.
 </p>
 
 </div>
 
-<br>
+---
+
+## ⚠️ Security & Risk Reduction Disclaimer
+
+> [!IMPORTANT]
+> **SafeSignal is a defense-in-depth and incident-triage assistance tool.** It detects common scam heuristics, dangerous application permission combinations, and known malicious indicators. It does **not** provide 100% immunity against advanced persistent threats (APTs), zero-day exploits, or targeted firmware attacks. No software can replace vigilance. If you have suffered financial loss due to cyber fraud, report it immediately to the **National Cyber Crime Helpline (1930)** or at [cybercrime.gov.in](https://cybercrime.gov.in).
 
 ---
 
-## 📱 Interactive Feature Showcase
+## 📱 Application Interface & Captures
+
+The following captures demonstrate the functional interface of SafeSignal:
 
 <div align="center">
 
-### 🌟 Core Dashboard & Command Center
-| Threat Command Center | Intelligence Drawer & Tools |
-| :---: | :---: |
-| <img src="docs/screenshots/mockups/01_home_screen.png" width="310" /> | <img src="docs/screenshots/mockups/02_sidebar_menu.png" width="310" /> |
-| **Real-Time Threat Score & Protection Status** | **Instant Access to Cyber Feed, History & Vault** |
-
-<br>
-
-### 📱 Deep Device & OS Security Audit
-| Exploit & Hardware Diagnostics | Sensor Privacy & Hardware Specs | App Spyware & Risk Rating |
+### Core Dashboard & Device Security Audit
+| Threat Command Center | Device & OS Exploit Audit | Installed Package Audit |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/mockups/03_device_audit.png" width="235" /> | <img src="docs/screenshots/mockups/04_sensor_permissions.png" width="235" /> | <img src="docs/screenshots/mockups/05_app_audit.png" width="235" /> |
-| **35/100 Exploit Risk & RAM/Disk Health** | **Camera/Mic Stacking & System Specs** | **4.9/5 Safety Score & Permission Matrix** |
+| <img src="docs/screenshots/02_home_screen.png" width="240" alt="Home Dashboard" /> | <img src="docs/screenshots/04_device_secured.png" width="240" alt="Device Audit" /> | <img src="docs/screenshots/03_app_spyware_audit.png" width="240" alt="App Audit" /> |
+| **Real-time threat status & quick actions** | **Root, bootloader & debug check** | **Permission cluster profiling** |
 
 <br>
 
-### 🛡️ Web, Identity & Threat Intelligence
-| Phishing & URL Shield | Email & Data Breach Monitor | Live Cyber Scam Advisories |
+### Threat Analysis & Golden Hour Incident Response
+| Phishing & URL Analyzer | 1930 Emergency Nodal Directory | Section 66D IT Act Legal Draft |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/mockups/06_website_scanner.png" width="235" /> | <img src="docs/screenshots/mockups/07_email_breach.png" width="235" /> | <img src="docs/screenshots/mockups/08_cyber_feed.png" width="235" /> |
-| **On-Device Phishing & Homograph Radar** | **Data Breach Exposure Verdict** | **Real-Time Fraud Alerts & Advisories** |
-
-<br>
-
-### 🚨 Rapid Incident Response & Live Defense
-| Golden Hour & 1930 Helpline | Emergency Bank Freeze Directory | Legal FIR Complaint Generator |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/mockups/09_incident_response_top.png" width="235" /> | <img src="docs/screenshots/mockups/10_incident_response_bank_directory.png" width="235" /> | <img src="docs/screenshots/mockups/11_incident_response_complaint_generator.png" width="235" /> |
-| **Direct Gateway to National 1930 Helpline** | **One-Touch Dial & Freeze for 10+ Banks** | **Automated Section 66D IT Act Legal Draft** |
-
-<br>
-
-### 🛡️ Live Threat Defense
-| SMS Scam & Smishing Radar |
-| :---: |
-| <img src="docs/screenshots/mockups/12_sms_inbox_scanner.png" width="280" /> |
-| **Real-Time SMS & OTP Theft Protection** |
+| <img src="docs/screenshots/05_website_analyzer.png" width="240" alt="URL Scanner" /> | <img src="docs/screenshots/05_incident_response_bank_directory.png" width="240" alt="Bank Directory" /> | <img src="docs/screenshots/06_incident_response_complaint_generator.png" width="240" alt="FIR Generator" /> |
+| **Punycode & domain heuristic check** | **Direct freeze lines for 10+ banks** | **Formal complaint text generation** |
 
 </div>
 
-<br>
+---
+
+## 🧩 Feature-by-Feature Implementation Status
+
+SafeSignal clearly delineates between on-device logic, hardware-dependent features, and external threat intelligence requests:
+
+| Capability | Module / Implementation | Processing Location | Implementation Status | Notes & Hardware Requirements |
+| :--- | :--- | :--- | :--- | :--- |
+| **SMS Scam & Smishing Detection** | `LocalRuleEngine` | **100% On-Device** | ✅ Production Verified | Regex & heuristic keyword bank (TRAI DLT headers, electricity scams, APK links). No cloud transmission. |
+| **Call Forwarding Hijack Detection** | `LocalRuleEngine` | **100% On-Device** | ✅ Production Verified | Detects `*21*`, `*401*`, and `##002#` short codes in inbound messages. |
+| **Remote Access Trojan Detection** | `LocalRuleEngine` | **100% On-Device** | ✅ Production Verified | Flags social engineering vectors promoting AnyDesk, TeamViewer, RustDesk, QuickSupport. |
+| **Root & Bootloader Integrity Audit** | `safe_device` + `DeviceAuditScreen` | **100% On-Device** | ✅ Production Verified | Checks `su` binaries, test-keys, Magisk artifacts, and developer debugging flags. |
+| **Sensor & Permission Profiling** | Android `PackageManager` | **100% On-Device** | ✅ Production Verified | Identifies dangerous permission clusters (`READ_SMS` + `RECORD_AUDIO` + `SYSTEM_ALERT_WINDOW`). |
+| **Biometric Master Key Storage** | `FlutterSecureStorage` | **100% On-Device** | ✅ Production Verified | Uses Android KeyStore (RSA-OAEP / AES-GCM) backed by TEE / StrongBox hardware where available. |
+| **Document Vault Encryption** | `VaultCryptoService` | **100% On-Device** | ✅ Production Verified | AES-256-CBC with volatile RAM processing, random IV, and SHA-256 integrity checksums. Plaintext shredded from disk. |
+| **Document Optical Character Recognition** | `google_mlkit_text_recognition` | **100% On-Device** | ✅ Production Verified | Runs on-device ML Kit vision models; zero remote processing. |
+| **1930 Golden Hour Emergency Dialer** | `IncidentResponseScreen` | **Native Android Intent** | ✅ Production Verified | Initiates direct `tel:1930` calls through standard telephony intents. |
+| **Emergency Bank Freeze Directory** | `IncidentResponseScreen` | **100% On-Device** | ✅ Production Verified | Pre-loaded nodal freeze lines & SMS blocking templates for 10+ major Indian financial institutions. |
+| **Section 66D IT Act Legal FIR Generator** | `IncidentResponseScreen` | **100% On-Device** | ✅ Production Verified | Generates structured formal complaint text with UTR, amount, and scammer details for cybercrime portals. |
+| **Domain & URL Threat Reconnaissance** | `SafeSignalThreatGateway` | **External Network Call** | ⚠️ Network Dependent | Queries RDAP (`rdap.org`), Cloudflare DoH (`cloudflare-dns.com`), and URLhaus API (`abuse.ch`). |
+| **Data Breach Monitor** | `HibpService` | **External Network Call** | ⚠️ Network Dependent | Queries public breach databases (XposedOrNot API). Only invoked upon explicit user request. |
+| **Cyber Threat & Advisory Feed** | `CyberFeedScreen` | **External Network Call** | ⚠️ Network Dependent | Pulls open public RSS feeds (Google News Cyber India, The Hacker News) with local caching. |
+| **Real-time SMS Interception (Background)** | `SmsReceiver.kt` | **Android Broadcast Receiver** | ⚡ Platform Dependent | Requires default SMS handler or explicit runtime permissions depending on Android OEM policy. |
 
 ---
 
-## 🔒 The SafeSignal Privacy Manifesto
+## 🔒 Privacy Architecture & Network Communication
 
-Most cybersecurity and antivirus apps today behave exactly like the spyware they claim to fight — uploading your installed apps, contacts, browser history, and scanned URLs to remote servers for data mining and ad targeting. 
+SafeSignal adheres to strict data minimization. By default, **no personal data, contacts, messages, or files are sent to any server.**
 
-**SafeSignal is built on an uncompromising privacy philosophy:**
+### External Network Communication Matrix
 
-1. **Zero Cloud Accounts**: No email registration, no phone verification, no passwords stored in third-party databases.
-2. **Zero Telemetry**: Scanned URLs, SMS messages, private documents, and installed apps never leave your handset.
-3. **Air-Gapped Operation**: Scanners run via on-device heuristics, Android `PackageManager` APIs, hardware keystore cryptography, and local offline signatures.
-4. **Zero-Configuration Setup**: No `.env` files, no paid API keys (VirusTotal, Supabase, or OpenAI), and no rate limits. Clone, compile, and run.
-
----
-
-## ⚡ Core Capabilities & Features
-
-### 1. 🚨 Financial Fraud Incident Response & Golden Hour Defense
-- **Direct National Helpline Integration**: Instant single-tap gateway to the Indian National Cyber Crime Reporting Portal (**1930 Toll-Free**).
-- **Emergency Nodal Bank Freeze Directory**: One-touch direct dialers to nodal freeze helplines for SBI, HDFC, ICICI, Axis, PNB, Kotak, PhonePe, Paytm, Google Pay, and Airtel Payments Bank.
-- **Automated Police FIR Draft Generator**: Generates formal, legally-structured cybercrime complaints under **Section 66D of the Information Technology Act, 2000**.
-- **Golden Hour Protocol**: Step-by-step immediate containment checklist designed to stop unauthorized fund siphoning within the critical first two hours.
-
-### 2. 🔐 Hardware-Backed Biometric Security Vault
-- **AES-256-GCM Encryption**: Document files and identity records are encrypted locally using keys stored in the Android Hardware Keystore (Keymaster / StrongBox).
-- **Biometric Authentication Gate**: Enforces hardware fingerprint or face unlock before vault decryption.
-- **OCR Document Scanner**: On-device machine vision automatically extracts document metadata and renders safe in-vault previews without unencrypted caching.
-
-### 3. 🔍 On-Device Phishing & Malicious URL Radar
-- Deep heuristic inspection for **homograph/punycode attacks**, domain generation algorithms (DGA), TLD reputation entropy, and deceptive redirect chains.
-- Identifies brand spoofing targeting major institutions (SBI, Google, Paytm, Netflix, Amazon) without leaking browsing history to cloud scanners.
-- Verifies SSL/TLS certificate validity and security response headers directly from client sockets.
-
-### 4. 📱 Deep Device Security Audit & Spyware Radar
-- **Firmware & OS Integrity Check**: Detects root access, Magisk/SuperSU binaries, unlocked bootloaders, and unsafe developer/USB debugging modes.
-- **Sensor Stacking Radar**: Audits installed applications against dangerous permission clusters (e.g., simultaneous `READ_SMS` + `RECORD_AUDIO` + `SYSTEM_ALERT_WINDOW`).
-- **Sideload & Signature Detection**: Distinguishes verified platform packages from unverified third-party APK sideloads.
-
-### 5. 🛡️ Real-Time SMS Scam & Smishing Defense
-- Client-side heuristic parser detects TRAI DLT template anomalies, fake bank KYC threats, electricity bill disconnection scams, and OTP theft attempts.
-- Completely offline analysis: your private communications are never transmitted to external servers.
-
-### 6. 📰 Open Cyber Threat Feed
-- Aggregates live public cyber safety alerts, scam warnings, and vulnerability advisories via open keyless RSS feeds (Google News India Cyber Crimes & The Hacker News).
-- Fully cached for offline reading with bilingual support (English / Hindi).
+| Feature | Destination Endpoint | Transport | Payload Transmitted | User Consent / Trigger |
+| :--- | :--- | :--- | :--- | :--- |
+| **Domain Intelligence** | `https://rdap.org/domain/{domain}` | HTTPS (TLS 1.3) | Domain hostname only | Manual "Analyze URL" click |
+| **DNS-over-HTTPS** | `https://cloudflare-dns.com/dns-query` | HTTPS (TLS 1.3) | Hostname DNS query | Manual "Analyze URL" click |
+| **Malware URL Check** | `https://urlhaus-api.abuse.ch/v1/url/` | HTTPS (TLS 1.3) | Submitted target URL | Manual "Analyze URL" click |
+| **Email Breach Check** | `https://api.xposedornot.com/v1/check-email/` | HTTPS (TLS 1.3) | User-entered email query | Manual "Check Breach" button |
+| **Cyber News Feed** | Google News / The Hacker News RSS | HTTPS (TLS 1.3) | None (Standard HTTP GET) | Opening Cyber Feed tab |
 
 ---
 
-## 🏗️ Architecture: Pure On-Device Defense
+## 🛡️ Threat Model & Limitations
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    SafeSignal UI Layer                      │
-│             Flutter 3.x • Material 3 • Riverpod             │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│                  On-Device Security Engines                 │
-│  ┌───────────────────────┐       ┌───────────────────────┐  │
-│  │ Local Heuristic Radar │       │ Android OS Auditor    │  │
-│  │ (Homograph/DGA/Entropy)│      │ (Root/Sensors/Perms)  │  │
-│  └───────────────────────┘       └───────────────────────┘  │
-│  ┌───────────────────────┐       ┌───────────────────────┐  │
-│  │ Hardware KeyStore     │       │ Client-Side Smishing  │  │
-│  │ (AES-256-GCM Vault)   │       │ (Offline Regex/NLP)   │  │
-│  └───────────────────────┘       └───────────────────────┘  │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│                     Local Storage Layer                     │
-│        Hive Local DB • SharedPreferences • SecureStorage    │
-└─────────────────────────────────────────────────────────────┘
-```
+### In-Scope Threats Addressed
+- **Smishing & Social Engineering**: Catches fraudulent SMS patterns impersonating banks, TRAI DLT registration spoofing, electricity disconnection deadlines, and lottery traps.
+- **APK Dropper Distribution**: Warns users when messages contain links directing to raw `.apk` payloads or untrusted file shares.
+- **Credential & OTP Siphoning**: Identifies social engineering patterns attempting to extract OTPs or banking PINs.
+- **Over-Privileged Sideloads**: Audits applications installed outside verified app stores requesting sensitive hardware sensors or administrative overlay capabilities.
+- **Identity Document Exposure**: Protects scanned credentials (Aadhaar, PAN, voter cards) via encrypted local storage rather than plain gallery folders.
+
+### Out-of-Scope & Known Limitations
+- **OS Kernel Exploits & Hardware Zero-Days**: If the underlying Android operating system is compromised at root/kernel level, process isolation and KeyStore protections may be bypassed.
+- **OEM-Specific Background Restrictions**: Aggressive battery managers (MIUI, ColorOS, FunTouch) may terminate background receivers unless battery optimization is manually disabled by the user.
+- **Real-time Call Audio Inspection**: SafeSignal does not record or analyze live telephone conversations to maintain user privacy and comply with Android permission restrictions.
+- **Dynamic Phishing Content**: Phishing pages utilizing time-delayed cloaking or CAPTCHAs cannot be fully evaluated through static URL inspection alone.
 
 ---
 
-## 🚀 Getting Started & Downloads
+## 📋 Android Permissions Explanation
 
-### 📥 Direct APK Download (No Build Required)
-Get the pre-compiled, signed production release APK directly from our official portal:
-- 🌐 **Web Portal:** [safesignal-dx8.pages.dev](https://safesignal-dx8.pages.dev)
-- 📦 **Download Link:** [SafeSignal-v1.4.2-Universal.apk](https://safesignal-dx8.pages.dev)
+SafeSignal requests only the permissions necessary for its explicit security functions:
+
+| Android Permission | Justification & Usage | Protection Level |
+| :--- | :--- | :--- |
+| `android.permission.RECEIVE_SMS` | Captures incoming SMS broadcasts to run client-side smishing checks. | Dangerous (Runtime Grant) |
+| `android.permission.READ_SMS` | Allows user-initiated scanning of the existing SMS inbox for scam patterns. | Dangerous (Runtime Grant) |
+| `android.permission.QUERY_ALL_PACKAGES` | Required on Android 11+ to inspect installed packages for dangerous permission combinations and sideloaded signatures. | High-Risk (Restricted) |
+| `android.permission.USE_BIOMETRIC` | Prompts for fingerprint or device biometrics to unlock the encrypted document vault. | Normal |
+| `android.permission.CALL_PHONE` | Allows direct one-touch dialing of the 1930 National Cyber Helpline and bank freeze lines. | Dangerous (Runtime Grant) |
+| `android.permission.POST_NOTIFICATIONS` | Delivers real-time notifications when a high-risk SMS or dropper is detected. | Dangerous (Android 13+) |
+| `android.permission.INTERNET` | Fetches DoH queries, RDAP domain info, email breach checks, and public RSS feeds upon request. | Normal |
 
 ---
 
-### 🛠️ Building from Source
-
-SafeSignal is designed for frictionless compilation with zero configuration hurdles.
+## 🛠️ Build & Development Environment
 
 ### Prerequisites
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (`>= 3.10.7`)
-- Android Studio / VS Code with Flutter extension
-- Android Device or Emulator (API level 26+)
+- **Flutter SDK**: `3.38.8` (or compatible stable `3.x`)
+- **Dart SDK**: `3.10.7`+
+- **JDK**: Java 17 (OpenJDK 17 recommended)
+- **Android SDK**: Build tools 34.0.0, compileSdk 34, minSdk 26
+- **Architecture**: ARM64-v8a, ARMeabi-v7a, x86_64
 
-### Instant Run (3 Commands)
+### Compilation Steps
 
 ```bash
-# 1. Clone the repository
+# 1. Clone repository
 git clone https://github.com/UmarFarooqueJi/SafeSignal.git
 cd SafeSignal/safesignal
 
-# 2. Install dependencies
+# 2. Fetch dependencies
 flutter pub get
 
-# 3. Launch directly on device
-flutter run
+# 3. Verify static analysis
+flutter analyze --no-fatal-infos
+
+# 4. Run automated test suite
+flutter test
+
+# 5. Build signed production APK
+flutter build apk --release
 ```
 
+The resulting binary will be generated at `build/app/outputs/flutter-apk/app-release.apk`.
+
+---
+
+## 🧪 Testing
+
+SafeSignal contains unit and smoke test suites covering core functionality:
+
+```bash
+# Execute all test suites
+flutter test
+
+# Run individual test files
+flutter test test/rule_engine_test.dart
+flutter test test/url_analysis_test.dart
+flutter test test/vault_crypto_test.dart
+flutter test test/incident_response_test.dart
+flutter test test/widget_test.dart
+```
+
+---
+
+## 🌐 Supported Platforms & Languages
+
+- **Operating System**: Android 8.0 Oreo (API level 26) through Android 15 (API level 35).
+- **Languages**: English (default interface) with bilingual Hindi scam detection patterns and cyber feed content.
+
+---
+
+## 📄 License & Open-Source Status
+
+This repository is currently governed by the **SafeSignal Source-Available License v1.0** (located in [LICENSE](LICENSE)).
+
 > [!NOTE]
-> **No `.env` or external API keys needed.** All analysis pipelines, biometric vaults, OS diagnostics, and threat feeds operate out of the box with zero external configuration.
+> Under the Source-Available License, developers and researchers may study, audit, build, and use SafeSignal for personal and educational security research. Redistribution, commercial derivation, and removal of attribution are restricted. An evaluation of transitioning to a standard OSI-approved license (such as MIT or Apache 2.0) is maintained under project governance.
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please check [CONTRIBUTING.md](CONTRIBUTING.md) to learn about our coding standards, security requirements, and pull request workflow.
+Contributions that enhance rule accuracy, expand Indian banking helpline coverage, or improve device auditing are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on code style, commit standards, and PR workflows.
 
 ---
 
-## 📄 License
+## 🔐 Security Vulnerabilities & Disclosure
 
-SafeSignal is open-source software licensed under the **MIT License**. See the [LICENSE](LICENSE) file for complete details.
+If you discover a security vulnerability within SafeSignal, please review our [Security Policy](SECURITY.md) and report it responsibly via GitHub Private Vulnerability Reporting. Do not report security vulnerabilities via public GitHub issues.
 
 ---
 
-<div align="center">
-  <sub>Engineered with precision by <b><a href="https://github.com/UmarFarooqueJi">Umar Farooque</a></b> for a safer, private digital society.</sub>
-</div>
+## 👤 Author & Maintainer
+
+**Umar Farooque**  
+GitHub: [@UmarFarooqueJi](https://github.com/UmarFarooqueJi)  
+Official Portal: [safesignal-dx8.pages.dev](https://safesignal-dx8.pages.dev)

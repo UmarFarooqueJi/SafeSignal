@@ -189,6 +189,7 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
     final prefs = await SharedPreferences.getInstance();
     
     final isVaultEnabled = prefs.getBool('isVaultEnabled') ?? false;
+    if (!mounted) return;
     if (isVaultEnabled) {
       context.go('/vault-lock');
     } else {
@@ -241,7 +242,7 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
                           'assets/images/logo_transparent.png',
                           width: 64,
                           height: 64,
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (context, error, stackTrace) => const Icon(
                             Icons.shield_rounded,
                             color: Color(0xFF0284C7),
                             size: 50,

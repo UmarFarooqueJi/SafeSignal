@@ -36,6 +36,7 @@ class VaultItem {
   final String? documentIv;
   final String? documentChecksum;
   final int? fileSizeBytes;
+  final String cipherMode; // 'gcm' (authenticated) or 'cbc' (legacy)
 
   bool get isDocument => type == 'document';
 
@@ -51,6 +52,7 @@ class VaultItem {
     this.documentIv,
     this.documentChecksum,
     this.fileSizeBytes,
+    this.cipherMode = 'gcm',
   });
 
   Map<String, dynamic> toJson() => {
@@ -65,6 +67,7 @@ class VaultItem {
         'documentIv': documentIv,
         'documentChecksum': documentChecksum,
         'fileSizeBytes': fileSizeBytes,
+        'cipherMode': cipherMode,
       };
 
   factory VaultItem.fromJson(Map<String, dynamic> json) => VaultItem(
@@ -79,6 +82,8 @@ class VaultItem {
         documentIv: json['documentIv'] as String?,
         documentChecksum: json['documentChecksum'] as String?,
         fileSizeBytes: json['fileSizeBytes'] as int?,
+        cipherMode: json['cipherMode'] as String? ??
+            ((json['documentFileName'] as String?)?.contains('_gcm_') == true ? 'gcm' : 'cbc'),
       );
 }
 
@@ -89,7 +94,7 @@ class VaultScreen extends ConsumerStatefulWidget {
   ConsumerState<VaultScreen> createState() => _VaultScreenState();
 }
 
-class _VaultScreenState extends ConsumerState<VaultScreen> {
+class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingObserver {
   final LocalAuthentication auth = LocalAuthentication();
   static const _storage = FlutterSecureStorage();
 
@@ -105,7 +110,29 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initVault();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _documentThumbCache.clear();
+    _revealedItemIds.clear();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      if (mounted) {
+        setState(() {
+          _isUnlocked = false;
+          _revealedItemIds.clear();
+          _documentThumbCache.clear();
+        });
+      }
+    }
   }
 
   Future<void> _initVault() async {
@@ -159,8 +186,19 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           });
         }
       }
-    } catch (_) {
-      if (mounted) setState(() => _isUnlocked = true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _items = [];
+          _isUnlocked = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error reading vault: $e'),
+            backgroundColor: Colors.red.shade800,
+          ),
+        );
+      }
     }
   }
 
@@ -612,6 +650,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                                     documentIv: encResult.ivBase64,
                                     documentChecksum: encResult.sha256Checksum,
                                     fileSizeBytes: encResult.fileSizeBytes,
+                                    cipherMode: encResult.cipherMode,
                                   );
 
                                   _documentThumbCache[encResult.relativePath] = rawBytes;
@@ -1605,6 +1644,8 @@ class _DocumentThumbnailWidgetState extends State<_DocumentThumbnailWidget> {
       final decrypted = await VaultCryptoService().decryptDocument(
         relativePath: fileName,
         ivBase64: ivBase64,
+        cipherMode: widget.item.cipherMode,
+        expectedSha256: widget.item.documentChecksum,
       );
       _VaultScreenState._documentThumbCache[fileName] = decrypted;
       if (mounted) {

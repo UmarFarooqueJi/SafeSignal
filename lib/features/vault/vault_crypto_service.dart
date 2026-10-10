@@ -4,9 +4,10 @@
  * Author: Umar Farooque (https://github.com/UmarFarooqueJi)
  * Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
  *
- * Implements zero-cloud, hardware-isolated AES-256-CBC/GCM encryption
- * for confidential documents (Aadhaar, PAN, Passports, Financial Records).
- * Master key is anchored inside Android KeyStore / TEE StrongBox.
+ * Implements authenticated AES-256-GCM encryption for confidential documents
+ * (Aadhaar, PAN, Passports, Financial Records).
+ * Master key is anchored inside Android KeyStore / TEE StrongBox via FlutterSecureStorage.
+ * Includes legacy AES-256-CBC migration fallback for backward compatibility.
  */
 
 import 'dart:convert';
@@ -22,12 +23,14 @@ class VaultEncryptedDocResult {
   final String ivBase64;
   final String sha256Checksum;
   final int fileSizeBytes;
+  final String cipherMode; // 'gcm' (authenticated) or 'cbc' (legacy)
 
   const VaultEncryptedDocResult({
     required this.relativePath,
     required this.ivBase64,
     required this.sha256Checksum,
     required this.fileSizeBytes,
+    this.cipherMode = 'gcm',
   });
 }
 
@@ -74,44 +77,33 @@ class VaultCryptoService {
     return vaultDir;
   }
 
-  /// Encrypts raw document bytes in RAM using AES-256 and writes ciphertext to sandboxed storage.
+  /// Encrypts raw document bytes in RAM using authenticated AES-256-GCM.
   /// Original plaintext file at [sourceTempPath] is safely shredded upon completion.
   Future<VaultEncryptedDocResult> encryptAndStoreDocument({
     required Uint8List documentBytes,
     String? sourceTempPath,
   }) async {
     final masterKey = await _getMasterKey();
-    final iv = enc.IV.fromSecureRandom(16);
-    final encrypter = enc.Encrypter(enc.AES(masterKey, mode: enc.AESMode.cbc));
+    // 12-byte standard GCM nonce
+    final iv = enc.IV.fromSecureRandom(12);
+    final encrypter = enc.Encrypter(enc.AES(masterKey, mode: enc.AESMode.gcm));
 
     // Calculate SHA-256 checksum of original document
     final sha256Digest = crypto.sha256.convert(documentBytes).toString();
 
-    // Encrypt in volatile memory
+    // Authenticated encryption in volatile memory
     final encrypted = encrypter.encryptBytes(documentBytes, iv: iv);
 
     // Save ciphertext to private sandbox
     final vaultDir = await _getVaultDocDirectory();
-    final fileName = 'doc_${DateTime.now().millisecondsSinceEpoch}_${iv.base64.substring(0, 8).replaceAll('/', '_')}.enc';
+    final fileName = 'doc_gcm_${DateTime.now().millisecondsSinceEpoch}_${iv.base64.substring(0, 8).replaceAll('/', '_')}.enc';
     final targetFile = File('${vaultDir.path}/$fileName');
 
     await targetFile.writeAsBytes(encrypted.bytes, flush: true);
 
-    // Securely shred temporary source file if provided
+    // Securely shred temporary source file if provided (best-effort on flash storage)
     if (sourceTempPath != null && sourceTempPath.isNotEmpty) {
-      try {
-        final src = File(sourceTempPath);
-        if (await src.exists()) {
-          // Overwrite with zeros before deletion to prevent flash memory carving
-          final len = await src.length();
-          if (len > 0 && len < 20 * 1024 * 1024) {
-            await src.writeAsBytes(Uint8List(len), flush: true);
-          }
-          await src.delete();
-        }
-      } catch (e) {
-        debugPrint('Secure shredding warning: $e');
-      }
+      await _bestEffortShred(sourceTempPath);
     }
 
     return VaultEncryptedDocResult(
@@ -119,28 +111,91 @@ class VaultCryptoService {
       ivBase64: iv.base64,
       sha256Checksum: sha256Digest,
       fileSizeBytes: encrypted.bytes.length,
+      cipherMode: 'gcm',
     );
   }
 
-  /// Decrypts a vault document directly into RAM. Plaintext is NEVER written to disk.
+  /// Decrypts a vault document directly into RAM with authentication tag verification.
+  /// Plaintext is NEVER written to disk.
+  /// Gracefully migrates or falls back to legacy AES-CBC if document was created with older versions.
   Future<Uint8List> decryptDocument({
     required String relativePath,
     required String ivBase64,
+    String cipherMode = 'gcm',
+    String? expectedSha256,
   }) async {
     final masterKey = await _getMasterKey();
     final vaultDir = await _getVaultDocDirectory();
     final file = File('${vaultDir.path}/$relativePath');
 
     if (!await file.exists()) {
-      throw Exception('Encrypted document payload not found on disk');
+      throw Exception('Encrypted document payload not found on disk: $relativePath');
     }
 
     final cipherBytes = await file.readAsBytes();
     final iv = enc.IV.fromBase64(ivBase64);
-    final encrypter = enc.Encrypter(enc.AES(masterKey, mode: enc.AESMode.cbc));
 
-    final decrypted = encrypter.decryptBytes(enc.Encrypted(cipherBytes), iv: iv);
-    return Uint8List.fromList(decrypted);
+    // 1. Authenticated GCM decryption
+    if (cipherMode == 'gcm' || relativePath.contains('_gcm_')) {
+      try {
+        final gcmEncrypter = enc.Encrypter(enc.AES(masterKey, mode: enc.AESMode.gcm));
+        final decrypted = gcmEncrypter.decryptBytes(enc.Encrypted(cipherBytes), iv: iv);
+        final resultBytes = Uint8List.fromList(decrypted);
+
+        if (expectedSha256 != null && expectedSha256.isNotEmpty) {
+          final actualDigest = crypto.sha256.convert(resultBytes).toString();
+          if (actualDigest.toLowerCase() != expectedSha256.toLowerCase()) {
+            throw Exception('Document integrity verification failed (SHA-256 mismatch)');
+          }
+        }
+        return resultBytes;
+      } catch (e) {
+        // If it was explicitly GCM or failed auth, rethrow integrity failure
+        if (cipherMode == 'gcm' && relativePath.contains('_gcm_')) {
+          throw Exception('Cryptographic verification failed: Authentication tag mismatch or corrupted ciphertext: $e');
+        }
+        // Otherwise continue to legacy fallback below
+      }
+    }
+
+    // 2. Legacy AES-256-CBC Fallback for older documents
+    try {
+      final cbcEncrypter = enc.Encrypter(enc.AES(masterKey, mode: enc.AESMode.cbc));
+      final decrypted = cbcEncrypter.decryptBytes(enc.Encrypted(cipherBytes), iv: iv);
+      final resultBytes = Uint8List.fromList(decrypted);
+
+      if (expectedSha256 != null && expectedSha256.isNotEmpty) {
+        final actualDigest = crypto.sha256.convert(resultBytes).toString();
+        if (actualDigest.toLowerCase() != expectedSha256.toLowerCase()) {
+          throw Exception('Legacy CBC document checksum mismatch: payload altered');
+        }
+      }
+      return resultBytes;
+    } catch (e) {
+      throw Exception('Failed to decrypt vault document (bad key, corrupted payload, or untrusted tag): $e');
+    }
+  }
+
+  /// Migrates an existing legacy AES-CBC document to authenticated AES-256-GCM.
+  Future<VaultEncryptedDocResult> migrateDocumentToGcm({
+    required String oldRelativePath,
+    required String oldIvBase64,
+    required String expectedSha256,
+  }) async {
+    final plaintext = await decryptDocument(
+      relativePath: oldRelativePath,
+      ivBase64: oldIvBase64,
+      cipherMode: 'cbc',
+      expectedSha256: expectedSha256,
+    );
+
+    // Re-encrypt with authenticated GCM
+    final newResult = await encryptAndStoreDocument(documentBytes: plaintext);
+
+    // Safely remove legacy CBC file
+    await shredDocument(oldRelativePath);
+
+    return newResult;
   }
 
   /// Permanently shreds and deletes an encrypted document file from storage.
@@ -149,14 +204,28 @@ class VaultCryptoService {
       final vaultDir = await _getVaultDocDirectory();
       final file = File('${vaultDir.path}/$relativePath');
       if (await file.exists()) {
-        final len = await file.length();
-        if (len > 0 && len < 20 * 1024 * 1024) {
-          await file.writeAsBytes(Uint8List(len), flush: true);
-        }
-        await file.delete();
+        await _bestEffortShred(file.path);
       }
     } catch (e) {
       debugPrint('Error shredding vault document: $e');
+    }
+  }
+
+  /// Performs best-effort overwrite before deletion.
+  /// Note: On modern flash memory (eMMC / UFS), wear-leveling and FTL mappings
+  /// mean zero-overwrite does not guarantee physical block erasure.
+  Future<void> _bestEffortShred(String filePath) async {
+    try {
+      final f = File(filePath);
+      if (await f.exists()) {
+        final len = await f.length();
+        if (len > 0 && len < 20 * 1024 * 1024) {
+          await f.writeAsBytes(Uint8List(len), flush: true);
+        }
+        await f.delete();
+      }
+    } catch (e) {
+      debugPrint('Shredding warning: $e');
     }
   }
 }

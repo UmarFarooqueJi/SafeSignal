@@ -798,7 +798,7 @@ class _AppCardState extends State<_AppCard> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    if (app.riskLevel != RiskLevel.safe || app.installer != 'com.android.vending')
+                    if (app.riskLevel != RiskLevel.safe || !RiskEngine.isVerifiedEcosystem(app.package))
                       InkWell(
                         onTap: _vtScanning ? null : _verifyWithLocalHeuristics,
                         child: Container(
@@ -1006,6 +1006,8 @@ class RiskEngine {
 
     int score = 0;
     final reasons = <String>[];
+    String? foundSpyware;
+    bool hasTrojanPattern = false;
 
     final isKnownStore = storeNames.containsKey(installer);
     final isVerified = isVerifiedEcosystem(pkg);
@@ -1016,7 +1018,6 @@ class RiskEngine {
     } else {
       // 1. STALKERWARE SIGNATURE CHECK (Immediate Critical)
       final pkgLower = pkg.toLowerCase();
-      String? foundSpyware;
       for (final entry in _knownSpywareSignatures.entries) {
         if (pkgLower.contains(entry.key)) {
           foundSpyware = entry.value;
@@ -1034,42 +1035,47 @@ class RiskEngine {
       final hasOverlay = perms.contains('android.permission.SYSTEM_ALERT_WINDOW');
       final hasAccessibilityService = perms.contains('android.permission.BIND_ACCESSIBILITY_SERVICE') || hasAccessibility;
 
+      if (hasSMS && hasOverlay) {
+        hasTrojanPattern = true;
+        score += isSideloaded ? 55 : 35;
+        reasons.insert(0, isSideloaded
+            ? 'CRITICAL: Requests SMS + Screen Overlay (Classic Banking Trojan Pattern).'
+            : 'HIGH RISK: Requests SMS + Screen Overlay (Potential Banking Trojan Overlay Pattern).');
+      }
+
+      if (hasInternet && hasAccessibilityService) {
+        hasTrojanPattern = true;
+        score += isSideloaded ? 50 : 30;
+        reasons.insert(0, isSideloaded
+            ? 'CRITICAL: Untrusted app with Accessibility + Internet (Screen Scraping Risk).'
+            : 'ELEVATED RISK: Active Accessibility Service with Internet Access.');
+      }
+
+      if (!hasLauncher && (perms.contains('android.permission.RECORD_AUDIO') || perms.contains('android.permission.CAMERA'))) {
+        hasTrojanPattern = true;
+        score += 45;
+        reasons.insert(0, 'HIGH RISK: Stealth package hiding launcher icon while accessing microphone/camera.');
+      }
+
+      if (hasDeviceAdmin) {
+        if (isSideloaded) {
+          score += 30;
+          reasons.insert(0, 'HIGH RISK: Untrusted app requested Device Admin privileges.');
+        } else if (!isVerified) {
+          score += 15;
+          reasons.add('Device Admin: Holds system administration privileges.');
+        }
+      }
+
       if (isSideloaded) {
-        // Untrusted APK from outside Google Play
+        // Untrusted APK from outside verified stores
         score += 15;
         final instLabel = installer.isEmpty || installer == 'unknown' ? 'Direct APK' : installer;
         reasons.add('Sideloaded App: Installed via unverified source ($instLabel).');
 
-        if (hasSMS && hasOverlay) {
-          score += 55;
-          reasons.insert(0, 'CRITICAL: Requests SMS + Screen Overlay (Classic Banking Trojan Pattern).');
-        }
-
-        if (hasInternet && hasAccessibilityService) {
-          score += 50;
-          reasons.insert(0, 'CRITICAL: Untrusted app with Accessibility + Internet (Screen Scraping Risk).');
-        }
-
-        if (!hasLauncher && (perms.contains('android.permission.RECORD_AUDIO') || perms.contains('android.permission.CAMERA'))) {
-          score += 45;
-          reasons.insert(0, 'HIGH RISK: Stealth APK hiding launcher icon while accessing microphone/camera.');
-        }
-
-        if (hasDeviceAdmin) {
-          score += 30;
-          reasons.insert(0, 'HIGH RISK: Untrusted app requested Device Admin privileges.');
-        }
-
         if (targetSdk < 28) {
           score += 10;
           reasons.add('Outdated SDK (Target: $targetSdk): Bypasses modern runtime protections.');
-        }
-      } else {
-        // Verified Store App (Google Play, Samsung, etc.)
-        // Legitimate store apps have passed vetting; runtime permissions are informational
-        if (hasDeviceAdmin && !isVerified) {
-          score += 15;
-          reasons.add('Device Admin: Holds system administration privileges.');
         }
       }
 
@@ -1091,9 +1097,16 @@ class RiskEngine {
       }
     }
 
-    // Official store / verified apps are capped below High Risk unless proven spyware
+    // Clamping: Store apps without trojan patterns or stalkerware stay capped at low/medium risk.
+    // If trojan combinations or active signatures are found, installer trust does not grant immunity.
     if (!isSideloaded && !isSystem) {
-      score = score.clamp(0, 38); // Always stays Safe / Low / Medium, never falsely High Risk
+      if (foundSpyware != null) {
+        score = score.clamp(90, 100);
+      } else if (hasTrojanPattern) {
+        score = score.clamp(0, 85);
+      } else {
+        score = score.clamp(0, 38); // Always stays Safe / Low / Medium for benign store apps
+      }
     } else {
       score = score.clamp(0, 100);
     }

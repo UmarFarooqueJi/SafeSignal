@@ -128,3 +128,9 @@ fix_*.py
 rewrite_*.py
 test_cap.png
 *.apk
+
+# Keystore & Signing secrets
+*.keystore
+*.jks
+key.properties
+android/key.properties

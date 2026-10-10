@@ -18,7 +18,7 @@ class _SignInScreenState extends State<SignInScreen> {
   final _passCtrl = TextEditingController();
   bool _passVisible = false;
   bool _isLoading = false;
-  bool _isEmailMode = true;
+  final bool _isEmailMode = true;
   bool _isSignUpMode = false;
 
   Future<void> _continueAsGuest() async {
@@ -138,7 +138,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   height: 300,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF6C63FF).withOpacity(0.15),
+                    color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
                   ),
                 ).animate(onPlay: (controller) => controller.repeat(reverse: true))
                  .scale(end: const Offset(1.2, 1.2), duration: 5.seconds, curve: Curves.easeInOut)
@@ -152,7 +152,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   height: 250,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF00F2FE).withOpacity(0.1),
+                    color: const Color(0xFF00F2FE).withValues(alpha: 0.1),
                   ),
                 ).animate(onPlay: (controller) => controller.repeat(reverse: true))
                  .scale(end: const Offset(1.3, 1.3), duration: 6.seconds, curve: Curves.easeInOut)
@@ -186,7 +186,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF6C63FF).withOpacity(0.3),
+                                    color: const Color(0xFF6C63FF).withValues(alpha: 0.3),
                                     blurRadius: 20,
                                     offset: const Offset(0, 10),
                                   ),
@@ -254,18 +254,18 @@ class _SignInScreenState extends State<SignInScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                             decoration: BoxDecoration(
                               color: isDark 
-                                  ? Colors.white.withOpacity(0.04) 
-                                  : Colors.white.withOpacity(0.7),
+                                  ? Colors.white.withValues(alpha: 0.04) 
+                                  : Colors.white.withValues(alpha: 0.7),
                               borderRadius: BorderRadius.circular(28),
                               border: Border.all(
                                 color: isDark 
-                                    ? Colors.white.withOpacity(0.08) 
-                                    : Colors.white.withOpacity(0.3),
+                                    ? Colors.white.withValues(alpha: 0.08) 
+                                    : Colors.white.withValues(alpha: 0.3),
                                 width: 1.5,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                                   blurRadius: 30,
                                   offset: const Offset(0, 15),
                                 ),
@@ -505,8 +505,8 @@ class _PremiumTextField extends StatelessWidget {
               fontSize: 14,
             ),
             filled: true,
-            fillColor: isDark ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
-            prefixIcon: Icon(icon, color: const Color(0xFF6C63FF).withOpacity(0.7), size: 20),
+            fillColor: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
+            prefixIcon: Icon(icon, color: const Color(0xFF6C63FF).withValues(alpha: 0.7), size: 20),
             suffixIcon: isPassword
                 ? IconButton(
                     icon: Icon(
@@ -522,13 +522,13 @@ class _PremiumTextField extends StatelessWidget {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade200,
+                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade200,
+                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
               ),
             ),
             focusedBorder: OutlineInputBorder(
@@ -575,7 +575,7 @@ class _PrimaryButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF6C63FF).withOpacity(0.35),
+              color: const Color(0xFF6C63FF).withValues(alpha: 0.35),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),

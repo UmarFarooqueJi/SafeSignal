@@ -63,8 +63,8 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
       } else {
         final hasPwd = breaches.any((b) => b.dataClasses.any((d) => d.toLowerCase().contains('password')));
         instantVerdict = hasPwd
-            ? 'HIGH RISK: Passwords linked to this email were exposed in ' + breaches.length.toString() + ' security breaches. Change compromised passwords and enable 2FA immediately.'
-            : 'ALERT: Your email was found in ' + breaches.length.toString() + ' public data exposures. Verify linked accounts and monitor for suspicious communications.';
+            ? 'HIGH RISK: Passwords linked to this email were exposed in ${breaches.length} security breaches. Change compromised passwords and enable 2FA immediately.'
+            : 'ALERT: Your email was found in ${breaches.length} public data exposures. Verify linked accounts and monitor for suspicious communications.';
       }
 
       setState(() {

@@ -293,7 +293,7 @@ class MainActivity : FlutterFragmentActivity() {
                     val prefs = getSharedPreferences("safesignal_call_shield", Context.MODE_PRIVATE)
                     val map = mapOf(
                         "blockTrai" to prefs.getBoolean("block_trai", true),
-                        "blockInternational" to prefs.getBoolean("block_international", true),
+                        "blockInternational" to prefs.getBoolean("block_international", false),
                         "blockUnknown" to prefs.getBoolean("block_unknown", false)
                     )
                     result.success(map)
