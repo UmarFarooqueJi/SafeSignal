@@ -5,9 +5,6 @@
 //              with signature verification, dangerous permission combinations,
 //              and zero package-name prefix immunity.
 // -----------------------------------------------------------------------------
-
-import 'dart:math' as math;
-
 enum RiskLevel { safe, low, medium, high, critical }
 
 class AppInfo {

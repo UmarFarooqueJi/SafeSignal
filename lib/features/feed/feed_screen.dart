@@ -1,8 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../data/models/alert_model.dart';
 
@@ -71,20 +72,48 @@ class _FeedScreenState extends State<FeedScreen> {
       if (allItems.isNotEmpty) {
         final parsed = _NewsDataParser.parse(allItems);
         parsed.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
-        setState(() {
-          _alerts = parsed;
-          _loading = false;
-        });
+
+        // Cache the latest 30 articles locally for offline availability
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final cacheJson = jsonEncode(parsed.take(30).map((a) => a.toJson()).toList());
+          await prefs.setString('cached_threat_feed', cacheJson);
+        } catch (_) {}
+
+        if (mounted) {
+          setState(() {
+            _alerts = parsed;
+            _loading = false;
+          });
+        }
       } else {
         throw Exception('No articles returned from online feeds');
       }
     } catch (e) {
       debugPrint('News fetch error: $e');
-      setState(() {
-        _alerts = AlertModel.mockAlerts();
-        _loading = false;
-        _errorMessage = 'Online news unavailable. Showing offline alerts.';
-      });
+
+      // Try loading from local persistent cache first
+      List<AlertModel> fallbackAlerts = [];
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cached = prefs.getString('cached_threat_feed');
+        if (cached != null && cached.isNotEmpty) {
+          final decoded = jsonDecode(cached) as List<dynamic>;
+          fallbackAlerts = decoded.map((item) => AlertModel.fromJson(item as Map<String, dynamic>)).toList();
+        }
+      } catch (_) {}
+
+      if (fallbackAlerts.isEmpty) {
+        fallbackAlerts = AlertModel.offlineThreatAdvisories();
+      }
+
+      if (mounted) {
+        setState(() {
+          _alerts = fallbackAlerts;
+          _loading = false;
+          _errorMessage = 'Offline mode: Showing verified cyber advisories & cached alerts.';
+        });
+      }
     }
   }
 

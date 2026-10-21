@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:dio/dio.dart';
 
 /// Verdict tier for URL security analysis

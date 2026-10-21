@@ -279,13 +279,13 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                     }
                     final hash = sha256.convert(utf8.encode(pass)).toString();
                     await _storage.write(key: 'safesignal_vault_master_pass_hash', value: hash);
-                    if (mounted) Navigator.pop(ctx);
-                    await _loadItems();
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (mounted) await _loadItems();
                   } else {
                     final enteredHash = sha256.convert(utf8.encode(pass)).toString();
                     if (enteredHash == storedHash) {
-                      if (mounted) Navigator.pop(ctx);
-                      await _loadItems();
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (mounted) await _loadItems();
                     } else {
                       setDialogState(() => errorText = 'Incorrect master passphrase');
                     }

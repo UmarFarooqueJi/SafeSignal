@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -94,47 +93,6 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
         _statusMsg = '';
       });
     }
-  }
-
-  String _getBaseDomain(String domain) {
-    final parts = domain.split('.');
-    if (parts.length >= 2) {
-      return '${parts[parts.length - 2]}.${parts[parts.length - 1]}';
-    }
-    return domain;
-  }
-
-  // A hardcoded list of major trusted domains for India
-  final _allowlist = {
-    'google.com', 'youtube.com', 'facebook.com', 'instagram.com', 'whatsapp.com',
-    'sbi.co.in', 'hdfcbank.com', 'icicibank.com', 'axisbank.com', 'kotak.com',
-    'amazon.in', 'amazon.com', 'flipkart.com', 'myntra.com', 'meesho.com',
-    'paytm.com', 'phonepe.com', 'gpay.app',
-    'incometax.gov.in', 'uidai.gov.in', 'npci.org.in', 'rbi.org.in', 'onlinesbi.sbi',
-    'irctc.co.in', 'nic.in', 'gov.in', 'india.gov.in', 'passportindia.gov.in',
-    'bsnl.co.in', 'tatamotors.com', 'reliance.com', 'jio.com',
-    'microsoft.com', 'apple.com', 'linkedin.com', 'twitter.com', 'x.com'
-  };
-
-  bool _isPrivateOrReservedHost(String host) {
-    final lower = host.toLowerCase().trim();
-    if (lower == 'localhost' || lower == '127.0.0.1' || lower == '::1' || lower == '0.0.0.0') return true;
-
-    final ipParts = lower.split('.');
-    if (ipParts.length == 4) {
-      final nums = ipParts.map((p) => int.tryParse(p)).toList();
-      if (nums.every((n) => n != null && n >= 0 && n <= 255)) {
-        final n0 = nums[0]!;
-        final n1 = nums[1]!;
-        if (n0 == 127) return true; // Loopback
-        if (n0 == 10) return true;  // 10.0.0.0/8
-        if (n0 == 172 && n1 >= 16 && n1 <= 31) return true; // 172.16.0.0/12
-        if (n0 == 192 && n1 == 168) return true; // 192.168.0.0/16
-        if (n0 == 169 && n1 == 254) return true; // Link-local / metadata 169.254.169.254
-        if (n0 == 0) return true;
-      }
-    }
-    return false;
   }
 
   Future<UrlResult> _analyzeUrl(String url) async {

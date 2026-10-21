@@ -86,6 +86,14 @@ class LocalRuleEngine {
     'paytm',
     'phonepe',
     'gpay',
+    'debited by rs',
+    'credited with rs',
+    'debited for rs',
+    'available balance',
+    'avl bal',
+    'a/c ending',
+    'acct ending',
+    'upi ref',
   ];
 
   static const _suspiciousDomainPatterns = [
@@ -259,19 +267,31 @@ class LocalRuleEngine {
         );
       } else if (_traiHeaderPattern.hasMatch(s)) {
         // Genuine TRAI DLT format
-        if (riskScore < 20) {
+        final isBankingTx = RegExp(
+          r'(debited|credited|avl bal|available balance|ref no|utr|upi/|a/c ending|acct ending)',
+        ).hasMatch(lower);
+
+        if (isBankingTx && !isApkLink && !otpRequest && foundDomains.isEmpty) {
+          riskScore = 0;
+          reasons.clear();
+          reasons.add(
+            'Verified legitimate Indian banking transactional notification from TRAI registered sender ($s)',
+          );
+        } else if (riskScore < 20) {
           riskScore = (riskScore * 0.5).round();
         }
       }
     }
 
-    // 12. Safe signal — legitimate OTP delivery
+    // 12. Safe signal — legitimate OTP delivery & transaction alerts
     final foundSafe = _safeKeywords.where((kw) => lower.contains(kw)).toList();
     if (foundSafe.isNotEmpty && riskScore < 25 && !otpRequest && !isApkLink) {
       riskScore = (riskScore * 0.2).round();
-      reasons.add(
-        'Pattern matches standard legitimate OTP/transaction notification',
-      );
+      if (reasons.isEmpty) {
+        reasons.add(
+          'Pattern matches standard legitimate OTP/transaction notification',
+        );
+      }
     }
 
     // Cap score at 100

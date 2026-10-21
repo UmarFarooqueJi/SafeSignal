@@ -25,17 +25,51 @@ import java.util.Locale
 class SafeSignalCallScreeningService : CallScreeningService() {
 
     override fun onScreenCall(callDetails: Call.Details) {
+        // Only screen incoming calls — outgoing and emergency calls must never be intercepted
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (callDetails.callDirection != Call.Details.DIRECTION_INCOMING) {
+                respondToCall(callDetails, CallResponse.Builder().build())
+                return
+            }
+        }
+
         val handle = callDetails.handle
         val rawNumber = handle?.schemeSpecificPart ?: ""
         val cleanNumber = rawNumber.replace("[^0-9+]".toRegex(), "")
+        val digitsOnly = cleanNumber.replace("[^0-9]".toRegex(), "")
+        val last10 = if (digitsOnly.length >= 10) digitsOnly.takeLast(10) else digitsOnly
+
+        // 0. Emergency & Helpline Numbers Bypass — Absolute Priority
+        // Under no circumstances should emergency, police, ambulance, or cybercrime helplines be blocked
+        val emergencyNumbers = setOf(
+            "112",  // National Emergency Number India
+            "100",  // Police
+            "101",  // Fire Service
+            "102",  // Ambulance
+            "108",  // Emergency Disaster / Medical
+            "1091", // Women Helpline
+            "1098", // Childline
+            "1930", // National Cyber Fraud Reporting Helpline (I4C)
+            "1909", // TRAI National DND / Grievance
+            "911",  // International Emergency Standard
+            "999"   // International Emergency Standard
+        )
+        if (emergencyNumbers.contains(cleanNumber) || emergencyNumbers.contains(last10) || emergencyNumbers.contains(digitsOnly)) {
+            val response = CallResponse.Builder()
+                .setDisallowCall(false)
+                .setRejectCall(false)
+                .setSkipCallLog(false)
+                .setSkipNotification(false)
+                .build()
+            respondToCall(callDetails, response)
+            return
+        }
 
         val prefs = getSharedPreferences("safesignal_call_shield", Context.MODE_PRIVATE)
         val blockTrai = prefs.getBoolean("block_trai", true)
         val blockInternational = prefs.getBoolean("block_international", false)
 
-        // 0. Whitelist check — never block numbers explicitly trusted by the user
-        val digitsOnly = cleanNumber.replace("[^0-9]".toRegex(), "")
-        val last10 = if (digitsOnly.length >= 10) digitsOnly.takeLast(10) else digitsOnly
+        // 1. Whitelist check — never block numbers explicitly trusted by the user
         val whitelist = prefs.getStringSet("custom_whitelist", emptySet()) ?: emptySet()
         if (whitelist.contains(cleanNumber) || (last10.isNotEmpty() && whitelist.contains(last10))) {
             val response = CallResponse.Builder()
@@ -51,12 +85,12 @@ class SafeSignalCallScreeningService : CallScreeningService() {
         var shouldBlock = false
         var reason = ""
 
-        // 1. Check TRAI 140 and 160 series commercial/telemarketing blocks
-        // Indian TRAI allocates 140xxxxxxx and 160xxxxxxx specifically to commercial telemarketers
+        // 2. Check TRAI telemarketing blocks
+        // Indian TRAI allocates 140xxxxxxx specifically for promotional telemarketers
         if (blockTrai) {
-            if (last10.startsWith("140") || last10.startsWith("160")) {
+            if (last10.startsWith("140")) {
                 shouldBlock = true
-                reason = "TRAI Telemarketer Prefix (${last10.take(3)} series)"
+                reason = "TRAI Telemarketer Prefix (140 series)"
             }
         }
 

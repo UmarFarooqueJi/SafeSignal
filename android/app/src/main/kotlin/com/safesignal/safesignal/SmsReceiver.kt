@@ -254,23 +254,40 @@ class SmsReceiver : BroadcastReceiver() {
             detectedReasons.add("APK download link — highly dangerous!")
         }
 
-        // ── TIER 4: Sender number analysis ───────────────────────────────
+        // ── TIER 4: Sender number analysis & TRAI DLT Header ─────────────
         val cleanSender = sender.replace(Regex("[\\s\\-()]+"), "")
+        val traiHeaderPattern = Regex("^[A-Za-z]{2}-?[A-Za-z0-9]{6}$")
+        val isTraiSender = traiHeaderPattern.matches(cleanSender)
+        val indianMobilePattern = Regex("^(\\+91|91)?[6-9]\\d{9}$")
+        val claimsBank = Regex("(?i)(sbi|hdfc|icici|axis|kotak|pnb|bob|bank|paytm|phonepe|netbanking)").containsMatchIn(lower)
+
         if (cleanSender.startsWith("+") && !cleanSender.startsWith("+91")) {
-            score += 15
-            detectedReasons.add("International number sender")
+            score += 25
+            detectedReasons.add("International sender ($cleanSender)")
+        } else if (indianMobilePattern.matches(cleanSender) && claimsBank) {
+            score += 50
+            detectedReasons.add("Bank notification sent from personal 10-digit mobile number")
         }
 
-        // ── SAFE INDICATORS (reduce score) ───────────────────────────────
-        val safeIndicators = listOf(
-            "your transaction of", "credited to your", "debited from your",
-            "upi ref no", "upi ref", "neft transfer", "imps transfer",
-            "hdfc bank", "sbi bank", "axis bank", "icici bank",
-            "do not share otp with anyone", "never share otp"
+        // ── SAFE INDICATORS (Authentic Banking / Transaction Notifications) ───
+        val hasMaliciousLink = lower.contains(".apk") || lower.contains("bit.ly") ||
+                lower.contains("tinyurl") || lower.contains(".xyz") || lower.contains(".tk")
+        val hasOtpTheft = lower.contains("share otp") || lower.contains("otp share") || lower.contains("send otp")
+
+        val bankTxIndicators = listOf(
+            "debited by rs", "debited for rs", "debited from", "credited to", "credited with",
+            "your transaction of", "upi ref no", "upi/cr/", "upi/dr/", "neft transfer",
+            "imps transfer", "avl bal", "available balance", "a/c ending", "acct ending",
+            "do not share otp with anyone", "never share otp", "otp is"
         )
-        val isSafeContext = safeIndicators.any { lower.contains(it) }
-        if (isSafeContext) {
-            score = (score * 0.4).toInt()
+        val isBankTx = bankTxIndicators.any { lower.contains(it) }
+
+        if (isTraiSender && isBankTx && !hasMaliciousLink && !hasOtpTheft) {
+            // Official TRAI commercial/banking message with verified transactional structure
+            score = 0
+            detectedReasons.clear()
+        } else if (isBankTx && !hasMaliciousLink && !hasOtpTheft) {
+            score = (score * 0.25).toInt()
         }
 
         // ── Verdict ───────────────────────────────────────────────────────
@@ -288,7 +305,7 @@ class SmsReceiver : BroadcastReceiver() {
             )
             else -> SmsAnalysis(
                 false, "SAFE", maxOf(5, 100 - score),
-                if (isSafeContext) "Legitimate banking/service message detected" else "No scam patterns found",
+                if (isBankTx) "Verified banking transactional alert" else "No scam patterns found",
                 "Safe Message"
             )
         }
