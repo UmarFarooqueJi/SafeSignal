@@ -27,6 +27,7 @@ import '../../features/osint/social_osint_screen.dart';
 import '../../features/incident_response/incident_response_screen.dart';
 import '../../features/history/history_screen.dart';
 import '../../data/models/verdict_model.dart';
+import '../services/link_guard_service.dart';
 
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -65,7 +66,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Full-screen tools (with proper back navigation)
       GoRoute(
         path: '/url-scanner',
-        builder: (context, state) => const UrlScannerScreen(),
+        builder: (context, state) {
+          final initialUrl = state.extra as String? ?? state.uri.queryParameters['url'];
+          return UrlScannerScreen(initialUrl: initialUrl);
+        },
       ),
       GoRoute(
         path: '/wifi-scanner',
@@ -186,6 +190,15 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
   Future<void> _redirect() async {
     await Future.delayed(const Duration(milliseconds: 1700));
     if (!mounted) return;
+
+    // Link Guard: Intercept shared URLs from Android ACTION_SEND
+    final pendingUrl = await LinkGuardService.checkPendingSharedUrl();
+    if (pendingUrl != null && pendingUrl.isNotEmpty) {
+      if (!mounted) return;
+      context.go('/url-scanner', extra: pendingUrl);
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     
     final isVaultEnabled = prefs.getBool('isVaultEnabled') ?? false;

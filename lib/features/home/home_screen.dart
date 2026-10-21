@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/services/link_guard_service.dart';
 
 // ─── Color Palette ────────────────────────────────────────────────────────────
 const _kScaffold   = Color(0xFFDEEBF7); // light blue like reference
@@ -21,7 +22,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
@@ -29,15 +30,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fadeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     )..forward();
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+    _checkSharedIntent();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkSharedIntent();
+    }
+  }
+
+  Future<void> _checkSharedIntent() async {
+    final pendingUrl = await LinkGuardService.checkPendingSharedUrl();
+    if (pendingUrl != null && pendingUrl.isNotEmpty && mounted) {
+      context.push('/url-scanner', extra: pendingUrl);
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _fadeCtrl.dispose();
     super.dispose();
   }
