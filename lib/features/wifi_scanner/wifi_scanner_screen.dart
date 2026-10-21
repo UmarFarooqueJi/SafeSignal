@@ -182,21 +182,30 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
         validateStatus: (status) => true,
       ));
       
-      final portalRes = await dio.get('http://connectivitycheck.gstatic.com/generate_204');
-      if (portalRes.statusCode != 204) {
-        score -= 40;
+      try {
+        final portalRes = await dio.get('http://connectivitycheck.gstatic.com/generate_204');
+        if (portalRes.statusCode == 204) {
+          checks.add(const _Check(
+            label: 'Connection Interception',
+            detail: 'Direct internet access. Koi captive portal interception nahi.',
+            level: _Level.safe,
+            icon: Icons.shield_outlined,
+          ));
+        } else if (portalRes.statusCode != null && (portalRes.statusCode == 200 || portalRes.statusCode == 302 || portalRes.statusCode == 301)) {
+          score -= 30;
+          checks.add(const _Check(
+            label: 'Captive Portal Interception',
+            detail: 'Login page ya captive portal connection intercept kar raha hai. Authentication required.',
+            level: _Level.warning,
+            icon: Icons.warning_amber_rounded,
+          ));
+        }
+      } on DioException catch (_) {
         checks.add(const _Check(
-          label: 'Captive Portal Interception',
-          detail: 'Koi login page ya portal aapka connection intercept kar raha hai! Data leak ka khatra.',
-          level: _Level.danger,
-          icon: Icons.warning_amber_rounded,
-        ));
-      } else {
-        checks.add(const _Check(
-          label: 'Connection Interception',
-          detail: 'Direct internet access. Koi interception nahi.',
-          level: _Level.safe,
-          icon: Icons.shield_outlined,
+          label: 'Portal Verification',
+          detail: 'Portal check unreachable ya timeout (limited connectivity).',
+          level: _Level.warning,
+          icon: Icons.cloud_off,
         ));
       }
 
@@ -216,24 +225,42 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
 
           final latency = stopwatch.elapsedMilliseconds;
           if (latency > 2000) {
-            score -= 15;
+            score -= 10;
             checks.add(_Check(
-              label: 'Network Latency Anomalies',
-              detail: 'Ping bohot high hai (${latency}ms). Shayad koi Evil-Twin network data relay kar raha hai.',
+              label: 'Network Latency',
+              detail: 'Ping high hai (${latency}ms). Congestion ya low signal ho sakta hai.',
               level: _Level.warning,
               icon: Icons.speed,
             ));
           }
         }
+      } on DioException catch (e) {
+        stopwatch.stop();
+        final errStr = e.error?.toString().toLowerCase() ?? '';
+        final isTlsTampering = e.error is HandshakeException ||
+            errStr.contains('certificate') ||
+            errStr.contains('handshake') ||
+            errStr.contains('certpath');
+
+        if (isTlsTampering) {
+          score -= 50;
+          checks.add(const _Check(
+            label: 'SSL Tampering Detected',
+            detail: 'CRITICAL: HTTPS connection certificate validation fail! Network traffic intercept/strip ho raha hai.',
+            level: _Level.critical,
+            icon: Icons.gpp_bad,
+          ));
+        } else {
+          // Timeout or connection error is NOT an active MITM attack
+          checks.add(const _Check(
+            label: 'SSL Probe Incomplete',
+            detail: 'Secure endpoint probe time out hua (slow connection ya offline).',
+            level: _Level.warning,
+            icon: Icons.wifi_off,
+          ));
+        }
       } catch (e) {
-        // SSL Certificate error or DNS timeout = HIGH DANGER
-        score -= 60;
-        checks.add(const _Check(
-          label: 'SSL Stripping / DNS Hijack',
-          detail: 'CRITICAL: HTTPS connection fail hua! Network encrypted traffic break karne ki koshish kar raha hai.',
-          level: _Level.critical,
-          icon: Icons.gpp_bad,
-        ));
+        // Non-dio exception
       }
       // 3. Router Gateway Port Security Audit
       if (gateway != 'N/A' && gateway.isNotEmpty) {

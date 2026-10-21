@@ -21,6 +21,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:crypto/crypto.dart';
 import 'vault_crypto_service.dart';
 import 'vault_document_viewer_screen.dart';
 
@@ -138,32 +139,165 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
   Future<void> _initVault() async {
     final prefs = await SharedPreferences.getInstance();
     final canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
-    final canAuthenticate = canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+    final canAuthenticateWithDevice = await auth.isDeviceSupported();
+    final canAuthenticate = canAuthenticateWithBiometrics || canAuthenticateWithDevice;
 
-    final isLockEnabled = prefs.getBool('isVaultEnabled') ?? false;
+    final isLockEnabled = prefs.getBool('isVaultEnabled') ?? true;
 
     setState(() {
       _isVaultEnabled = isLockEnabled;
       _hasBiometrics = canAuthenticate;
       _isLoading = false;
+      _isUnlocked = false; // Always start in locked state until authenticated
     });
 
-    if (_hasBiometrics) {
+    if (canAuthenticate) {
       _authenticateAndLoad();
     } else {
-      _loadItems();
+      // Hardware biometrics not configured: fail-closed, keep locked until master passphrase entered
+      debugPrint('[VaultAuth] Biometrics not enrolled or supported. Fail-closed: vault remains locked.');
     }
   }
 
   Future<void> _authenticateAndLoad() async {
+    if (!_hasBiometrics) {
+      _showMasterPassphraseDialog();
+      return;
+    }
     try {
       final didAuthenticate = await auth.authenticate(
         localizedReason: 'Authenticate to decrypt your hardware-protected Vault',
+        biometricOnly: false,
+        persistAcrossBackgrounding: true,
       );
       if (didAuthenticate) {
         await _loadItems();
+      } else {
+        setState(() => _isUnlocked = false);
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[VaultAuth] Biometric/Device authentication error: $e');
+      setState(() => _isUnlocked = false);
+      if (mounted) {
+        _showMasterPassphraseDialog();
+      }
+    }
+  }
+
+  Future<void> _showMasterPassphraseDialog() async {
+    final storedHash = await _storage.read(key: 'safesignal_vault_master_pass_hash');
+    final isNewPassphrase = (storedHash == null || storedHash.isEmpty);
+    final ctrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    String? errorText;
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF0F172A),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: Color(0xFF1E293B)),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.password_rounded, color: Color(0xFF00E5FF), size: 24),
+                const SizedBox(width: 10),
+                Text(
+                  isNewPassphrase ? 'Create Vault Passphrase' : 'Enter Vault Passphrase',
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isNewPassphrase
+                      ? 'Biometric hardware is not configured. Set a master security passphrase to encrypt and access your vault.'
+                      : 'Enter your master passphrase to unlock the hardware-encrypted vault.',
+                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: ctrl,
+                  obscureText: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: isNewPassphrase ? 'Master Passphrase (min 6 chars)' : 'Passphrase',
+                    labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                    errorText: errorText,
+                    filled: true,
+                    fillColor: const Color(0xFF1E293B),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                if (isNewPassphrase) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: confirmCtrl,
+                    obscureText: true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Confirm Master Passphrase',
+                      labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                      filled: true,
+                      fillColor: const Color(0xFF1E293B),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00E5FF),
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () async {
+                  final pass = ctrl.text;
+                  if (isNewPassphrase) {
+                    if (pass.length < 6) {
+                      setDialogState(() => errorText = 'Passphrase must be at least 6 characters');
+                      return;
+                    }
+                    if (pass != confirmCtrl.text) {
+                      setDialogState(() => errorText = 'Passphrases do not match');
+                      return;
+                    }
+                    final hash = sha256.convert(utf8.encode(pass)).toString();
+                    await _storage.write(key: 'safesignal_vault_master_pass_hash', value: hash);
+                    if (mounted) Navigator.pop(ctx);
+                    await _loadItems();
+                  } else {
+                    final enteredHash = sha256.convert(utf8.encode(pass)).toString();
+                    if (enteredHash == storedHash) {
+                      if (mounted) Navigator.pop(ctx);
+                      await _loadItems();
+                    } else {
+                      setDialogState(() => errorText = 'Incorrect master passphrase');
+                    }
+                  }
+                },
+                child: Text(isNewPassphrase ? 'Set & Decrypt' : 'Unlock Vault'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _loadItems() async {

@@ -147,21 +147,10 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
     try {
       return await _callCloudflareWorkersAI(fullSystem, context);
     } catch (e) {
-      debugPrint(
-        '[AiExpert] Cloudflare Workers AI failed: $e, trying Pollinations...',
-      );
+      debugPrint('[AiExpert] Cloudflare Workers AI failed: $e');
     }
 
-    // 6. Keyless Secondary: Pollinations AI
-    try {
-      return await _callPollinationsAI(fullSystem, context);
-    } catch (e) {
-      debugPrint(
-        '[AiExpert] Pollinations failed: $e, using offline heuristics fallback',
-      );
-    }
-
-    // 7. Complete Offline Fallback
+    // 6. Complete Offline Heuristics Fallback (Zero Cloud Egress for Privacy)
     return _offlineFallback(domain, language);
   }
 
@@ -201,36 +190,6 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
       }
     }
     throw Exception('Invalid Cloudflare Workers AI response');
-  }
-
-  // ─── Pollinations Keyless Public AI Call ──────────────────────────────────
-
-  Future<String> _callPollinationsAI(
-    String systemPrompt,
-    String userContent,
-  ) async {
-    final response = await _dio.post(
-      'https://text.pollinations.ai/',
-      options: Options(
-        headers: {'Content-Type': 'application/json'},
-        sendTimeout: const Duration(seconds: 12),
-        receiveTimeout: const Duration(seconds: 15),
-      ),
-      data: {
-        'messages': [
-          {'role': 'system', 'content': systemPrompt},
-          {'role': 'user', 'content': userContent},
-        ],
-        'model': 'openai',
-        'seed': 42,
-      },
-    );
-
-    if (response.statusCode == 200 && response.data != null) {
-      final raw = response.data.toString().trim();
-      if (raw.isNotEmpty) return raw;
-    }
-    throw Exception('Empty response from Pollinations');
   }
 
   // ─── OpenRouter API Call ───────────────────────────────────────────────────

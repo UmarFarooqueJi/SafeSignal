@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../../data/models/verdict_model.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants.dart';
@@ -120,55 +121,20 @@ User Note / Query: ${text.isEmpty || text == '[Screenshot Analysis Request]' ? '
     }
   }
 
-  /// High-reliability OCR Text Extraction for uploaded screenshots
+  /// On-Device Private OCR Text Extraction for uploaded screenshots (Zero Cloud Egress)
   static Future<String> _extractTextFromImage(File image) async {
     try {
-      final bytes = await image.readAsBytes();
-      final base64Image = base64Encode(bytes);
-      final dio = Dio();
-      dio.options.connectTimeout = const Duration(seconds: 14);
-      dio.options.receiveTimeout = const Duration(seconds: 16);
-
-      final formData = FormData.fromMap({
-        'base64Image': 'data:image/jpeg;base64,$base64Image',
-        'apikey': 'K87899142388957',
-        'language': 'eng',
-        'isOverlayRequired': false,
-        'detectOrientation': true,
-        'scale': true,
-        'OCREngine': '2',
-      });
-
-      final response = await dio.post('https://api.ocr.space/parse/image', data: formData);
-      if (response.statusCode == 200 && response.data != null) {
-        final results = response.data['ParsedResults'] as List?;
-        if (results != null && results.isNotEmpty) {
-          final parsed = results[0]['ParsedText']?.toString().trim() ?? '';
-          if (parsed.isNotEmpty) return parsed;
-        }
+      final inputImage = InputImage.fromFilePath(image.path);
+      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      try {
+        final recognizedText = await textRecognizer.processImage(inputImage);
+        final parsed = recognizedText.text.trim();
+        if (parsed.isNotEmpty) return parsed;
+      } finally {
+        await textRecognizer.close();
       }
     } catch (e) {
-      debugPrint('[ChatOCR] Primary OCR failed: $e, trying secondary fallback key');
-      try {
-        final bytes = await image.readAsBytes();
-        final base64Image = base64Encode(bytes);
-        final dio = Dio();
-        dio.options.connectTimeout = const Duration(seconds: 10);
-        dio.options.receiveTimeout = const Duration(seconds: 10);
-
-        final formData = FormData.fromMap({
-          'base64Image': 'data:image/jpeg;base64,$base64Image',
-          'apikey': 'helloworld',
-          'language': 'eng',
-        });
-        final response = await dio.post('https://api.ocr.space/parse/image', data: formData);
-        if (response.statusCode == 200 && response.data != null) {
-          final results = response.data['ParsedResults'] as List?;
-          if (results != null && results.isNotEmpty) {
-            return results[0]['ParsedText']?.toString().trim() ?? '';
-          }
-        }
-      } catch (_) {}
+      debugPrint('[ChatOCR] On-device OCR processing error: $e. Ensuring zero cloud leakage.');
     }
     return '';
   }
@@ -421,34 +387,11 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
         }
       }
     } catch (e) {
-      debugPrint('[ChatAI] Cloudflare Workers AI failed: $e, trying Pollinations fallback');
+      debugPrint('[ChatAI] Cloudflare Workers AI failed: $e');
     }
 
-    // 3. Keyless Public Fallback: Pollinations AI
-    try {
-      final pollResponse = await dio.post(
-        'https://text.pollinations.ai/',
-        options: Options(
-          headers: {'Content-Type': 'application/json'},
-          connectTimeout: const Duration(seconds: 14),
-          receiveTimeout: const Duration(seconds: 16),
-        ),
-        data: {
-          'messages': messages,
-          'model': 'openai',
-          'seed': 42,
-        },
-      );
-
-      if (pollResponse.statusCode == 200 && pollResponse.data != null) {
-        final raw = pollResponse.data.toString().trim();
-        return _parseAiResponse(raw, text, language);
-      }
-    } catch (e) {
-      debugPrint('[ChatAI] Pollinations fallback failed: $e');
-    }
-
-    throw Exception('All AI tiers exhausted, using smart offline heuristics');
+    // Zero-Cloud / Safe Offline Fallback: Never send user chat text to unauthenticated public proxies
+    throw Exception('Cloud AI unavailable or not configured. Falling back to local on-device heuristics.');
   }
 
   VerdictModel _parseAiResponse(String content, String text, String language) {

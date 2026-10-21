@@ -85,31 +85,20 @@ class _VaultDocumentViewerScreenState extends State<VaultDocumentViewerScreen> {
     if (_decryptedBytes == null) return;
 
     try {
-      final tempDir = await getTemporaryDirectory();
       final cleanTitle = widget.item.title.replaceAll(RegExp(r'[^\w\s]+'), '_');
-      final tempFile = File('${tempDir.path}/$cleanTitle.jpg');
-      await tempFile.writeAsBytes(_decryptedBytes!);
-
       await SharePlus.instance.share(
         ShareParams(
-          files: [XFile(tempFile.path)],
+          files: [
+            XFile.fromData(
+              _decryptedBytes!,
+              name: '$cleanTitle.jpg',
+              mimeType: 'image/jpeg',
+            ),
+          ],
           subject: 'Encrypted Document Export',
           title: 'Export Scanned Document',
         ),
       );
-
-      // Best-effort overwrite before deletion to minimize residual plaintext
-      Future.delayed(const Duration(seconds: 10), () async {
-        try {
-          if (await tempFile.exists()) {
-            final len = await tempFile.length();
-            if (len > 0 && len < 20 * 1024 * 1024) {
-              await tempFile.writeAsBytes(Uint8List(len), flush: true);
-            }
-            await tempFile.delete();
-          }
-        } catch (_) {}
-      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

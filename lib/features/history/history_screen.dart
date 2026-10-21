@@ -26,8 +26,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     // Load from AI chat analysis history
     final chatHistory = prefs.getStringList('chat_analysis_history') ?? [];
 
-    // Load from SMS inbox (same store as SmsReceiver)
-    final smsJson = prefs.getString('flutter.sms_inbox') ?? '[]';
+    // Load from SMS inbox (reads 'sms_inbox' with backward-compatibility for legacy key)
+    final smsJson = prefs.getString('sms_inbox') ?? prefs.getString('flutter.sms_inbox') ?? '[]';
     List<dynamic> smsList = [];
     try {
       smsList = json.decode(smsJson) as List<dynamic>;

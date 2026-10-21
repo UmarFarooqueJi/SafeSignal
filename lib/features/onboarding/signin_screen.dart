@@ -1,7 +1,10 @@
+import 'dart:convert';
+import 'dart:ui';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants.dart';
@@ -37,19 +40,60 @@ class _SignInScreenState extends State<SignInScreen> {
 
 
 
+  static const _storage = FlutterSecureStorage();
+
   Future<void> _signInWithEmail() async {
-    if (_emailCtrl.text.isEmpty || _passCtrl.text.isEmpty) return;
+    final email = _emailCtrl.text.trim();
+    final password = _passCtrl.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kripya email aur password enter karein')),
+      );
+      return;
+    }
+
+    final emailRegex = RegExp(r'^[\w\.\-]+@([\w\-]+\.)+[\w\-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kripya valid email address enter karein')),
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password kam se kam 6 characters ka hona chahiye')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
-    
+
     try {
-      await Future.delayed(const Duration(milliseconds: 300));
-      
+      final passHash = sha256.convert(utf8.encode(password)).toString();
+      final storageKey = 'local_account_$email';
+
+      if (_isSignUpMode) {
+        // Create local secure profile
+        await _storage.write(key: storageKey, value: passHash);
+      } else {
+        // Local login check
+        final existingHash = await _storage.read(key: storageKey);
+        if (existingHash != null && existingHash != passHash) {
+          throw Exception('Password galat hai. Is device par saved profile se match nahi karta.');
+        } else if (existingHash == null) {
+          // First time login on device with this email - auto-enroll local profile
+          await _storage.write(key: storageKey, value: passHash);
+        }
+      }
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(AppConstants.prefOnboardingDone, true);
       await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('userEmail', _emailCtrl.text.trim());
+      await prefs.setString('userEmail', email);
       final isProfileSetupDone = prefs.getBool('isProfileSetupDone') ?? false;
-      
+
       if (mounted) {
         if (isProfileSetupDone) {
           context.go('/home');
@@ -59,15 +103,6 @@ class _SignInScreenState extends State<SignInScreen> {
       }
     } catch (e) {
       if (mounted) {
-        String errorMsg = e.toString().replaceAll('AuthException: ', '').trim();
-        if (errorMsg.contains('Invalid login credentials')) {
-          errorMsg = 'Email ya password galat hai. Kripya dobara check karein.';
-        } else if (errorMsg.contains('User already registered')) {
-          errorMsg = 'Yeh email pehle se hi registered hai. Kripya "Sign Up" ki jagah "Log In" karein.';
-        } else if (errorMsg.contains('Email not confirmed')) {
-          errorMsg = 'Aapka email verify nahi hua hai. Supabase me "Confirm email" OFF karke naya account banayein.';
-        }
-
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -76,11 +111,11 @@ class _SignInScreenState extends State<SignInScreen> {
               children: [
                 Icon(Icons.error_outline, color: Colors.redAccent),
                 SizedBox(width: 10),
-                Text('Error', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('Authentication', style: TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
             content: Text(
-              errorMsg,
+              e.toString().replaceAll('Exception: ', '').trim(),
               style: const TextStyle(fontSize: 15),
             ),
             actions: [

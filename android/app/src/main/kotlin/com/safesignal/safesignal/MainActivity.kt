@@ -42,10 +42,12 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterFragmentActivity() {
     private val CHANNEL = "com.safesignal/app_scanner"
+    private var sharedText: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        handleSendIntent(intent)
         
         // Start Persistent Background Service
         try {
@@ -57,6 +59,18 @@ class MainActivity : FlutterFragmentActivity() {
             }
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleSendIntent(intent)
+    }
+
+    private fun handleSendIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND && (intent.type == "text/plain" || intent.type?.startsWith("text/") == true)) {
+            sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
         }
     }
 
@@ -242,6 +256,11 @@ class MainActivity : FlutterFragmentActivity() {
                     } catch (e: Exception) {
                         result.success(false)
                     }
+                }
+                "getSharedText" -> {
+                    val text = sharedText
+                    sharedText = null
+                    result.success(text)
                 }
                 else -> result.notImplemented()
             }

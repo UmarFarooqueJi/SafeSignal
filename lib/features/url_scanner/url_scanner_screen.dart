@@ -356,16 +356,7 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
       await socket.close();
       return _HttpsResult(isSecure: isHttps);
     } catch (_) {
-      try {
-        final checkUrl = 'https://$domain';
-        final response = await _dio.get(checkUrl, options: Options(
-          validateStatus: (status) => status != null && status < 500,
-          receiveTimeout: const Duration(seconds: 4),
-        ));
-        return _HttpsResult(isSecure: isHttps && response.statusCode != null);
-      } catch (_) {
-        return _HttpsResult(isSecure: false);
-      }
+      return _HttpsResult(isSecure: false);
     }
   }
 
@@ -441,64 +432,10 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
     }
   }
 
-  // ─── Site Meta (OG tags / HTML title scrape) ────────────────────────────────
+  // ─── Site Meta (Syntactic Local Analysis — Zero Target Egress) ────────────────
   Future<_SiteMetaResult> _fetchSiteMeta(String url, String domain) async {
-    if (_isPrivateOrReservedHost(domain)) return _SiteMetaResult();
-    _setStatus('Fetching site metadata...');
-    try {
-      final response = await _dio.get(
-        url,
-        options: Options(
-          headers: {'User-Agent': 'Mozilla/5.0 (SafeSignal Security Scanner 1.0)'},
-          receiveTimeout: const Duration(seconds: 5),
-          validateStatus: (s) => s != null && s < 600,
-        ),
-      );
-      final body = response.data?.toString() ?? '';
-
-      // Extract OG title or HTML title
-      String title = '';
-      final ogTitleIdx = body.toLowerCase().indexOf('og:title');
-      if (ogTitleIdx != -1) {
-        final chunk = body.substring(ogTitleIdx, (ogTitleIdx + 300).clamp(0, body.length));
-        final match = RegExp(r'''content=["']([^"']{1,120})["']''', caseSensitive: false).firstMatch(chunk);
-        title = match?.group(1)?.trim() ?? '';
-      }
-      if (title.isEmpty) {
-        final tOpen = body.toLowerCase().indexOf('<title');
-        final tClose = body.toLowerCase().indexOf('</title>');
-        if (tOpen != -1 && tClose > tOpen) {
-          final tStart = body.indexOf('>', tOpen);
-          if (tStart != -1 && tStart < tClose) {
-            title = body.substring(tStart + 1, tClose).trim();
-            if (title.length > 120) title = title.substring(0, 120);
-          }
-        }
-      }
-
-      // Extract OG description or meta description
-      String description = '';
-      final ogDescIdx = body.toLowerCase().indexOf('og:description');
-      if (ogDescIdx != -1) {
-        final chunk = body.substring(ogDescIdx, (ogDescIdx + 400).clamp(0, body.length));
-        final match = RegExp(r'''content=["']([^"']{1,200})["']''', caseSensitive: false).firstMatch(chunk);
-        description = match?.group(1)?.trim() ?? '';
-      }
-      if (description.isEmpty) {
-        final descIdx = body.toLowerCase().indexOf('name="description"');
-        final descIdx2 = body.toLowerCase().indexOf("name='description'");
-        final dIdx = descIdx != -1 ? descIdx : descIdx2;
-        if (dIdx != -1) {
-          final chunk = body.substring(dIdx, (dIdx + 400).clamp(0, body.length));
-          final match = RegExp(r'''content=["']([^"']{1,200})["']''', caseSensitive: false).firstMatch(chunk);
-          description = match?.group(1)?.trim() ?? '';
-        }
-      }
-
-      return _SiteMetaResult(title: title, description: description);
-    } catch (_) {
-      return _SiteMetaResult();
-    }
+    // Privacy & Anti-Surveillance Guard: Do not send HTTP GET probes to untrusted links
+    return _SiteMetaResult();
   }
 
   // ─── IP Geolocation (Secure HTTPS lookup) ──────────────────────
@@ -527,41 +464,10 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
     }
   }
 
-  // ─── HTTP Headers Analysis ───────────────────────────────────────────────────
+  // ─── HTTP Headers Analysis (Passive / Privacy-Preserving) ─────────────────────
   Future<_HeadersResult> _fetchHeaders(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri != null && _isPrivateOrReservedHost(uri.host)) {
-      return _HeadersResult();
-    }
-    _setStatus('Analyzing HTTP security headers...');
-    try {
-      final response = await _dio.head(
-        url,
-        options: Options(
-          receiveTimeout: const Duration(seconds: 4),
-          validateStatus: (s) => true,
-          headers: {'User-Agent': 'Mozilla/5.0 (SafeSignal Security Scanner 1.0)'},
-        ),
-      );
-      final h = response.headers;
-      final server = h.value('server') ?? '';
-      final poweredBy = h.value('x-powered-by') ?? '';
-      final contentType = h.value('content-type') ?? '';
-      // Security headers check
-      final hasHsts = h.value('strict-transport-security') != null;
-      final hasXfo = h.value('x-frame-options') != null;
-      final hasCsp = h.value('content-security-policy') != null;
-      final hasXcto = h.value('x-content-type-options') != null;
-      final secCount = [hasHsts, hasXfo, hasCsp, hasXcto].where((b) => b).length;
-      return _HeadersResult(
-        server: server,
-        poweredBy: poweredBy,
-        contentType: contentType,
-        securityHeadersPresent: secCount,
-      );
-    } catch (_) {
-      return _HeadersResult();
-    }
+    // Privacy & Anti-Surveillance Guard: Do not send HEAD probes to untrusted links
+    return _HeadersResult();
   }
 
   // ─── Cloudflare DoH (DNS-over-HTTPS) Reconnaissance ────────────────────────
