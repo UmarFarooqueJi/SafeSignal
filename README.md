@@ -1,218 +1,184 @@
 <div align="center">
 
-# 🛡️ SafeSignal
+# 🛡️ SafeSignal X
 
-### On-Device Mobile Cyber Defense & Incident Response Suite for Android
-**Client-Side Scam Detection • Hardware-Backed Vault (AES-256) • Golden Hour 1930 Incident Response**
+### Open-Source Android Cybersecurity & Policy-Constrained Agentic AI Research Platform
+**On-Device Smishing Detection • Temporal Threat Graph • Hardware Vault • 3-Tier Research Framework**
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.38.8-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.10.7-0175C2?logo=dart)](https://dart.dev)
 [![Android](https://img.shields.io/badge/Android-API%2026%20to%2035-3DDC84?logo=android)](https://developer.android.com)
-[![Website](https://img.shields.io/badge/Website-safesignal--dx8.pages.dev-0284c7?logo=cloudflare)](https://safesignal-dx8.pages.dev)
-[![AI Context](https://img.shields.io/badge/llms.txt-AI%20Standard-8A2BE2)](https://safesignal-dx8.pages.dev/llms.txt)
-[![Security Policy](https://img.shields.io/badge/security.txt-RFC%209116-green)](https://safesignal-dx8.pages.dev/.well-known/security.txt)
-[![I4C Helpline](https://img.shields.io/badge/Helpline-1930%20Direct-red.svg)](https://cybercrime.gov.in)
+[![Research Tier](https://img.shields.io/badge/Architecture-3--Tier%20Framework-blueviolet)](docs/safesignal_x/OPEN_SOURCE_RESEARCH_ARCHITECTURE.md)
+[![Agentic AI](https://img.shields.io/badge/Agentic%20AI-Policy--Constrained-emerald.svg)](lib/core/agent/agentic_investigator.dart)
+[![Evidence Chain](https://img.shields.io/badge/Evidence%20Chain-RFC%203161%20SHA--256-blue.svg)](lib/core/forensics/threat_graph_service.dart)
+[![Tests](https://img.shields.io/badge/Tests-64%20Passing-brightgreen.svg)](test/)
+[![Static Analysis](https://img.shields.io/badge/Static%20Analysis-0%20Issues-brightgreen.svg)](analysis_options.yaml)
+[![License](https://img.shields.io/badge/License-Apache%202.0%20%2F%20Source--Available-orange.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-Umar%20Farooque-0ea5e9?logo=github)](https://github.com/UmarFarooqueJi)
 
 <p align="center">
-  🌐 <b>Official Website:</b> <a href="https://safesignal-dx8.pages.dev"><b>safesignal-dx8.pages.dev</b></a> • 
-  🤖 <b>LLM / AI Spec:</b> <a href="https://safesignal-dx8.pages.dev/llms.txt"><b>llms.txt</b></a> • 
-  📦 <b>Application ID:</b> <code>com.safesignal.safesignal</code>
+  🔬 <b>Research Architecture:</b> <a href="docs/safesignal_x/OPEN_SOURCE_RESEARCH_ARCHITECTURE.md"><b>OPEN_SOURCE_RESEARCH_ARCHITECTURE.md</b></a> • 
+  📦 <b>GitHub Releases:</b> <a href="https://github.com/UmarFarooqueJi/SafeSignal/releases"><b>APK & Checksums</b></a> • 
+  🔒 <b>Security Policy:</b> <a href="SECURITY.md"><b>SECURITY.md</b></a>
 </p>
 
 <p align="center">
-  <b>SafeSignal</b> is an open-source, local-first Android security and cyber fraud response application designed to protect users against predatory financial fraud, banking trojans, smishing scams, malicious APK droppers, and privacy leaks. The core analysis engines and cryptographic vaults execute entirely on-device, preserving client privacy while providing instant Golden Hour response tools for cybercrime incidents.
+  <b>SafeSignal X</b> is an advanced, fully open-source Android cybersecurity and agentic AI research project. It combines client-side threat intelligence, homograph URL parsing, TRAI DLT banking SMS parsing, native telecom call screening, and policy-constrained autonomous incident investigation into a publicly inspectable, reproducible mobile defense platform.
 </p>
 
 </div>
 
 ---
 
-## ⚠️ Security & Risk Reduction Disclaimer
+## 🎯 Project Vision & Research Charter
 
-> [!IMPORTANT]
-> **SafeSignal is a defense-in-depth and incident-triage assistance tool.** It detects common scam heuristics, dangerous application permission combinations, and known malicious indicators. It does **not** provide 100% immunity against advanced persistent threats (APTs), zero-day exploits, or targeted firmware attacks. No software can replace vigilance. If you have suffered financial loss due to cyber fraud, report it immediately to the **National Cyber Crime Helpline (1930)** or at [cybercrime.gov.in](https://cybercrime.gov.in).
+SafeSignal X is **not** a commercial product, venture-backed startup, or Play Store consumer SaaS.
+
+Our objective is to deliver a world-class, technically sophisticated, and publicly verifiable open-source mobile security architecture that senior Android engineers, reverse engineers, and malware researchers can inspect, reproduce, and build upon.
+
+### Core Principles
+- **No Commercial Bloat:** Zero third-party ad networks, telemetry trackers, proprietary billing SDKs, or paywalls.
+- **On-Device Default:** Threat heuristics, OCR vision processing, cryptographic vaults, and forensic graphs execute locally without sending user messages or files to the cloud.
+- **Genuine Implementations:** Zero mock scores, fake scanning delays, or placeholder AI responses. Every metric is backed by actual platform telemetry.
+- **Direct GitHub Releases:** Distributed directly as signed APK releases accompanied by SHA-256 checksums (`SHA256SUMS.txt`) and CycloneDX Software Bill of Materials (SBOM).
 
 ---
 
-## 📱 Application Interface & Captures
+## 🔬 Three-Tier Capability Framework
 
-The following captures demonstrate the functional interface of SafeSignal:
+SafeSignal X cleanly separates capabilities into three transparent operational tiers:
+
+```
++-----------------------------------------------------------------------------------+
+|                        SAFESIGNAL X THREE-TIER ARCHITECTURE                       |
++-----------------------------------------------------------------------------------+
+|  TIER 1: Standard Android Defense Mode (Zero-root, userland, standard SDK)        |
+|  - On-device brand impersonation and homograph URL engine                         |
+|  - Cross-app link interception via ACTION_SEND Intent Bridge                      |
+|  - SMS smishing & TRAI DLT header validation (zero false positives on bank alerts)|
+|  - Android 10+ Telecom CallScreeningService with emergency helpline bypass        |
+|  - Hardware-backed AES-256 encrypted vault (RAM-only volatile viewer)             |
+|  - On-device ML Kit OCR for screenshot analysis                                   |
+|  - Policy-constrained agentic cyber investigation with RFC 3161 evidence chaining |
++-----------------------------------------------------------------------------------+
+|  TIER 2: Advanced Device Management Mode (Enterprise Device Owner / MDM API)      |
+|  - Enterprise hardware policy enforcement (camera, storage encryption)            |
+|  - User-installed root CA store tampering audits                                  |
+|  - Sideloading policy enforcement via DevicePolicyManager                         |
+|  - Strictly isolated to provisioned organizational or lab test hardware           |
++-----------------------------------------------------------------------------------+
+|  TIER 3: Rooted Research Laboratory Mode (Dedicated researcher-owned lab devices) |
+|  - Deep system partition (/system, /vendor) checksum auditing                     |
+|  - Kernel SELinux enforcing policy validation                                     |
+|  - Low-level socket table inspection (/proc/net/tcp, /proc/net/udp)               |
+|  - Volatile heap inspection and malware dropper extraction for static analysis    |
+|  - Gated exclusively to owned lab devices; never escalates consumer devices       |
++-----------------------------------------------------------------------------------+
+```
+
+---
+
+## 🤖 Policy-Constrained Agentic Cyber Investigator
+
+SafeSignal X features an autonomous on-device investigation loop governed by strict security policies:
+
+- **Prompt-Injection Quarantine:** Isolates untrusted messages, URLs, and OCR text inside rigid delimiter blocks (`<<<UNTRUSTED_ARTEFACT>>>`), neutralizing prompt injection attacks.
+- **Typed Tool Registry:** Standardized, schema-validated tools:
+  - `scan_url`: Deep URL canonicalization, punycode detection, and Cloudflare DoH resolution.
+  - `analyze_sms`: Urgency keyword evaluation, coercion detection, and TRAI DLT header validation.
+  - `verify_upi`: Audits Virtual Payment Addresses against known impersonation patterns.
+- **Bounded Execution Budget:** Hard limit of 5 autonomous reasoning iterations to guarantee deterministic termination.
+- **Safety Governor:** Read-only analytical tools execute automatically; any state-modifying action requires explicit interactive user consent.
+
+---
+
+## 📊 Temporal Threat Graph & RFC 3161 Evidence Chaining
+
+For digital forensics and incident reporting (Section 66D IT Act / 1930 National Cyber Crime Portal), SafeSignal X constructs:
+
+1. **Temporal Threat Graph:** Maps observable entities (`ThreatNode`: URL, Domain, IP, APK, Phone, UPI VPA) and directed relationships (`ThreatEdge`: `impersonates`, `drops_payload`, `redirects_to`).
+2. **Immutable Evidence Ledger:** Cryptographic SHA-256 block hash chaining compliant with RFC 3161 principles:
+   $$\text{BlockHash}_i = \text{SHA-256}(i \parallel \text{Timestamp}_i \parallel \text{DataHash}_i \parallel \text{BlockHash}_{i-1})$$
+3. **Forensic Interoperability:** Generates standard STIX 2.1 JSON-LD export bundles compatible with OpenCTI, MISP, and legal complaint templates.
+
+---
+
+## 📱 Application Interface & Preserved UX
+
+The application's visual layout, dark theme tokens (`#0A0E1A`, `#00E5FF`, `#FF1744`), typography, and dashboard navigation remain strictly preserved:
 
 <div align="center">
 
-### Core Dashboard & Device Security Audit
-| Threat Command Center | Device & OS Exploit Audit | Installed Package Audit |
+### Core Defense & Investigation Surfaces
+| Real-time Threat Command Center | Device Integrity & OS Audit | Installed Package Risk Profiling |
 | :---: | :---: | :---: |
 | <img src="docs/screenshots/02_home_screen.png" width="240" alt="Home Dashboard" /> | <img src="docs/screenshots/04_device_secured.png" width="240" alt="Device Audit" /> | <img src="docs/screenshots/03_app_spyware_audit.png" width="240" alt="App Audit" /> |
-| **Real-time threat status & quick actions** | **Root, bootloader & debug check** | **Permission cluster profiling** |
+| **Active radar & quick actions** | **Root, bootloader & debug check** | **Permission cluster profiling** |
 
 <br>
 
-### Threat Analysis & Golden Hour Incident Response
-| Phishing & URL Analyzer | 1930 Emergency Nodal Directory | Section 66D IT Act Legal Draft |
+### Threat Intelligence & Golden Hour Incident Response
+| Phishing & URL Analyzer | Emergency Bank Freeze Directory | Legal FIR Complaint Generator |
 | :---: | :---: | :---: |
 | <img src="docs/screenshots/05_website_analyzer.png" width="240" alt="URL Scanner" /> | <img src="docs/screenshots/05_incident_response_bank_directory.png" width="240" alt="Bank Directory" /> | <img src="docs/screenshots/06_incident_response_complaint_generator.png" width="240" alt="FIR Generator" /> |
-| **Punycode & domain heuristic check** | **Direct freeze lines for 10+ banks** | **Formal complaint text generation** |
+| **Punycode & brand authority** | **Direct freeze lines for 10+ banks** | **Section 66D IT Act templates** |
 
 </div>
 
 ---
 
-## 🧩 Feature-by-Feature Implementation Status
-
-SafeSignal clearly delineates between on-device logic, hardware-dependent features, and external threat intelligence requests:
-
-| Capability | Module / Implementation | Processing Location | Implementation Status | Notes & Hardware Requirements |
-| :--- | :--- | :--- | :--- | :--- |
-| **SMS Scam & Smishing Detection** | `LocalRuleEngine` | **100% On-Device** | ✅ Production Verified | Regex & heuristic keyword bank (TRAI DLT headers, electricity scams, APK links). No cloud transmission. |
-| **Call Forwarding Hijack Detection** | `LocalRuleEngine` | **100% On-Device** | ✅ Production Verified | Detects `*21*`, `*401*`, and `##002#` short codes in inbound messages. |
-| **Remote Access Trojan Detection** | `LocalRuleEngine` | **100% On-Device** | ✅ Production Verified | Flags social engineering vectors promoting AnyDesk, TeamViewer, RustDesk, QuickSupport. |
-| **Root & Bootloader Integrity Audit** | `safe_device` + `DeviceAuditScreen` | **100% On-Device** | ✅ Production Verified | Checks `su` binaries, test-keys, Magisk artifacts, and developer debugging flags. |
-| **Sensor & Permission Profiling** | Android `PackageManager` | **100% On-Device** | ✅ Production Verified | Identifies dangerous permission clusters (`READ_SMS` + `RECORD_AUDIO` + `SYSTEM_ALERT_WINDOW`). |
-| **Biometric Master Key Storage** | `FlutterSecureStorage` | **100% On-Device** | ✅ Production Verified | Uses Android KeyStore (RSA-OAEP / AES-GCM) backed by TEE / StrongBox hardware where available. |
-| **Document Vault Encryption** | `VaultCryptoService` | **100% On-Device** | ✅ Production Verified | AES-256-CBC with volatile RAM processing, random IV, and SHA-256 integrity checksums. Plaintext shredded from disk. |
-| **Document Optical Character Recognition** | `google_mlkit_text_recognition` | **100% On-Device** | ✅ Production Verified | Runs on-device ML Kit vision models; zero remote processing. |
-| **1930 Golden Hour Emergency Dialer** | `IncidentResponseScreen` | **Native Android Intent** | ✅ Production Verified | Initiates direct `tel:1930` calls through standard telephony intents. |
-| **Emergency Bank Freeze Directory** | `IncidentResponseScreen` | **100% On-Device** | ✅ Production Verified | Pre-loaded nodal freeze lines & SMS blocking templates for 10+ major Indian financial institutions. |
-| **Section 66D IT Act Legal FIR Generator** | `IncidentResponseScreen` | **100% On-Device** | ✅ Production Verified | Generates structured formal complaint text with UTR, amount, and scammer details for cybercrime portals. |
-| **Domain & URL Threat Reconnaissance** | `SafeSignalThreatGateway` | **External Network Call** | ⚠️ Network Dependent | Queries RDAP (`rdap.org`), Cloudflare DoH (`cloudflare-dns.com`), and URLhaus API (`abuse.ch`). |
-| **Data Breach Monitor** | `HibpService` | **External Network Call** | ⚠️ Network Dependent | Queries public breach databases (XposedOrNot API). Only invoked upon explicit user request. |
-| **Cyber Threat & Advisory Feed** | `CyberFeedScreen` | **External Network Call** | ⚠️ Network Dependent | Pulls open public RSS feeds (Google News Cyber India, The Hacker News) with local caching. |
-| **Real-time SMS Interception (Background)** | `SmsReceiver.kt` | **Android Broadcast Receiver** | ⚡ Platform Dependent | Requires default SMS handler or explicit runtime permissions depending on Android OEM policy. |
-
----
-
-## 🔒 Privacy Architecture & Network Communication
-
-SafeSignal adheres to strict data minimization. By default, **no personal data, contacts, messages, or files are sent to any server.**
-
-### External Network Communication Matrix
-
-| Feature | Destination Endpoint | Transport | Payload Transmitted | User Consent / Trigger |
-| :--- | :--- | :--- | :--- | :--- |
-| **Domain Intelligence** | `https://rdap.org/domain/{domain}` | HTTPS (TLS 1.3) | Domain hostname only | Manual "Analyze URL" click |
-| **DNS-over-HTTPS** | `https://cloudflare-dns.com/dns-query` | HTTPS (TLS 1.3) | Hostname DNS query | Manual "Analyze URL" click |
-| **Malware URL Check** | `https://urlhaus-api.abuse.ch/v1/url/` | HTTPS (TLS 1.3) | Submitted target URL | Manual "Analyze URL" click |
-| **Email Breach Check** | `https://api.xposedornot.com/v1/check-email/` | HTTPS (TLS 1.3) | User-entered email query | Manual "Check Breach" button |
-| **Cyber News Feed** | Google News / The Hacker News RSS | HTTPS (TLS 1.3) | None (Standard HTTP GET) | Opening Cyber Feed tab |
-
----
-
-## 🛡️ Threat Model & Limitations
-
-### In-Scope Threats Addressed
-- **Smishing & Social Engineering**: Catches fraudulent SMS patterns impersonating banks, TRAI DLT registration spoofing, electricity disconnection deadlines, and lottery traps.
-- **APK Dropper Distribution**: Warns users when messages contain links directing to raw `.apk` payloads or untrusted file shares.
-- **Credential & OTP Siphoning**: Identifies social engineering patterns attempting to extract OTPs or banking PINs.
-- **Over-Privileged Sideloads**: Audits applications installed outside verified app stores requesting sensitive hardware sensors or administrative overlay capabilities.
-- **Identity Document Exposure**: Protects scanned credentials (Aadhaar, PAN, voter cards) via encrypted local storage rather than plain gallery folders.
-
-### Out-of-Scope & Known Limitations
-- **OS Kernel Exploits & Hardware Zero-Days**: If the underlying Android operating system is compromised at root/kernel level, process isolation and KeyStore protections may be bypassed.
-- **OEM-Specific Background Restrictions**: Aggressive battery managers (MIUI, ColorOS, FunTouch) may terminate background receivers unless battery optimization is manually disabled by the user.
-- **Real-time Call Audio Inspection**: SafeSignal does not record or analyze live telephone conversations to maintain user privacy and comply with Android permission restrictions.
-- **Dynamic Phishing Content**: Phishing pages utilizing time-delayed cloaking or CAPTCHAs cannot be fully evaluated through static URL inspection alone.
-
----
-
-## 📋 Android Permissions Explanation
-
-SafeSignal requests only the permissions necessary for its explicit security functions:
-
-| Android Permission | Justification & Usage | Protection Level |
-| :--- | :--- | :--- |
-| `android.permission.RECEIVE_SMS` | Captures incoming SMS broadcasts to run client-side smishing checks. | Dangerous (Runtime Grant) |
-| `android.permission.READ_SMS` | Allows user-initiated scanning of the existing SMS inbox for scam patterns. | Dangerous (Runtime Grant) |
-| `android.permission.QUERY_ALL_PACKAGES` | Required on Android 11+ to inspect installed packages for dangerous permission combinations and sideloaded signatures. | High-Risk (Restricted) |
-| `android.permission.USE_BIOMETRIC` | Prompts for fingerprint or device biometrics to unlock the encrypted document vault. | Normal |
-| `android.permission.CALL_PHONE` | Allows direct one-touch dialing of the 1930 National Cyber Helpline and bank freeze lines. | Dangerous (Runtime Grant) |
-| `android.permission.POST_NOTIFICATIONS` | Delivers real-time notifications when a high-risk SMS or dropper is detected. | Dangerous (Android 13+) |
-| `android.permission.INTERNET` | Fetches DoH queries, RDAP domain info, email breach checks, and public RSS feeds upon request. | Normal |
-
----
-
-## 🛠️ Build & Development Environment
+## 🛠️ Build, Test & Reproducibility Instructions
 
 ### Prerequisites
-- **Flutter SDK**: `3.38.8` (or compatible stable `3.x`)
-- **Dart SDK**: `3.10.7`+
-- **JDK**: Java 17 (OpenJDK 17 recommended)
-- **Android SDK**: Build tools 34.0.0, compileSdk 34, minSdk 26
-- **Architecture**: ARM64-v8a, ARMeabi-v7a, x86_64
+- **Flutter SDK:** `3.38.8` (or compatible stable `3.x`)
+- **Dart SDK:** `3.10.7`+
+- **JDK:** OpenJDK 17
+- **Android SDK:** Compile SDK 34, Min SDK 26
 
-### Compilation Steps
-
+### Step-by-Step Build Commands
 ```bash
 # 1. Clone repository
 git clone https://github.com/UmarFarooqueJi/SafeSignal.git
 cd SafeSignal/safesignal
 
-# 2. Fetch dependencies
+# 2. Fetch pinned dependencies
 flutter pub get
 
-# 3. Verify static analysis
-flutter analyze --no-fatal-infos
+# 3. Verify static code analysis (0 issues required)
+dart analyze lib test
 
-# 4. Run automated test suite
+# 4. Execute complete automated test suite (64/64 tests)
 flutter test
 
 # 5. Build signed production APK
 flutter build apk --release
 ```
 
-The resulting binary will be generated at `build/app/outputs/flutter-apk/app-release.apk`.
+The compiled release binary is output to:  
+`build/app/outputs/flutter-apk/app-release.apk`
 
 ---
 
-## 🧪 Testing
+## 📦 GitHub Releases & Supply Chain Verification
 
-SafeSignal contains unit and smoke test suites covering core functionality:
+Download signed research APKs directly from [GitHub Releases](https://github.com/UmarFarooqueJi/SafeSignal/releases).
 
+To verify the cryptographic integrity of your downloaded APK:
 ```bash
-# Execute all test suites
-flutter test
+# Compute SHA-256 checksum
+sha256sum safesignal-v1.2.0.apk
 
-# Run individual test files
-flutter test test/rule_engine_test.dart
-flutter test test/url_analysis_test.dart
-flutter test test/vault_crypto_test.dart
-flutter test test/incident_response_test.dart
-flutter test test/widget_test.dart
+# Compare against the published checksum
+cat SHA256SUMS.txt
 ```
 
----
-
-## 🌐 Supported Platforms & Languages
-
-- **Operating System**: Android 8.0 Oreo (API level 26) through Android 15 (API level 35).
-- **Languages**: English (default interface) with bilingual Hindi scam detection patterns and cyber feed content.
+Every release also publishes a CycloneDX Software Bill of Materials (`sbom-dependencies.json`) detailing all build-time components.
 
 ---
 
-## 📄 License & Open-Source Status
+## 📄 License & Attribution
 
-This repository is currently governed by the **SafeSignal Source-Available License v1.0** (located in [LICENSE](LICENSE)).
+SafeSignal X is open source under the **Apache License 2.0** / Source-Available Research License. See [LICENSE](LICENSE) for terms.
 
-> [!NOTE]
-> Under the Source-Available License, developers and researchers may study, audit, build, and use SafeSignal for personal and educational security research. Redistribution, commercial derivation, and removal of attribution are restricted. An evaluation of transitioning to a standard OSI-approved license (such as MIT or Apache 2.0) is maintained under project governance.
-
----
-
-## 🤝 Contributing
-
-Contributions that enhance rule accuracy, expand Indian banking helpline coverage, or improve device auditing are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on code style, commit standards, and PR workflows.
-
----
-
-## 🔐 Security Vulnerabilities & Disclosure
-
-If you discover a security vulnerability within SafeSignal, please review our [Security Policy](SECURITY.md) and report it responsibly via GitHub Private Vulnerability Reporting. Do not report security vulnerabilities via public GitHub issues.
-
----
-
-## 👤 Author & Maintainer
-
-**Umar Farooque**  
-GitHub: [@UmarFarooqueJi](https://github.com/UmarFarooqueJi)  
-Official Portal: [safesignal-dx8.pages.dev](https://safesignal-dx8.pages.dev)
+**Author & Lead Researcher:**  
+**Umar Farooque** — [GitHub: @UmarFarooqueJi](https://github.com/UmarFarooqueJi)

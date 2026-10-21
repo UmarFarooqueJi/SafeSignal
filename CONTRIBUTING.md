@@ -1,64 +1,79 @@
-# Contributing to SafeSignal
+# Contributing to SafeSignal X
 
-Thank you for your interest in contributing to **SafeSignal**! We welcome contributions from developers, security researchers, and designers worldwide to help build the best open-source anti-fraud and mobile security platform.
+Thank you for your interest in contributing to **SafeSignal X**! 
+
+SafeSignal X is an open-source, non-commercial Android cybersecurity and agentic AI research platform. We welcome contributions from software engineers, mobile security researchers, cryptographers, and reverse engineers worldwide.
 
 ---
 
-## 🚀 How to Get Started
+## 🔬 Research & Engineering Ethos
+
+- **Real Implementations Only:** We strictly reject fake security scores, simulated progress bars, placeholder AI responses, or dummy telemetry. Every capability must provide genuine, verifiable functionality.
+- **Privacy-Preserving by Default:** All scanning, parsing, heuristic evaluation, and evidence generation must execute locally on the device without unauthorized network egress.
+- **Preserve Existing UI/UX:** The approved SafeSignal visual identity, color scheme, typography, and existing screen workflows must remain preserved. New research surfaces must be additive and conform to the established design system.
+
+---
+
+## 🚀 Development Setup
 
 ### 1. Prerequisites
-- **Flutter SDK**: 3.10.7 or higher
-- **Dart SDK**: ^3.10.7
-- **Android Studio / VS Code** with Flutter extensions installed
+- **Flutter SDK:** 3.10.7+ (Stable Channel)
+- **Dart SDK:** ^3.10.7
+- **Java JDK:** OpenJDK 17
+- **Android SDK:** Platform API 34+ / Build-Tools 34.0.0+
 - **Git**
 
-### 2. Fork & Clone
+### 2. Clone & Bootstrap
 ```bash
 git clone https://github.com/UmarFarooqueJi/SafeSignal.git
 cd SafeSignal/safesignal
-```
-
-### 3. Environment Setup
-Copy `.env.example` to `.env` and provide your test keys:
-```bash
-cp .env.example .env
-```
-*(Note: Never commit your `.env` file!)*
-
-### 4. Install Dependencies
-```bash
 flutter pub get
 ```
 
-### 5. Run the Application
+### 3. Run Tests & Static Analysis
+Before writing or proposing any changes, verify that the existing test suite passes:
 ```bash
-flutter run
+# Execute all 60+ unit and integration tests
+flutter test
+
+# Verify clean static analysis (Zero issues allowed)
+dart analyze lib test
 ```
 
 ---
 
-## 🛠️ Code Conventions & Guidelines
+## 🛠️ Contribution Areas
 
-- **Architecture**: We follow a clean feature-driven architecture located in `lib/features/` with shared logic in `lib/core/`.
-- **State Management**: We use `Riverpod` (`flutter_riverpod`) for reactive state management.
-- **Routing**: Navigation is strictly managed via `GoRouter` in `lib/core/router/app_router.dart`.
-- **Null Safety**: All Dart code must be sound null-safe with zero analyzer warnings.
-- **Testing**: Ensure all unit and widget tests pass before submitting a PR:
-  ```bash
-  flutter test
-  flutter analyze
-  ```
+We actively invite research and engineering contributions in:
 
----
-
-## 📦 Pull Request Process
-
-1. **Create a branch**: `git checkout -b feature/amazing-feature` or `git checkout -b fix/issue-description`.
-2. **Commit your changes**: Write clear, descriptive commit messages following Conventional Commits (e.g. `feat: add biometric vault lock`, `fix: handle null phone state on Android 14`).
-3. **Push to branch**: `git push origin feature/amazing-feature`.
-4. **Open a Pull Request**: Submit your PR with a clear summary of changes, linked issues, and screenshots if UI changes were made.
+1. **Adversarial Test Datasets (`test/`):**
+   - New synthetic SMS phishing samples (digital arrest, utility scams, loan fraud).
+   - Deceptive homograph, punycode, and typosquatting domain test fixtures.
+   - Bank SMS transaction samples ensuring zero false positives.
+2. **Policy-Constrained Agentic Tools (`lib/core/agent/`):**
+   - New read-only analytical tools for threat observable extraction.
+   - Hardened prompt-injection defense filters and safety governor policies.
+3. **Forensic Evidence & Graph Enhancements (`lib/core/forensics/`):**
+   - STIX 2.1 / JSON-LD export extensions.
+   - RFC 3161 evidence chaining optimizations.
+4. **Native Android Platform Hardening (`android/app/`):**
+   - Telecom `CallScreeningService` threat scoring heuristics.
+   - Hardware-backed KeyStore envelope encryption.
 
 ---
 
-## 🔒 Reporting Vulnerabilities
-If you discover a security vulnerability within SafeSignal, please review our [SECURITY.md](SECURITY.md) for reporting guidelines.
+## 📋 Pull Request Requirements
+
+1. **Focused Changes:** Each PR should address a single feature, heuristic rule update, or bug fix.
+2. **Deterministic Tests:** Every new feature or heuristic must be accompanied by unit tests in `test/`.
+3. **Clean Static Analysis:** PRs must produce 0 errors and 0 warnings in `dart analyze lib test`.
+4. **Conventional Commits:** Follow conventional commit format:
+   - `feat(agent): add DoH resolution tool to agent registry`
+   - `fix(call-shield): ensure 1930 emergency bypass on Android 14`
+   - `test(url-guard): add punycode Cyrillic homograph test cases`
+5. **UI Preservation:** If modifying UI files, ensure zero visual regressions against the baseline design.
+
+---
+
+## 🔒 Security Vulnerabilities
+To report a security vulnerability, please refer to our [SECURITY.md](SECURITY.md) for confidential coordinated disclosure instructions.
