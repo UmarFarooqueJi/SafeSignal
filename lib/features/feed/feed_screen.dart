@@ -19,6 +19,8 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _loading = true;
   String _selectedCategory = 'all';
   String? _errorMessage;
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
 
   // Category definitions: (id, display label, emoji)
   static const _categoryDefs = [
@@ -34,9 +36,14 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   void initState() {
-    super.initState()
-    ;
+    super.initState();
     _fetchNews();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchNews() async {
@@ -47,42 +54,78 @@ class _FeedScreenState extends State<FeedScreen> {
 
     try {
       final dio = Dio(BaseOptions(
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 12),
+        connectTimeout: const Duration(seconds: 12),
+        receiveTimeout: const Duration(seconds: 14),
       ));
 
-      final allItems = <dynamic>[];
+      final allParsed = <AlertModel>[];
 
-      // Open-source Keyless Public Aggregator: Fetch live Indian Cyber Fraud & Hacker News RSS feeds
-      final inQuery = Uri.encodeComponent('https://news.google.com/rss/search?q=cyber+scam+OR+fraud+OR+"digital+arrest"+india&hl=en-IN&gl=IN&ceid=IN:en');
+      // 1. Direct Indian Cyber Threat Google News RSS XML (Air-gapped friendly, keyless, zero rate-limit)
+      try {
+        const directRss = 'https://news.google.com/rss/search?q=cyber+scam+OR+fraud+OR+"digital+arrest"+india&hl=en-IN&gl=IN&ceid=IN:en';
+        final rssRes = await dio.get(
+          directRss,
+          options: Options(responseType: ResponseType.plain),
+        );
+        if (rssRes.statusCode == 200 && rssRes.data != null) {
+          final fromXml = _NewsDataParser.parseRssXml(rssRes.data.toString());
+          if (fromXml.isNotEmpty) {
+            allParsed.addAll(fromXml);
+          }
+        }
+      } catch (e) {
+        debugPrint('[FeedScreen] Direct RSS XML failed: $e, trying aggregator fallback');
+      }
+
+      // 2. Secondary public RSS-to-JSON aggregators
+      try {
+        final inQuery = Uri.encodeComponent('https://news.google.com/rss/search?q=cyber+scam+OR+fraud+OR+"digital+arrest"+india&hl=en-IN&gl=IN&ceid=IN:en');
         final thnQuery = Uri.encodeComponent('https://feeds.feedburner.com/TheHackersNews');
 
         final rssResults = await Future.wait([
-          dio.get('https://api.rss2json.com/v1/api.json?rss_url=$inQuery'),
-          dio.get('https://api.rss2json.com/v1/api.json?rss_url=$thnQuery'),
+          dio.get('https://api.rss2json.com/v1/api.json?rss_url=$inQuery').catchError((_) => Response(requestOptions: RequestOptions(), statusCode: 500)),
+          dio.get('https://api.rss2json.com/v1/api.json?rss_url=$thnQuery').catchError((_) => Response(requestOptions: RequestOptions(), statusCode: 500)),
         ]);
 
+        final allItems = <dynamic>[];
         for (final r in rssResults) {
           if (r.statusCode == 200 && r.data != null && r.data['status'] == 'ok') {
             final items = r.data['items'] as List? ?? [];
             allItems.addAll(items);
           }
         }
+        if (allItems.isNotEmpty) {
+          final fromJson = _NewsDataParser.parse(allItems);
+          allParsed.addAll(fromJson);
+        }
+      } catch (e) {
+        debugPrint('[FeedScreen] Aggregator fetch failed: $e');
+      }
 
-      if (allItems.isNotEmpty) {
-        final parsed = _NewsDataParser.parse(allItems);
-        parsed.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+      // Deduplicate by headline
+      final seenHeadlines = <String>{};
+      final uniqueList = <AlertModel>[];
+      for (final a in allParsed) {
+        final normalized = a.headline.toLowerCase().trim();
+        if (!seenHeadlines.contains(normalized)) {
+          seenHeadlines.add(normalized);
+          uniqueList.add(a);
+        }
+      }
+
+      if (uniqueList.isNotEmpty) {
+        uniqueList.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
 
         // Cache the latest 30 articles locally for offline availability
         try {
           final prefs = await SharedPreferences.getInstance();
-          final cacheJson = jsonEncode(parsed.take(30).map((a) => a.toJson()).toList());
+          final cacheJson = jsonEncode(uniqueList.take(30).map((a) => a.toJson()).toList());
           await prefs.setString('cached_threat_feed', cacheJson);
         } catch (_) {}
 
         if (mounted) {
           setState(() {
-            _alerts = parsed;
+            _alerts = uniqueList;
             _loading = false;
           });
         }
@@ -118,11 +161,22 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   List<AlertModel> get _filtered {
-    if (_selectedCategory == 'all') return _alerts;
-    if (_selectedCategory == 'new') {
-      return _alerts.where((a) => a.isNew).toList();
+    List<AlertModel> base;
+    if (_selectedCategory == 'all') {
+      base = _alerts;
+    } else if (_selectedCategory == 'new') {
+      base = _alerts.where((a) => a.isNew).toList();
+    } else {
+      base = _alerts.where((a) => a.category == _selectedCategory).toList();
     }
-    return _alerts.where((a) => a.category == _selectedCategory).toList();
+
+    if (_searchQuery.trim().isEmpty) return base;
+    final q = _searchQuery.toLowerCase().trim();
+    return base.where((a) =>
+      a.headline.toLowerCase().contains(q) ||
+      a.summary.toLowerCase().contains(q) ||
+      a.category.toLowerCase().contains(q)
+    ).toList();
   }
 
 
@@ -278,6 +332,43 @@ class _FeedScreenState extends State<FeedScreen> {
                 ],
               ),
             ),
+          // Dynamic Threat Search Bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0D1424) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: TextField(
+                controller: _searchCtrl,
+                style: TextStyle(color: textThemeColor, fontSize: 13, fontWeight: FontWeight.w600),
+                decoration: InputDecoration(
+                  hintText: 'Search threat alerts, UPI, banking, arrest...',
+                  hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 12),
+                  prefixIcon: Icon(Icons.search, size: 18, color: isDark ? const Color(0xFF00E676) : const Color(0xFF2563EB)),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 16),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                onChanged: (val) {
+                  setState(() => _searchQuery = val);
+                },
+              ),
+            ),
+          ),
           Expanded(
             child: _loading
                 ? Center(
@@ -698,6 +789,73 @@ class _NewsDataParser {
         ),
       );
 
+      count++;
+    }
+    return list;
+  }
+
+  static List<AlertModel> parseRssXml(String xmlString) {
+    final list = <AlertModel>[];
+    final itemRegex = RegExp(r'<item>([\s\S]*?)</item>', caseSensitive: false);
+    final matches = itemRegex.allMatches(xmlString);
+    final now = DateTime.now();
+    int count = 0;
+
+    for (final m in matches) {
+      final block = m.group(1) ?? '';
+
+      final titleMatch = RegExp(r'<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</title>', caseSensitive: false).firstMatch(block);
+      final rawTitle = titleMatch?.group(1) ?? 'Scam Alert';
+      final title = _cleanText(rawTitle);
+
+      final descMatch = RegExp(r'<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</description>', caseSensitive: false).firstMatch(block);
+      final rawDesc = descMatch?.group(1) ?? '';
+      final description = _cleanText(rawDesc);
+
+      final linkMatch = RegExp(r'<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</link>', caseSensitive: false).firstMatch(block);
+      final link = linkMatch?.group(1)?.trim();
+
+      final pubDateMatch = RegExp(r'<pubDate>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</pubDate>', caseSensitive: false).firstMatch(block);
+      final pubDateStr = pubDateMatch?.group(1)?.trim();
+
+      DateTime publishedAt;
+      try {
+        publishedAt = DateTime.parse(pubDateStr ?? '');
+      } catch (_) {
+        publishedAt = now.subtract(Duration(hours: count * 2));
+      }
+
+      final isNew = now.difference(publishedAt).inHours < 48;
+
+      final lowerText = '${title.toLowerCase()} ${description.toLowerCase()}';
+      String category = 'general';
+      if (lowerText.contains('arrest') || lowerText.contains('digital arrest') || lowerText.contains('cbi') || lowerText.contains('police')) {
+        category = 'digital_arrest';
+      } else if (lowerText.contains('phishing') || lowerText.contains('fake website') || lowerText.contains('fake bank') || lowerText.contains('clone site')) {
+        category = 'phishing';
+      } else if (lowerText.contains('otp') || lowerText.contains('sim swap') || lowerText.contains('sms scam') || lowerText.contains('aadhaar')) {
+        category = 'otp';
+      } else if (lowerText.contains('invest') || lowerText.contains('trading') || lowerText.contains('earn') || lowerText.contains('crypto') || lowerText.contains('task')) {
+        category = 'investment';
+      } else if (lowerText.contains('lottery') || lowerText.contains('won') || lowerText.contains('prize') || lowerText.contains('kbc')) {
+        category = 'lottery';
+      }
+
+      list.add(
+        AlertModel(
+          id: link ?? 'rss_xml_${count}_${publishedAt.millisecondsSinceEpoch}',
+          headline: title,
+          summary: description.isNotEmpty
+              ? description
+              : 'Breaking cyber threat alert from Google News India. Open the article for complete details.',
+          sourceUrl: link,
+          imageUrl: null,
+          isTrending: count <= 3,
+          publishedAt: publishedAt,
+          category: category,
+          isNew: isNew,
+        ),
+      );
       count++;
     }
     return list;

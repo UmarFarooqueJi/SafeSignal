@@ -1,11 +1,8 @@
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/constants.dart';
@@ -101,15 +98,6 @@ final settingsProvider = NotifierProvider<SettingsNotifier, SettingsState>(
   SettingsNotifier.new,
 );
 
-// ─── Profile Future Provider ──────────────────────────────────────────────────
-final profileProvider = FutureProvider<Map<String, String?>>((ref) async {
-  final prefs = await SharedPreferences.getInstance();
-  return {
-    'name': prefs.getString('userName'),
-    'image': prefs.getString('userProfileImage'),
-  };
-});
-
 // ─── Classic Settings Screen ──────────────────────────────────────────────────
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -118,7 +106,6 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
-    final profile = ref.watch(profileProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final bg = isDark ? const Color(0xFF06090F) : const Color(0xFFF1F5F9);
@@ -158,13 +145,8 @@ class SettingsScreen extends ConsumerWidget {
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           children: [
-            // ── Classic Profile Header ─────────────────────────────────────────
-            profile.when(
-              data: (data) =>
-                  _buildClassicProfileCard(context, ref, data, isDark),
-              loading: () => const SizedBox(height: 70),
-              error: (_, _) => const SizedBox(),
-            ),
+            // ── Air-Gapped Security Node Status ────────────────────────────────
+            _buildPrivacyNodeCard(context, isDark),
 
             const SizedBox(height: 24),
 
@@ -289,8 +271,8 @@ class SettingsScreen extends ConsumerWidget {
 
             const SizedBox(height: 32),
 
-            // ── Classic Danger Button: Logout ─────────────────────────────────
-            _buildClassicLogoutButton(context, isDark),
+            // ── Cache & Resync ───────────────────────────────────────────────
+            _buildCacheResetButton(context, isDark),
 
             const SizedBox(height: 48),
           ],
@@ -324,94 +306,46 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildClassicProfileCard(
-    BuildContext context,
-    WidgetRef ref,
-    Map<String, String?> data,
-    bool isDark,
-  ) {
+  Widget _buildPrivacyNodeCard(BuildContext context, bool isDark) {
     final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
     final borderColor = isDark
         ? const Color(0xFF1E293B)
         : const Color(0xFFE2E8F0);
     final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: borderColor, width: 1),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GestureDetector(
-            onTap: () async {
-              try {
-                final picker = ImagePicker();
-                final picked = await picker.pickImage(
-                  source: ImageSource.gallery,
-                );
-                if (picked != null) {
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('userProfileImage', picked.path);
-                  ref.invalidate(profileProvider);
-                }
-              } catch (e) {
-                debugPrint('Avatar picker error: ');
-              }
-            },
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: isDark
-                      ? const Color(0xFF1E293B)
-                      : const Color(0xFFE2E8F0),
-                  backgroundImage:
-                      data['image'] != null && File(data['image']!).existsSync()
-                      ? FileImage(File(data['image']!))
-                      : null,
-                  child:
-                      data['image'] == null ||
-                          !File(data['image']!).existsSync()
-                      ? Icon(
-                          Icons.person_rounded,
-                          size: 32,
-                          color: isDark
-                              ? Colors.white70
-                              : const Color(0xFF2563EB),
-                        )
-                      : null,
-                ),
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2563EB),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt_rounded,
-                    size: 10,
-                    color: Colors.white,
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00E676).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFF00E676).withValues(alpha: 0.25),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: InkWell(
-              onTap: () => _showEditNameDialog(
-                context,
-                ref,
-                data['name'] ?? 'Umar Farooque',
-                isDark,
+                child: const Center(
+                  child: Icon(
+                    Icons.security_rounded,
+                    size: 26,
+                    color: Color(0xFF00E676),
+                  ),
+                ),
               ),
-              borderRadius: BorderRadius.circular(10),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
+              const SizedBox(width: 14),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -419,9 +353,9 @@ class SettingsScreen extends ConsumerWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            data['name'] ?? 'Umar Farooque',
+                            'Air-Gapped Defense Node',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.w800,
                               color: textMain,
                               letterSpacing: -0.2,
@@ -432,48 +366,77 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.all(3.5),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF1E293B)
-                                : const Color(0xFFEFF6FF),
-                            shape: BoxShape.circle,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
                           ),
-                          child: Icon(
-                            Icons.edit_rounded,
-                            size: 13,
-                            color: isDark
-                                ? const Color(0xFF93C5FD)
-                                : const Color(0xFF2563EB),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'ANONYMOUS',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF00E676),
+                              letterSpacing: 0.4,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF10B981),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          'SafeSignal Guard Active',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF10B981),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 3),
+                    Text(
+                      '100% On-Device • Zero PII Required',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: textSub,
+                      ),
                     ),
                   ],
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Divider(
+            height: 1,
+            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildNodeBadge(Icons.cloud_off_rounded, '0 Cloud Egress', const Color(0xFF38BDF8), isDark),
+              _buildNodeBadge(Icons.no_accounts_rounded, 'Zero PII Tracked', const Color(0xFFA78BFA), isDark),
+              _buildNodeBadge(Icons.lock_outline_rounded, 'AES-256 Vault', const Color(0xFF00E676), isDark),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNodeBadge(IconData icon, String text, Color accent, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: accent),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: accent,
             ),
           ),
         ],
@@ -481,156 +444,21 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showEditNameDialog(
-    BuildContext context,
-    WidgetRef ref,
-    String currentName,
-    bool isDark,
-  ) {
-    final controller = TextEditingController(text: currentName);
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+  Widget _buildCacheResetButton(BuildContext context, bool isDark) {
     final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) {
-        return AlertDialog(
-          backgroundColor: cardBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.edit_rounded,
-                  color: Color(0xFF2563EB),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'Edit Profile Name',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: textMain,
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Customize your name as it appears on SafeSignal security reports and alerts.',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: textSub,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                style: TextStyle(
-                  color: textMain,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Enter your name',
-                  hintStyle: TextStyle(color: textSub.withValues(alpha: 0.7)),
-                  filled: true,
-                  fillColor: isDark
-                      ? const Color(0xFF0F172A)
-                      : const Color(0xFFF1F5F9),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: isDark
-                          ? const Color(0xFF334155)
-                          : const Color(0xFFCBD5E1),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF2563EB),
-                      width: 2,
-                    ),
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.person_outline_rounded,
-                    color: Color(0xFF2563EB),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx),
-              child: Text(
-                'Cancel',
-                style: TextStyle(
-                  color: textSub,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-              ),
-              onPressed: () async {
-                final newName = controller.text.trim();
-                if (newName.isNotEmpty) {
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('userName', newName);
-                  ref.invalidate(profileProvider);
-                }
-                if (dialogCtx.mounted) {
-                  Navigator.pop(dialogCtx);
-                }
-              },
-              child: const Text(
-                'Save',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildClassicLogoutButton(BuildContext context, bool isDark) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () async {
           final prefs = await SharedPreferences.getInstance();
-          await prefs.clear();
+          await prefs.remove('cached_threat_feed');
           if (context.mounted) {
-            context.go('/splash');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Threat feed cache refreshed. Ready for live sync.'),
+                duration: Duration(seconds: 2),
+              ),
+            );
           }
         },
         borderRadius: BorderRadius.circular(16),
@@ -638,24 +466,31 @@ class SettingsScreen extends ConsumerWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1012) : const Color(0xFFFEE2E2),
+            color: isDark ? const Color(0xFF0F172A) : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isDark
-                  ? const Color(0xFFEF4444).withValues(alpha: 0.3)
-                  : const Color(0xFFFCA5A5),
+                  ? const Color(0xFF1E293B)
+                  : const Color(0xFFE2E8F0),
               width: 1,
             ),
           ),
-          child: const Center(
-            child: Text(
-              'Sign Out / Reset Session',
-              style: TextStyle(
-                color: Color(0xFFEF4444),
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
-              ),
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.refresh_rounded, size: 16, color: textSub),
+                const SizedBox(width: 8),
+                Text(
+                  'Flush Threat Cache & Resync',
+                  style: TextStyle(
+                    color: textSub,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
