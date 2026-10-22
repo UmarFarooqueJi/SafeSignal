@@ -1,0 +1,148 @@
+{
+  "type": "bundle",
+  "id": "bundle--d828d838-3967-4642-ad6d-c9d1d4dde477",
+  "spec_version": "2.1",
+  "evidence_chain_verified": true,
+  "evidence_blocks_count": 1,
+  "objects": [
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--da504cba-b580-4725-a9a5-1b2c5ecf3f7b",
+      "created": "2026-10-22T03:23:36.451073Z",
+      "modified": "2026-10-22T03:23:36.451073Z",
+      "name": "https://evil-phish.xyz/login.apk",
+      "description": "SafeSignal Observable: url",
+      "confidence": 95,
+      "pattern_type": "stix",
+      "pattern": "[url:value = 'https://evil-phish.xyz/login.apk']",
+      "valid_from": "2026-10-22T03:23:36.451073Z",
+      "x_safesignal_observable_type": "url",
+      "x_safesignal_metadata": {
+        "verdict": "dangerous",
+        "threat_score": 95
+      },
+      "custom_properties": {
+        "verdict": "dangerous",
+        "threat_score": 95
+      }
+    },
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--a9a14418-689e-4130-b9c6-a3bacfe8b35a",
+      "created": "2026-10-22T03:23:36.451073Z",
+      "modified": "2026-10-22T03:23:36.451073Z",
+      "name": "evil-phish.xyz",
+      "description": "SafeSignal Observable: domain",
+      "confidence": 85,
+      "pattern_type": "stix",
+      "pattern": "[domain-name:value = 'evil-phish.xyz']",
+      "valid_from": "2026-10-22T03:23:36.451073Z",
+      "x_safesignal_observable_type": "domain",
+      "x_safesignal_metadata": {
+        "registrar": "NameCheap",
+        "risk": "high"
+      },
+      "custom_properties": {
+        "registrar": "NameCheap",
+        "risk": "high"
+      }
+    },
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--dee11ec5-02ea-41f6-aa4a-3f372960c8b6",
+      "created": "2026-10-22T03:23:36.451073Z",
+      "modified": "2026-10-22T03:23:36.451073Z",
+      "name": "185.220.101.5",
+      "description": "SafeSignal Observable: ipAddress",
+      "confidence": 90,
+      "pattern_type": "stix",
+      "pattern": "[ipv4-addr:value = '185.220.101.5']",
+      "valid_from": "2026-10-22T03:23:36.451073Z",
+      "x_safesignal_observable_type": "ipAddress",
+      "x_safesignal_metadata": {
+        "country": "RU",
+        "asn": "AS12345"
+      },
+      "custom_properties": {
+        "country": "RU",
+        "asn": "AS12345"
+      }
+    },
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--bdb35321-69c4-4480-a9d7-917fd7d47a7b",
+      "created": "2026-10-22T03:23:36.451073Z",
+      "modified": "2026-10-22T03:23:36.451073Z",
+      "name": "com.fake.sbi.banking",
+      "description": "SafeSignal Observable: apkPackage",
+      "confidence": 95,
+      "pattern_type": "stix",
+      "pattern": "[file:name = 'com.fake.sbi.banking']",
+      "valid_from": "2026-10-22T03:23:36.451073Z",
+      "x_safesignal_observable_type": "apkPackage",
+      "x_safesignal_metadata": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "custom_properties": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--c0c3f26d-0fa2-4a9c-8acc-cb7ae188ec94",
+      "created": "2026-10-22T03:23:36.451073Z",
+      "modified": "2026-10-22T03:23:36.451073Z",
+      "name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "description": "SafeSignal Observable: fileHash",
+      "confidence": 95,
+      "pattern_type": "stix",
+      "pattern": "[file:hashes.'SHA-256' = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855']",
+      "valid_from": "2026-10-22T03:23:36.451073Z",
+      "x_safesignal_observable_type": "fileHash",
+      "x_safesignal_metadata": {
+        "algorithm": "SHA-256"
+      },
+      "custom_properties": {
+        "algorithm": "SHA-256"
+      }
+    },
+    {
+      "type": "relationship",
+      "spec_version": "2.1",
+      "id": "relationship--39fb2f1e-fe89-47af-ab99-fe9a8a2b6422",
+      "created": "2026-10-22T03:23:36.451073Z",
+      "modified": "2026-10-22T03:23:36.451073Z",
+      "relationship_type": "hosted_on",
+      "source_ref": "indicator--da504cba-b580-4725-a9a5-1b2c5ecf3f7b",
+      "target_ref": "indicator--a9a14418-689e-4130-b9c6-a3bacfe8b35a",
+      "confidence": 95
+    },
+    {
+      "type": "relationship",
+      "spec_version": "2.1",
+      "id": "relationship--f6971b3f-a212-4b9e-9888-409e22288fd6",
+      "created": "2026-10-22T03:23:36.451073Z",
+      "modified": "2026-10-22T03:23:36.451073Z",
+      "relationship_type": "resolves_to",
+      "source_ref": "indicator--a9a14418-689e-4130-b9c6-a3bacfe8b35a",
+      "target_ref": "indicator--dee11ec5-02ea-41f6-aa4a-3f372960c8b6",
+      "confidence": 90
+    },
+    {
+      "type": "relationship",
+      "spec_version": "2.1",
+      "id": "relationship--613387a7-771a-4083-b238-0150486a0228",
+      "created": "2026-10-22T03:23:36.451073Z",
+      "modified": "2026-10-22T03:23:36.451073Z",
+      "relationship_type": "drops_payload",
+      "source_ref": "indicator--da504cba-b580-4725-a9a5-1b2c5ecf3f7b",
+      "target_ref": "indicator--bdb35321-69c4-4480-a9d7-917fd7d47a7b",
+      "confidence": 100
+    }
+  ]
+}

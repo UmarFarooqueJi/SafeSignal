@@ -1,0 +1,397 @@
+{
+  "total_fixtures": 34,
+  "tp": 16,
+  "tn": 14,
+  "fp": 2,
+  "fn": 2,
+  "precision": 0.8888888888888888,
+  "recall": 0.8888888888888888,
+  "fpr": 0.125,
+  "f1_score": 0.8888888888888888,
+  "fixtures": [
+    {
+      "id": "B-01",
+      "category": "Govt/Banking",
+      "url": "https://www.incometax.gov.in/iec/foportal/",
+      "ground_truth": "Benign",
+      "threat_score": 0,
+      "verdict": "safe",
+      "risk_level": "lowRisk",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-02",
+      "category": "Govt/Banking",
+      "url": "https://www.onlinesbi.sbi/portal/",
+      "ground_truth": "Benign",
+      "threat_score": 0,
+      "verdict": "safe",
+      "risk_level": "lowRisk",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-03",
+      "category": "Govt/Banking",
+      "url": "https://uidai.gov.in/my-aadhaar.html",
+      "ground_truth": "Benign",
+      "threat_score": 0,
+      "verdict": "safe",
+      "risk_level": "lowRisk",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-04",
+      "category": "Govt/Banking",
+      "url": "https://www.rbi.org.in/scripts/BS_PressReleaseDisplay.aspx",
+      "ground_truth": "Benign",
+      "threat_score": 0,
+      "verdict": "safe",
+      "risk_level": "lowRisk",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-05",
+      "category": "Govt/Banking",
+      "url": "https://home.iitd.ac.in/academic.php",
+      "ground_truth": "Benign",
+      "threat_score": 15,
+      "verdict": "safe",
+      "risk_level": "unknown",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-06",
+      "category": "Legitimate Redirect",
+      "url": "https://www.google.com/url?q=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FCybersec...",
+      "ground_truth": "Benign",
+      "threat_score": 0,
+      "verdict": "safe",
+      "risk_level": "lowRisk",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-07",
+      "category": "Legitimate Redirect",
+      "url": "https://onlinesbi.sbi/login?redirect=https%3A%2F%2Fretail.onlinesbi.sbi%2Fdas...",
+      "ground_truth": "Benign",
+      "threat_score": 0,
+      "verdict": "safe",
+      "risk_level": "lowRisk",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-08",
+      "category": "Legitimate APK",
+      "url": "https://f-droid.org/repo/org.fdroid.fdroid_1020050.apk",
+      "ground_truth": "Benign",
+      "threat_score": 80,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "B-09",
+      "category": "Legitimate APK",
+      "url": "https://signal.org/android/apk/Signal-Android-website-prod-universal-release-...",
+      "ground_truth": "Benign",
+      "threat_score": 80,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "B-10",
+      "category": "Unusual TLD",
+      "url": "https://amsterdam.museum/en/exhibitions",
+      "ground_truth": "Benign",
+      "threat_score": 15,
+      "verdict": "safe",
+      "risk_level": "unknown",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-11",
+      "category": "Unusual TLD",
+      "url": "https://cybersecurity.academy/courses",
+      "ground_truth": "Benign",
+      "threat_score": 15,
+      "verdict": "safe",
+      "risk_level": "unknown",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-12",
+      "category": "Unusual TLD",
+      "url": "https://standards.international/specifications",
+      "ground_truth": "Benign",
+      "threat_score": 15,
+      "verdict": "safe",
+      "risk_level": "unknown",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-13",
+      "category": "URL in Query Param",
+      "url": "https://stackoverflow.com/questions/12345/help?ref=https://github.com/flutter...",
+      "ground_truth": "Benign",
+      "threat_score": 15,
+      "verdict": "safe",
+      "risk_level": "unknown",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-14",
+      "category": "URL in Query Param",
+      "url": "https://news.ycombinator.com/item?id=391234&url=https://arxiv.org/abs/2401.0001",
+      "ground_truth": "Benign",
+      "threat_score": 40,
+      "verdict": "caution",
+      "risk_level": "suspicious",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-15",
+      "category": "General Web",
+      "url": "https://github.com/UmarFarooqueJi/SafeSignal",
+      "ground_truth": "Benign",
+      "threat_score": 0,
+      "verdict": "safe",
+      "risk_level": "lowRisk",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "B-16",
+      "category": "General Web",
+      "url": "https://en.wikipedia.org/wiki/Advanced_Encryption_Standard",
+      "ground_truth": "Benign",
+      "threat_score": 0,
+      "verdict": "safe",
+      "risk_level": "lowRisk",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "M-01",
+      "category": "Open Redirect",
+      "url": "https://trusted-bank.example/redirect?target=https%3A%2F%2Fevil-c2.top%2Fpayl...",
+      "ground_truth": "Malicious",
+      "threat_score": 100,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-02",
+      "category": "Open Redirect",
+      "url": "https://gov.in.portal.example/out?dest=https%3A%2F%2Fstealer-site.xyz%2Flogin...",
+      "ground_truth": "Malicious",
+      "threat_score": 65,
+      "verdict": "dangerous",
+      "risk_level": "suspicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-03",
+      "category": "Double Encoding",
+      "url": "https://onlinesbi.sbi.auth-portal.com/forward?url=https%253A%252F%252Fdark-tr...",
+      "ground_truth": "Malicious",
+      "threat_score": 100,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-04",
+      "category": "Userinfo Deception",
+      "url": "https://sbi.co.in:secure-login@phishing-target.net/verify",
+      "ground_truth": "Malicious",
+      "threat_score": 80,
+      "verdict": "dangerous",
+      "risk_level": "highRisk",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-05",
+      "category": "Userinfo Deception",
+      "url": "https://incometax.gov.in:refund@tax-fraud-stealer.xyz/claim",
+      "ground_truth": "Malicious",
+      "threat_score": 100,
+      "verdict": "dangerous",
+      "risk_level": "highRisk",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-06",
+      "category": "Suffix Trick",
+      "url": "https://onlinesbi.sbi.attacker-controlled.net/login",
+      "ground_truth": "Malicious",
+      "threat_score": 75,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-07",
+      "category": "Suffix Trick",
+      "url": "https://incometaxindia.gov.in.fake-refund.club/pan-update",
+      "ground_truth": "Malicious",
+      "threat_score": 100,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-08",
+      "category": "Homograph",
+      "url": "http://xn--80ak6aa92e.com/secure-login",
+      "ground_truth": "Malicious",
+      "threat_score": 100,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-09",
+      "category": "Homograph",
+      "url": "http://xn--sbi-980a.in/retail",
+      "ground_truth": "Malicious",
+      "threat_score": 100,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-10",
+      "category": "SSRF",
+      "url": "http://127.0.0.1:8080/actuator/env",
+      "ground_truth": "Malicious",
+      "threat_score": 80,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": [
+        "Internal Network / Loopback Host Target"
+      ]
+    },
+    {
+      "id": "M-11",
+      "category": "SSRF",
+      "url": "http://192.168.1.1/admin/network.cfg",
+      "ground_truth": "Malicious",
+      "threat_score": 80,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": [
+        "Internal Network / Loopback Host Target"
+      ]
+    },
+    {
+      "id": "M-12",
+      "category": "SSRF",
+      "url": "http://169.254.169.254/latest/meta-data/",
+      "ground_truth": "Malicious",
+      "threat_score": 80,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": [
+        "Internal Network / Loopback Host Target"
+      ]
+    },
+    {
+      "id": "M-13",
+      "category": "SSRF",
+      "url": "http://[::1]:8000/debug",
+      "ground_truth": "Malicious",
+      "threat_score": 80,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": [
+        "Internal Network / Loopback Host Target"
+      ]
+    },
+    {
+      "id": "M-14",
+      "category": "Dropper",
+      "url": "http://speed-cleaner-booster.top/app.apk",
+      "ground_truth": "Malicious",
+      "threat_score": 100,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-15",
+      "category": "Dropper",
+      "url": "http://free-cracked-software.xyz/payload.dex",
+      "ground_truth": "Malicious",
+      "threat_score": 100,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-16",
+      "category": "Multi-Redirect",
+      "url": "https://ad-network.example/click?r1=https://benign.com&r2=https://malicious.t...",
+      "ground_truth": "Malicious",
+      "threat_score": 80,
+      "verdict": "dangerous",
+      "risk_level": "knownMalicious",
+      "is_detected_threat": true,
+      "warnings": []
+    },
+    {
+      "id": "M-17",
+      "category": "Excessively Long",
+      "url": "https://attacker.xyz/phish?data=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...",
+      "ground_truth": "Malicious",
+      "threat_score": 40,
+      "verdict": "caution",
+      "risk_level": "suspicious",
+      "is_detected_threat": false,
+      "warnings": []
+    },
+    {
+      "id": "M-18",
+      "category": "Malformed",
+      "url": "http://invalid:::host:::99999/malware",
+      "ground_truth": "Malicious",
+      "threat_score": 0,
+      "verdict": "caution",
+      "risk_level": "unknown",
+      "is_detected_threat": false,
+      "warnings": [
+        "Invalid URL format"
+      ]
+    }
+  ]
+}
