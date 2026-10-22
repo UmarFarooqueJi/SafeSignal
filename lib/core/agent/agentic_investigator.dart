@@ -245,10 +245,27 @@ class AgenticInvestigator {
     );
   }
 
-  /// Quarantines untrusted text inside a strict boundary
+  /// Quarantines untrusted text inside a strict boundary and neutralizes prompt-injection lures
   String _sanitizeAndQuarantine(String input) {
-    // Strip control characters, keep plain textual observables
-    return input.replaceAll(RegExp(r'[\u0000-\u0008\u000B\u000C\u000E-\u001F]'), '').trim();
+    var sanitized = input
+        .replaceAll(RegExp(r'[\u0000-\u0008\u000B\u000C\u000E-\u001F]'), '')
+        .trim();
+
+    // Neutralize common prompt-injection delimiters and instruction-override lures
+    final injectionPatterns = [
+      RegExp(r'(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions|prompts|rules)', caseSensitive: false),
+      RegExp(r'system\s+prompt', caseSensitive: false),
+      RegExp(r'you\s+are\s+now\s+(?:dan|developer\s+mode|unrestricted|jailbroken)', caseSensitive: false),
+      RegExp(r'reveal\s+(?:your\s+)?(?:system\s+)?(?:instructions|prompt|api\s+keys)', caseSensitive: false),
+      RegExp(r'new\s+rule:', caseSensitive: false),
+      RegExp(r'assistant\s+must\s+say', caseSensitive: false),
+    ];
+
+    for (final pattern in injectionPatterns) {
+      sanitized = sanitized.replaceAllMapped(pattern, (match) => '[NEUTRALIZED_INJECTION_ATTEMPT: "${match.group(0)}"]');
+    }
+
+    return sanitized;
   }
 
   List<String> _extractUrls(String text) {

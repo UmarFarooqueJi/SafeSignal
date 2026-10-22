@@ -175,6 +175,72 @@ class VerifyUpiTool extends AgentTool {
   }
 }
 
+/// Tool 4: Android App Package Permission & Sideloading Auditor
+class InspectAppPermissionsTool extends AgentTool {
+  @override
+  String get name => 'inspect_app_permissions';
+
+  @override
+  String get description =>
+      'Audit Android application permissions for accessibility abuse, screen overlay, SMS interception, and banking trojan risks.';
+
+  @override
+  Map<String, dynamic> get parameterSchema => {
+        'type': 'object',
+        'properties': {
+          'package_name': {'type': 'string', 'description': 'Android package name'},
+          'permissions': {
+            'type': 'array',
+            'items': {'type': 'string'},
+            'description': 'List of requested Android permissions'
+          }
+        },
+        'required': ['permissions']
+      };
+
+  @override
+  bool get requiresConfirmation => false; // Read-only
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> args) async {
+    final permissions = (args['permissions'] as List?)?.map((p) => p.toString()).toList() ?? [];
+    final packageName = args['package_name']?.toString() ?? 'unknown.package';
+
+    final dangerousFlags = <String>[];
+    int threatScore = 0;
+
+    for (final perm in permissions) {
+      if (perm.contains('BIND_ACCESSIBILITY_SERVICE')) {
+        dangerousFlags.add('Accessibility Service Abuse: Can steal keystrokes and bypass 2FA');
+        threatScore += 50;
+      }
+      if (perm.contains('SYSTEM_ALERT_WINDOW')) {
+        dangerousFlags.add('Screen Overlay: Can draw fake phishing login screens over banking apps');
+        threatScore += 30;
+      }
+      if (perm.contains('RECEIVE_SMS') || perm.contains('READ_SMS')) {
+        dangerousFlags.add('SMS Interception: Capable of intercepting bank OTPs');
+        threatScore += 30;
+      }
+      if (perm.contains('REQUEST_INSTALL_PACKAGES')) {
+        dangerousFlags.add('Secondary Dropper: Can silently download and prompt secondary APK installation');
+        threatScore += 25;
+      }
+    }
+
+    final isTrojanCandidate = threatScore >= 60;
+
+    return ToolResult.success({
+      'package_name': packageName,
+      'threat_score': threatScore.clamp(0, 100),
+      'is_suspicious': dangerousFlags.isNotEmpty,
+      'is_trojan_candidate': isTrojanCandidate,
+      'dangerous_flags': dangerousFlags,
+      'verdict': isTrojanCandidate ? 'DANGEROUS' : (dangerousFlags.isNotEmpty ? 'SUSPICIOUS' : 'SAFE'),
+    });
+  }
+}
+
 /// Tool Registry maintaining all policy-approved tools
 class ToolRegistry {
   final Map<String, AgentTool> _tools = {};
@@ -183,6 +249,7 @@ class ToolRegistry {
     registerTool(ScanUrlTool());
     registerTool(AnalyzeSmsTool());
     registerTool(VerifyUpiTool());
+    registerTool(InspectAppPermissionsTool());
   }
 
   void registerTool(AgentTool tool) {
