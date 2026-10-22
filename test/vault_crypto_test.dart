@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safesignal/features/vault/vault_crypto_service.dart';
 
 void main() {
   group('Vault Cryptographic Engine Specification Tests', () {
@@ -137,6 +138,130 @@ void main() {
       final decryptedFromGcm = gcmEncrypter.decryptBytes(gcmCipher, iv: gcmIv);
       expect(utf8.decode(decryptedFromGcm), equals(legacyDocument));
       expect(crypto.sha256.convert(decryptedFromGcm).toString(), equals(expectedSha));
+    });
+  });
+
+  group('Versioned Key Hierarchy & Passphrase Wrapping Tests', () {
+    test('PBKDF2-HMAC-SHA256 derives 256-bit key deterministically', () {
+      final salt = Uint8List.fromList([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+      final key1 = VaultCryptoService.deriveKeyPbkdf2(
+        passphrase: 'MasterSecurityPassphrase2026!',
+        salt: salt,
+        iterations: 1000,
+        keyLength: 32,
+      );
+      final key2 = VaultCryptoService.deriveKeyPbkdf2(
+        passphrase: 'MasterSecurityPassphrase2026!',
+        salt: salt,
+        iterations: 1000,
+        keyLength: 32,
+      );
+      expect(key1.length, 32);
+      expect(key1, equals(key2));
+
+      // Different passphrase produces completely different key
+      final key3 = VaultCryptoService.deriveKeyPbkdf2(
+        passphrase: 'WrongPassphrase!',
+        salt: salt,
+        iterations: 1000,
+        keyLength: 32,
+      );
+      expect(key1, isNot(equals(key3)));
+    });
+
+    test('Passphrase KEK wrapping and unwrapping recovers exact DEK bytes', () {
+      final originalDek = enc.Key.fromSecureRandom(32);
+      final salt = enc.IV.fromSecureRandom(16).bytes;
+      final iv = enc.IV.fromSecureRandom(12);
+
+      // Derive KEK
+      final kekBytes = VaultCryptoService.deriveKeyPbkdf2(
+        passphrase: 'CorrectVaultPassphrase123',
+        salt: salt,
+        iterations: 1000,
+        keyLength: 32,
+      );
+      final kek = enc.Key(kekBytes);
+      final gcm = enc.Encrypter(enc.AES(kek, mode: enc.AESMode.gcm));
+
+      // Wrap
+      final encryptedDek = gcm.encryptBytes(originalDek.bytes, iv: iv);
+
+      // Unwrap with correct passphrase
+      final unwrapKekBytes = VaultCryptoService.deriveKeyPbkdf2(
+        passphrase: 'CorrectVaultPassphrase123',
+        salt: salt,
+        iterations: 1000,
+        keyLength: 32,
+      );
+      final unwrapKek = enc.Key(unwrapKekBytes);
+      final unwrapGcm = enc.Encrypter(enc.AES(unwrapKek, mode: enc.AESMode.gcm));
+      final recoveredBytes = unwrapGcm.decryptBytes(encryptedDek, iv: iv);
+
+      expect(recoveredBytes, equals(originalDek.bytes));
+    });
+
+    test('Unwrapping with incorrect passphrase fails authentication tag check', () {
+      final originalDek = enc.Key.fromSecureRandom(32);
+      final salt = enc.IV.fromSecureRandom(16).bytes;
+      final iv = enc.IV.fromSecureRandom(12);
+
+      // Derive KEK
+      final kekBytes = VaultCryptoService.deriveKeyPbkdf2(
+        passphrase: 'CorrectPassphrase!',
+        salt: salt,
+        iterations: 1000,
+        keyLength: 32,
+      );
+      final kek = enc.Key(kekBytes);
+      final gcm = enc.Encrypter(enc.AES(kek, mode: enc.AESMode.gcm));
+      final encryptedDek = gcm.encryptBytes(originalDek.bytes, iv: iv);
+
+      // Attempt unwrap with wrong passphrase
+      final wrongKekBytes = VaultCryptoService.deriveKeyPbkdf2(
+        passphrase: 'WrongPassphrase!',
+        salt: salt,
+        iterations: 1000,
+        keyLength: 32,
+      );
+      final wrongKek = enc.Key(wrongKekBytes);
+      final wrongGcm = enc.Encrypter(enc.AES(wrongKek, mode: enc.AESMode.gcm));
+
+      expect(() => wrongGcm.decryptBytes(encryptedDek, iv: iv), throwsA(anything));
+    });
+
+    test('VaultCryptoService lockVault purges session key and enforces fail-closed state', () {
+      final service = VaultCryptoService();
+      final testKey = enc.Key.fromSecureRandom(32);
+      service.setSessionDekForTesting(testKey);
+      expect(service.isVaultUnlocked, isTrue);
+
+      service.lockVault();
+      expect(service.isVaultUnlocked, isFalse);
+    });
+
+    test('Modified wrapped ciphertext or tag causes decryption failure', () {
+      final originalDek = enc.Key.fromSecureRandom(32);
+      final salt = enc.IV.fromSecureRandom(16).bytes;
+      final iv = enc.IV.fromSecureRandom(12);
+
+      final kekBytes = VaultCryptoService.deriveKeyPbkdf2(
+        passphrase: 'TestPassphrase',
+        salt: salt,
+        iterations: 1000,
+        keyLength: 32,
+      );
+      final kek = enc.Key(kekBytes);
+      final gcm = enc.Encrypter(enc.AES(kek, mode: enc.AESMode.gcm));
+      final encryptedDek = gcm.encryptBytes(originalDek.bytes, iv: iv);
+
+      final corruptedBytes = Uint8List.fromList(List.from(encryptedDek.bytes));
+      corruptedBytes[0] ^= 0x55; // Tamper byte
+
+      expect(
+        () => gcm.decryptBytes(enc.Encrypted(corruptedBytes), iv: iv),
+        throwsA(anything),
+      );
     });
   });
 }

@@ -117,6 +117,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
 
   @override
   void dispose() {
+    VaultCryptoService().lockVault();
     WidgetsBinding.instance.removeObserver(this);
     _documentThumbCache.clear();
     _revealedItemIds.clear();
@@ -126,6 +127,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      VaultCryptoService().lockVault();
       if (mounted) {
         setState(() {
           _isUnlocked = false;
@@ -171,7 +173,15 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
         persistAcrossBackgrounding: true,
       );
       if (didAuthenticate) {
-        await _loadItems();
+        try {
+          await VaultCryptoService().unlockWithBiometricKeystore();
+          await _loadItems();
+        } catch (e) {
+          debugPrint('[VaultAuth] Biometric unwrap not configured: $e');
+          if (mounted) {
+            _showMasterPassphraseDialog();
+          }
+        }
       } else {
         setState(() => _isUnlocked = false);
       }
@@ -185,8 +195,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
   }
 
   Future<void> _showMasterPassphraseDialog() async {
-    final storedHash = await _storage.read(key: 'safesignal_vault_master_pass_hash');
-    final isNewPassphrase = (storedHash == null || storedHash.isEmpty);
+    final hasWrappedKey = await VaultCryptoService().hasPassphraseWrappedKey();
+    final isNewPassphrase = !hasWrappedKey;
     final ctrl = TextEditingController();
     final confirmCtrl = TextEditingController();
     String? errorText;
@@ -220,8 +230,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
               children: [
                 Text(
                   isNewPassphrase
-                      ? 'Biometric hardware is not configured. Set a master security passphrase to encrypt and access your vault.'
-                      : 'Enter your master passphrase to unlock the hardware-encrypted vault.',
+                      ? 'Set a master security passphrase (PBKDF2-HMAC-SHA256) to cryptographically wrap and protect your vault key.'
+                      : 'Enter your master passphrase to unwrap the AES-256 vault encryption key.',
                   style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
                 ),
                 const SizedBox(height: 16),
@@ -277,16 +287,29 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       setDialogState(() => errorText = 'Passphrases do not match');
                       return;
                     }
-                    final hash = sha256.convert(utf8.encode(pass)).toString();
-                    await _storage.write(key: 'safesignal_vault_master_pass_hash', value: hash);
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    if (mounted) await _loadItems();
-                  } else {
-                    final enteredHash = sha256.convert(utf8.encode(pass)).toString();
-                    if (enteredHash == storedHash) {
+                    try {
+                      await VaultCryptoService().initializeOrUnlockWithPassphrase(pass);
+                      if (_hasBiometrics) {
+                        try {
+                          await VaultCryptoService().enableBiometricKeystore();
+                        } catch (_) {}
+                      }
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (mounted) await _loadItems();
-                    } else {
+                    } catch (e) {
+                      setDialogState(() => errorText = 'Initialization error: $e');
+                    }
+                  } else {
+                    try {
+                      await VaultCryptoService().initializeOrUnlockWithPassphrase(pass);
+                      if (_hasBiometrics) {
+                        try {
+                          await VaultCryptoService().enableBiometricKeystore();
+                        } catch (_) {}
+                      }
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (mounted) await _loadItems();
+                    } catch (_) {
                       setDialogState(() => errorText = 'Incorrect master passphrase');
                     }
                   }

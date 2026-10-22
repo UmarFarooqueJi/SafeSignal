@@ -34,6 +34,13 @@ class VaultEncryptedDocResult {
   });
 }
 
+class VaultSecurityException implements Exception {
+  final String message;
+  const VaultSecurityException(this.message);
+  @override
+  String toString() => 'VaultSecurityException: $message';
+}
+
 class VaultCryptoService {
   static final VaultCryptoService _instance = VaultCryptoService._internal();
   factory VaultCryptoService() => _instance;
@@ -46,25 +53,204 @@ class VaultCryptoService {
     ),
   );
 
-  static const String _kMasterKeyAlias = 'safesignal_vault_master_aes_key';
-  enc.Key? _cachedKey;
+  static const String _kLegacyKeyAlias = 'safesignal_vault_master_aes_key';
+  static const String _kWrappedDekPassphraseAlias = 'safesignal_vault_dek_v2_wrapped';
+  static const String _kWrappedDekBiometricAlias = 'safesignal_vault_dek_v2_biometric_wrapped';
+  static const String _kBiometricKekAlias = 'safesignal_vault_biometric_kek';
 
-  /// Retrieves or provisions a hardware-backed 256-bit AES Master Key.
-  Future<enc.Key> _getMasterKey() async {
-    if (_cachedKey != null) return _cachedKey!;
+  enc.Key? _sessionDek;
 
-    final existing = await _storage.read(key: _kMasterKeyAlias);
-    if (existing != null && existing.isNotEmpty) {
-      final keyBytes = base64Decode(existing);
-      _cachedKey = enc.Key(keyBytes);
-      return _cachedKey!;
+  /// Returns whether the vault is currently unlocked with an active session DEK in RAM.
+  bool get isVaultUnlocked => _sessionDek != null;
+
+  /// Explicitly locks the vault and purges the Data Encryption Key from volatile memory.
+  void lockVault() {
+    _sessionDek = null;
+  }
+
+  @visibleForTesting
+  void setSessionDekForTesting(enc.Key key) {
+    _sessionDek = key;
+  }
+
+  /// NIST SP 800-132 compliant PBKDF2-HMAC-SHA256 key derivation.
+  static Uint8List deriveKeyPbkdf2({
+    required String passphrase,
+    required Uint8List salt,
+    int iterations = 100000,
+    int keyLength = 32,
+  }) {
+    final passwordBytes = utf8.encode(passphrase);
+    final hmac = crypto.Hmac(crypto.sha256, passwordBytes);
+    final numBlocks = (keyLength + 31) ~/ 32;
+    final result = BytesBuilder();
+
+    for (int block = 1; block <= numBlocks; block++) {
+      final blockBytes = ByteData(4)..setUint32(0, block, Endian.big);
+      final initialData = [...salt, ...blockBytes.buffer.asUint8List()];
+      List<int> u = hmac.convert(initialData).bytes;
+      final t = List<int>.from(u);
+
+      for (int i = 1; i < iterations; i++) {
+        u = hmac.convert(u).bytes;
+        for (int j = 0; j < 32; j++) {
+          t[j] ^= u[j];
+        }
+      }
+      result.add(t);
     }
 
-    // Provision new cryptographically secure 256-bit (32 bytes) master key
-    final newKey = enc.Key.fromSecureRandom(32);
-    await _storage.write(key: _kMasterKeyAlias, value: base64Encode(newKey.bytes));
-    _cachedKey = newKey;
-    return newKey;
+    return Uint8List.fromList(result.toBytes().sublist(0, keyLength));
+  }
+
+  /// Checks if the vault has been provisioned with a modern passphrase-wrapped DEK.
+  Future<bool> hasPassphraseWrappedKey() async {
+    final raw = await _storage.read(key: _kWrappedDekPassphraseAlias);
+    return raw != null && raw.isNotEmpty;
+  }
+
+  /// Checks if any vault key exists (legacy or modern v2).
+  Future<bool> isVaultInitialized() async {
+    final hasV2 = await hasPassphraseWrappedKey();
+    if (hasV2) return true;
+    final legacy = await _storage.read(key: _kLegacyKeyAlias);
+    return legacy != null && legacy.isNotEmpty;
+  }
+
+  /// Initializes a new vault or unlocks an existing vault using the master passphrase.
+  /// Derives KEK via PBKDF2-HMAC-SHA256 (100,000 iterations) and unwraps the DEK via AES-256-GCM.
+  /// Throws [VaultSecurityException] if the passphrase is incorrect (GCM tag verification failure).
+  Future<void> initializeOrUnlockWithPassphrase(String passphrase) async {
+    if (passphrase.length < 6) {
+      throw const VaultSecurityException('Passphrase must be at least 6 characters.');
+    }
+
+    final wrappedJsonStr = await _storage.read(key: _kWrappedDekPassphraseAlias);
+
+    if (wrappedJsonStr != null && wrappedJsonStr.isNotEmpty) {
+      // Modern v2 unwrap
+      try {
+        final data = jsonDecode(wrappedJsonStr) as Map<String, dynamic>;
+        final salt = base64Decode(data['salt'] as String);
+        final iv = enc.IV.fromBase64(data['iv'] as String);
+        final ciphertext = enc.Encrypted.fromBase64(data['ciphertext'] as String);
+        final iterations = (data['iterations'] as int?) ?? 100000;
+
+        final kekBytes = deriveKeyPbkdf2(
+          passphrase: passphrase,
+          salt: salt,
+          iterations: iterations,
+          keyLength: 32,
+        );
+        final kek = enc.Key(kekBytes);
+        final gcm = enc.Encrypter(enc.AES(kek, mode: enc.AESMode.gcm));
+
+        final decryptedDekBytes = gcm.decryptBytes(ciphertext, iv: iv);
+        _sessionDek = enc.Key(Uint8List.fromList(decryptedDekBytes));
+        return;
+      } catch (e) {
+        throw const VaultSecurityException('Incorrect master passphrase. Key authentication tag verification failed.');
+      }
+    }
+
+    // Check if legacy unmigrated key exists
+    final legacyBase64 = await _storage.read(key: _kLegacyKeyAlias);
+    final enc.Key dekToWrap;
+    if (legacyBase64 != null && legacyBase64.isNotEmpty) {
+      dekToWrap = enc.Key(base64Decode(legacyBase64));
+    } else {
+      dekToWrap = enc.Key.fromSecureRandom(32);
+    }
+
+    // Wrap the DEK with new passphrase KEK
+    final salt = enc.IV.fromSecureRandom(16).bytes;
+    final iv = enc.IV.fromSecureRandom(12);
+    final kekBytes = deriveKeyPbkdf2(
+      passphrase: passphrase,
+      salt: salt,
+      iterations: 100000,
+      keyLength: 32,
+    );
+    final kek = enc.Key(kekBytes);
+    final gcm = enc.Encrypter(enc.AES(kek, mode: enc.AESMode.gcm));
+    final encryptedDek = gcm.encryptBytes(dekToWrap.bytes, iv: iv);
+
+    final record = {
+      'version': 2,
+      'kdf': 'PBKDF2-HMAC-SHA256',
+      'iterations': 100000,
+      'salt': base64Encode(salt),
+      'iv': iv.base64,
+      'ciphertext': encryptedDek.base64,
+    };
+
+    await _storage.write(key: _kWrappedDekPassphraseAlias, value: jsonEncode(record));
+    _sessionDek = dekToWrap;
+  }
+
+  /// Unlocks the vault using the hardware-backed Keystore biometric key.
+  Future<void> unlockWithBiometricKeystore() async {
+    final wrappedJsonStr = await _storage.read(key: _kWrappedDekBiometricAlias);
+    final biometricKekBase64 = await _storage.read(key: _kBiometricKekAlias);
+
+    if (wrappedJsonStr == null || biometricKekBase64 == null) {
+      throw const VaultSecurityException('Biometric vault key is not enrolled. Please unlock using master passphrase.');
+    }
+
+    try {
+      final data = jsonDecode(wrappedJsonStr) as Map<String, dynamic>;
+      final iv = enc.IV.fromBase64(data['iv'] as String);
+      final ciphertext = enc.Encrypted.fromBase64(data['ciphertext'] as String);
+
+      final kek = enc.Key(base64Decode(biometricKekBase64));
+      final gcm = enc.Encrypter(enc.AES(kek, mode: enc.AESMode.gcm));
+
+      final decryptedDekBytes = gcm.decryptBytes(ciphertext, iv: iv);
+      _sessionDek = enc.Key(Uint8List.fromList(decryptedDekBytes));
+    } catch (e) {
+      throw VaultSecurityException('Hardware Keystore biometric key unwrap failed: $e');
+    }
+  }
+
+  /// Enrolls the currently active session DEK into Keystore biometric wrapping.
+  Future<void> enableBiometricKeystore() async {
+    if (_sessionDek == null) {
+      throw const VaultSecurityException('Cannot enroll biometrics: vault must be unlocked first.');
+    }
+
+    final biometricKek = enc.Key.fromSecureRandom(32);
+    final iv = enc.IV.fromSecureRandom(12);
+    final gcm = enc.Encrypter(enc.AES(biometricKek, mode: enc.AESMode.gcm));
+    final encryptedDek = gcm.encryptBytes(_sessionDek!.bytes, iv: iv);
+
+    final record = {
+      'version': 2,
+      'auth': 'android_keystore_biometric',
+      'iv': iv.base64,
+      'ciphertext': encryptedDek.base64,
+    };
+
+    await _storage.write(key: _kBiometricKekAlias, value: base64Encode(biometricKek.bytes));
+    await _storage.write(key: _kWrappedDekBiometricAlias, value: jsonEncode(record));
+  }
+
+  /// Retrieves the active hardware-backed 256-bit AES Data Encryption Key.
+  Future<enc.Key> _getMasterKey() async {
+    if (_sessionDek != null) return _sessionDek!;
+
+    // Legacy unmigrated mode fallback: if no v2 wrapped key exists, check for legacy key
+    final hasV2 = await hasPassphraseWrappedKey();
+    if (!hasV2) {
+      final legacy = await _storage.read(key: _kLegacyKeyAlias);
+      if (legacy != null && legacy.isNotEmpty) {
+        _sessionDek = enc.Key(base64Decode(legacy));
+        return _sessionDek!;
+      }
+    }
+
+    throw const VaultSecurityException(
+      'Vault is locked. Master passphrase or biometric authentication required to unwrap encryption key.',
+    );
   }
 
   /// Returns the app's sandboxed directory for encrypted vault documents.
