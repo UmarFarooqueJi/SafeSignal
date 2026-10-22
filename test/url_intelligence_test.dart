@@ -110,11 +110,39 @@ void main() {
       expect(homographRes.riskScore, greaterThanOrEqualTo(50));
     });
 
-    test('Flags direct mobile/executable dropper links as critical danger', () async {
-      final apkDropper = await UrlIntelligenceEngine.analyze('https://update-security-patch.com/agent.apk');
-      expect(apkDropper.verdict, UrlVerdict.dangerous);
-      expect(apkDropper.riskScore, greaterThanOrEqualTo(65));
-      expect(apkDropper.domainChecks.any((c) => c.name.contains('Dropper')), isTrue);
+    test('Decouples unverified APK download from Trojan dropper (reports cautionary unverified status)', () async {
+      final unverifiedApk = await UrlIntelligenceEngine.analyze('https://example-mirror.org/sample.apk');
+      expect(unverifiedApk.verdict, UrlVerdict.caution);
+      expect(unverifiedApk.riskLevel, UrlRiskLevel.suspicious);
+      expect(unverifiedApk.riskScore, greaterThanOrEqualTo(25));
+      expect(unverifiedApk.riskScore, lessThan(75));
+      expect(unverifiedApk.riskExplanation, 'APK download detected; file security has not been verified.');
+      expect(unverifiedApk.domainChecks.any((c) => c.name == 'Unverified APK Download'), isTrue);
+    });
+
+    test('Zero false positives on verified open-source APK repositories (F-Droid, Signal, GitHub)', () async {
+      final fdroidApk = await UrlIntelligenceEngine.analyze('https://f-droid.org/F-Droid.apk');
+      expect(fdroidApk.verdict, UrlVerdict.safe);
+      expect(fdroidApk.domainChecks.any((c) => c.name.contains('Verified Software Repository APK')), isTrue);
+
+      final signalApk = await UrlIntelligenceEngine.analyze('https://signal.org/android/apk/Signal-Android.apk');
+      expect(signalApk.verdict, UrlVerdict.safe);
+      expect(signalApk.domainChecks.any((c) => c.name.contains('Verified Software Repository APK')), isTrue);
+    });
+
+    test('Flags high-confidence malicious mobile droppers (scam lure or brand spoof + APK) as critical danger', () async {
+      final maliciousApk = await UrlIntelligenceEngine.analyze('https://sbi-kyc-update.xyz/sbi.apk');
+      expect(maliciousApk.verdict, UrlVerdict.dangerous);
+      expect(maliciousApk.riskScore, greaterThanOrEqualTo(75));
+      expect(maliciousApk.riskLevel, UrlRiskLevel.knownMalicious);
+      expect(maliciousApk.domainChecks.any((c) => c.name.contains('Dropper')), isTrue);
+    });
+
+    test('Flags direct desktop executable binaries (.exe) as critical danger', () async {
+      final exeDropper = await UrlIntelligenceEngine.analyze('https://update-security-patch.com/agent.exe');
+      expect(exeDropper.verdict, UrlVerdict.dangerous);
+      expect(exeDropper.riskScore, greaterThanOrEqualTo(65));
+      expect(exeDropper.domainChecks.any((c) => c.name.contains('Dropper')), isTrue);
     });
 
     test('Identifies high-risk TLDs', () async {
@@ -249,6 +277,79 @@ void main() {
 
     test('Returns null on pure non-URL text', () {
       expect(LinkGuardService.extractUrl('Hello, this is just a normal text message.'), isNull);
+    });
+  });
+
+  group('UrlIntelligenceEngine - Malformed & Invalid URL Handling', () {
+    test('Empty input returns invalidUrl status and cautious non-zero score', () async {
+      final res = await UrlIntelligenceEngine.analyze('');
+      expect(res.status, UrlInputStatus.invalidUrl);
+      expect(res.riskScore, greaterThan(0));
+      expect(res.isVerifiedSafe, isFalse);
+      expect(res.verdict, UrlVerdict.caution);
+      expect(res.riskLevel, UrlRiskLevel.unknown);
+    });
+
+    test('Missing authority or host returns invalidUrl status', () async {
+      final res = await UrlIntelligenceEngine.analyze('http:///path/test');
+      expect(res.status, UrlInputStatus.invalidUrl);
+      expect(res.riskScore, greaterThan(0));
+      expect(res.isVerifiedSafe, isFalse);
+    });
+
+    test('Invalid network port (>65535) returns invalidUrl status and cautions user', () async {
+      final res = await UrlIntelligenceEngine.analyze('http://example.com:99999/test');
+      expect(res.status, UrlInputStatus.invalidUrl);
+      expect(res.riskScore, greaterThan(0));
+      expect(res.isVerifiedSafe, isFalse);
+      expect(res.warnings.any((w) => w.contains('port')), isTrue);
+    });
+
+    test('Broken IPv6 bracket syntax returns invalidUrl status', () async {
+      final res = await UrlIntelligenceEngine.analyze('http://[:::1]/test');
+      expect(res.status, UrlInputStatus.invalidUrl);
+      expect(res.riskScore, greaterThan(0));
+      expect(res.isVerifiedSafe, isFalse);
+    });
+
+    test('Malformed percent encoding returns invalidUrl status', () async {
+      final res = await UrlIntelligenceEngine.analyze('http://example.com/%zz/test');
+      expect(res.status, UrlInputStatus.invalidUrl);
+      expect(res.riskScore, greaterThan(0));
+      expect(res.isVerifiedSafe, isFalse);
+    });
+
+    test('Unsupported URI schemes (ftp, file, javascript) return unsupportedScheme status', () async {
+      final ftpRes = await UrlIntelligenceEngine.analyze('ftp://ftp.example.com/file.zip');
+      expect(ftpRes.status, UrlInputStatus.unsupportedScheme);
+      expect(ftpRes.riskScore, greaterThan(0));
+      expect(ftpRes.isVerifiedSafe, isFalse);
+      expect(ftpRes.verdict, UrlVerdict.caution);
+
+      final fileRes = await UrlIntelligenceEngine.analyze('file:///sdcard/download/app.apk');
+      expect(fileRes.status, UrlInputStatus.unsupportedScheme);
+      expect(fileRes.riskScore, greaterThan(0));
+
+      final jsRes = await UrlIntelligenceEngine.analyze('javascript:alert(1)');
+      expect(jsRes.status, UrlInputStatus.unsupportedScheme);
+      expect(jsRes.riskScore, greaterThan(0));
+    });
+
+    test('ASCII control characters return invalidUrl status', () async {
+      final res = await UrlIntelligenceEngine.analyze('http://example.com/\x00evil');
+      expect(res.status, UrlInputStatus.invalidUrl);
+      expect(res.riskScore, greaterThan(0));
+      expect(res.isVerifiedSafe, isFalse);
+    });
+
+    test('Malformed host with unbracketed colons or consecutive dots returns invalidUrl', () async {
+      final colonsRes = await UrlIntelligenceEngine.analyze('http://invalid:::host:::99999/malware');
+      expect(colonsRes.status, UrlInputStatus.invalidUrl);
+      expect(colonsRes.riskScore, greaterThan(0));
+
+      final dotsRes = await UrlIntelligenceEngine.analyze('http://example..com/path');
+      expect(dotsRes.status, UrlInputStatus.invalidUrl);
+      expect(dotsRes.riskScore, greaterThan(0));
     });
   });
 }

@@ -75,8 +75,8 @@ void main() {
 
       final bundle = graphService.exportStixBundle();
       expect(bundle['type'], equals('bundle'));
-      expect(bundle['spec_version'], equals('2.1'));
-      expect(bundle['evidence_chain_verified'], isTrue);
+      expect(bundle.containsKey('spec_version'), isFalse);
+      expect(bundle['x_safesignal_evidence_chain_verified'], isTrue);
       expect((bundle['objects'] as List).isNotEmpty, isTrue);
 
       // Verify UUIDv4 format for bundle and indicators
@@ -94,6 +94,9 @@ void main() {
       expect(indicator['pattern_type'], equals('stix'));
       expect(indicator['pattern'], equals("[url:value = 'http://test.in']"));
       expect(indicator.containsKey('x_safesignal_metadata'), isTrue);
+
+      // Verify STIX 2.1 bundle root has NO spec_version (STIX 2.1 spec Section 4.1)
+      expect(bundle.containsKey('spec_version'), isFalse);
     });
 
     test('Detects unauthorized payload tampering in evidence chain', () {

@@ -343,16 +343,16 @@ class ThreatGraphService {
         'valid_from': node.firstSeen.toUtc().toIso8601String(),
         'x_safesignal_observable_type': node.type.name,
         'x_safesignal_metadata': node.metadata,
-        // Backward-compatibility key for existing unit tests
-        'custom_properties': node.metadata,
       });
     }
 
     // Add relationships as STIX 2.1 Relationship objects
+    // STIX 2.1 Section 3.2 enforces relationship_type to match ^[a-z0-9-]+$
     for (final edge in _edges) {
       final relationshipId = 'relationship--${_generateDeterministicUuid("edge_${edge.id}")}';
       final sourceRef = 'indicator--${_generateDeterministicUuid("node_${edge.sourceNodeId}")}';
       final targetRef = 'indicator--${_generateDeterministicUuid("node_${edge.targetNodeId}")}';
+      final normalizedRel = edge.relationship.toLowerCase().replaceAll('_', '-').trim();
 
       objects.add({
         'type': 'relationship',
@@ -360,7 +360,7 @@ class ThreatGraphService {
         'id': relationshipId,
         'created': edge.timestamp.toUtc().toIso8601String(),
         'modified': edge.timestamp.toUtc().toIso8601String(),
-        'relationship_type': edge.relationship,
+        'relationship_type': normalizedRel,
         'source_ref': sourceRef,
         'target_ref': targetRef,
         'confidence': (edge.confidence * 100).toInt(),
@@ -369,13 +369,13 @@ class ThreatGraphService {
 
     final bundleId = 'bundle--${_generateDeterministicUuid("bundle_${_nodes.keys.join("_")}_${_edges.length}_${_evidenceChain.length}")}';
 
+    // In STIX 2.1 Section 4.1, Bundle objects do NOT carry a spec_version property.
+    // Custom properties must carry the x_ prefix.
     return {
       'type': 'bundle',
       'id': bundleId,
-      'spec_version': '2.1',
-      // Forensic integrity metadata
-      'evidence_chain_verified': verifyChainIntegrity(),
-      'evidence_blocks_count': _evidenceChain.length,
+      'x_safesignal_evidence_chain_verified': verifyChainIntegrity(),
+      'x_safesignal_evidence_blocks_count': _evidenceChain.length,
       'objects': objects,
     };
   }

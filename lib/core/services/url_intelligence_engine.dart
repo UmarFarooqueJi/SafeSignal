@@ -17,6 +17,15 @@ enum UrlRiskLevel {
   unknown,
 }
 
+/// Input processing status distinguishing structural validity from threat classification
+enum UrlInputStatus {
+  validUrl,
+  invalidUrl,
+  unsupportedScheme,
+  unknownReputation,
+  analysisError,
+}
+
 /// Structured inspection detail item displayed in the SafeSignal UI
 class DomainCheckItem {
   final String name;
@@ -24,6 +33,23 @@ class DomainCheckItem {
   final String detail;
 
   DomainCheckItem(this.name, this.passed, this.detail);
+}
+
+/// Validation result produced during early URL ingestion and parsing
+class UrlValidationResult {
+  final UrlInputStatus status;
+  final Uri? uri;
+  final String? errorMessage;
+  final String? detectedScheme;
+
+  const UrlValidationResult({
+    required this.status,
+    this.uri,
+    this.errorMessage,
+    this.detectedScheme,
+  });
+
+  bool get isValid => status == UrlInputStatus.validUrl && uri != null;
 }
 
 /// Structured analysis of redirection targets and nested query destinations
@@ -90,6 +116,7 @@ class UrlResult {
   final String? redirectTargetHost;
   final bool isExternalRedirect;
   final String riskExplanation;
+  final UrlInputStatus status;
 
   UrlResult({
     required this.url,
@@ -121,24 +148,31 @@ class UrlResult {
     this.redirectTargetHost,
     this.isExternalRedirect = false,
     this.riskExplanation = '',
+    this.status = UrlInputStatus.validUrl,
   });
 
-  factory UrlResult.error(String url, {String message = 'Analysis could not be completed'}) {
+  factory UrlResult.error(
+    String url, {
+    String message = 'Analysis could not be completed',
+    UrlInputStatus status = UrlInputStatus.analysisError,
+    int riskScore = 30,
+  }) {
     return UrlResult(
       url: url,
       domain: '',
-      riskScore: 0,
+      riskScore: riskScore,
       verdict: UrlVerdict.caution,
       checks: const {},
       warnings: [message],
       positives: const [],
       domainChecks: [
-        DomainCheckItem('Scan Status', null, message),
+        DomainCheckItem('Scan Status', false, message),
       ],
       isVerifiedSafe: false,
       riskLevel: UrlRiskLevel.unknown,
       isExternalRedirect: false,
       riskExplanation: message,
+      status: status,
     );
   }
 }
@@ -199,7 +233,7 @@ class UrlIntelligenceEngine {
     'epfindia.gov.in', 'parivahan.gov.in', 'indiapost.gov.in',
     'bsnl.co.in', 'tatamotors.com', 'reliance.com', 'jio.com', 'airtel.in', 'myvi.in',
     'microsoft.com', 'apple.com', 'linkedin.com', 'twitter.com', 'x.com', 'github.com',
-    'cloudflare.com', 'wikipedia.org',
+    'cloudflare.com', 'wikipedia.org', 'f-droid.org', 'signal.org',
   };
 
   // High-Risk TLDs
@@ -207,6 +241,19 @@ class UrlIntelligenceEngine {
     '.zip', '.mov', '.tk', '.ml', '.ga', '.cf', '.gq', '.top', '.xyz', '.work',
     '.click', '.link', '.rest', '.country', '.stream', '.download', '.racing',
     '.buzz', '.quest', '.icu', '.monster', '.cam', '.live',
+  };
+
+  // Verified Open-Source and Official Mobile Application Repositories
+  static const Set<String> verifiedApkPublishers = {
+    'f-droid.org',
+    'github.com',
+    'gitlab.com',
+    'signal.org',
+    'telegram.org',
+    'whatsapp.com',
+    'mozilla.org',
+    'torproject.org',
+    'apkmirror.com',
   };
 
   // Dangerous File Extensions
@@ -222,24 +269,139 @@ class UrlIntelligenceEngine {
     'urgent-action', 'immediate-refund',
   ];
 
-  /// Canonicalizes an input string into a standard URI
-  static Uri? canonicalizeUrl(String input) {
-    var raw = input.trim();
-    if (raw.isEmpty) return null;
-
-    // Check for HTTP basic auth deception (e.g. https://google.com@evil-site.com)
-    // Extract actual authority
-    if (!raw.startsWith('http://') && !raw.startsWith('https://')) {
-      raw = 'https://$raw';
+  /// Validates and parses an untrusted raw URL string, returning structured input status
+  static UrlValidationResult validateAndParse(String input) {
+    final rawTrimmed = input.trim();
+    if (rawTrimmed.isEmpty) {
+      return const UrlValidationResult(
+        status: UrlInputStatus.invalidUrl,
+        errorMessage: 'Input URL string cannot be empty or blank.',
+      );
     }
 
+    // Reject non-printable / ASCII control characters
+    if (RegExp(r'[\x00-\x1F\x7F]').hasMatch(rawTrimmed)) {
+      return const UrlValidationResult(
+        status: UrlInputStatus.invalidUrl,
+        errorMessage: 'URL contains illegal ASCII control characters.',
+      );
+    }
+
+    // Inspect scheme
+    final schemeMatch = RegExp(r'^([a-zA-Z][a-zA-Z0-9+.-]*):').firstMatch(rawTrimmed);
+    String effectiveUrl = rawTrimmed;
+    if (schemeMatch != null) {
+      final scheme = schemeMatch.group(1)!.toLowerCase();
+      if (scheme != 'http' && scheme != 'https') {
+        return UrlValidationResult(
+          status: UrlInputStatus.unsupportedScheme,
+          detectedScheme: scheme,
+          errorMessage: 'Unsupported URI scheme ($scheme). Only HTTP and HTTPS schemes are supported.',
+        );
+      }
+    } else {
+      // Missing explicit scheme: standard web normalization
+      if (rawTrimmed.startsWith('//')) {
+        effectiveUrl = 'https:$rawTrimmed';
+      } else {
+        effectiveUrl = 'https://$rawTrimmed';
+      }
+    }
+
+    // Percent-encoding validation in raw string
+    // A '%' must be followed by two hexadecimal digits
+    if (RegExp(r'%(?![0-9a-fA-F]{2})').hasMatch(effectiveUrl)) {
+      return const UrlValidationResult(
+        status: UrlInputStatus.invalidUrl,
+        errorMessage: 'Malformed percent-encoding in URL: incomplete or non-hexadecimal escape sequence.',
+      );
+    }
+
+    // Attempt Uri.parse
+    final Uri parsed;
     try {
-      final parsed = Uri.parse(raw);
-      if (!parsed.hasAuthority || parsed.host.isEmpty) return null;
-      return parsed;
-    } catch (_) {
-      return null;
+      parsed = Uri.parse(effectiveUrl);
+    } on FormatException catch (e) {
+      return UrlValidationResult(
+        status: UrlInputStatus.invalidUrl,
+        errorMessage: 'Malformed URI syntax: ${e.message}',
+      );
+    } catch (e) {
+      return UrlValidationResult(
+        status: UrlInputStatus.analysisError,
+        errorMessage: 'Unexpected error during URI parsing: $e',
+      );
     }
+
+    // Must have authority and host
+    if (!parsed.hasAuthority || parsed.host.isEmpty) {
+      return const UrlValidationResult(
+        status: UrlInputStatus.invalidUrl,
+        errorMessage: 'URL is missing valid authority or host specification.',
+      );
+    }
+
+    final host = parsed.host;
+
+    // Check port boundaries (1 - 65535)
+    final portMatch = RegExp(r':([0-9]+)(?:/|\?|#|$)').firstMatch(parsed.authority);
+    if (portMatch != null) {
+      final parsedPort = int.tryParse(portMatch.group(1)!);
+      if (parsedPort == null || parsedPort < 1 || parsedPort > 65535) {
+        return UrlValidationResult(
+          status: UrlInputStatus.invalidUrl,
+          errorMessage: 'Invalid network port specified in authority (${portMatch.group(1)}). Valid range is 1-65535.',
+        );
+      }
+    }
+
+    // Check for malformed non-numeric port indicator (e.g. host:abc or host:::)
+    final authorityWithoutUser = parsed.authority.replaceFirst(RegExp(r'^[^@]+@'), '');
+    if (RegExp(r':[^0-9/\\?#]+').hasMatch(authorityWithoutUser)) {
+      if (!host.startsWith('[') || !host.endsWith(']')) {
+        return const UrlValidationResult(
+          status: UrlInputStatus.invalidUrl,
+          errorMessage: 'Authority contains malformed port delimiter or non-numeric port.',
+        );
+      }
+    }
+
+    // IPv6 host validation
+    if (host.startsWith('[') && host.endsWith(']')) {
+      final ipv6Literal = host.substring(1, host.length - 1);
+      try {
+        Uri.parseIPv6Address(ipv6Literal);
+      } catch (_) {
+        return const UrlValidationResult(
+          status: UrlInputStatus.invalidUrl,
+          errorMessage: 'Malformed IPv6 address literal inside brackets.',
+        );
+      }
+    } else if (host.contains(':')) {
+      return const UrlValidationResult(
+        status: UrlInputStatus.invalidUrl,
+        errorMessage: 'Malformed host with unbracketed colon characters.',
+      );
+    }
+
+    // Host structure checks: consecutive dots, leading/trailing dots, spaces
+    if (host.contains('..') || host.startsWith('.') || host.endsWith('.') || host.contains(' ')) {
+      return const UrlValidationResult(
+        status: UrlInputStatus.invalidUrl,
+        errorMessage: 'Malformed host structure: invalid dot placement or whitespace in hostname.',
+      );
+    }
+
+    return UrlValidationResult(
+      status: UrlInputStatus.validUrl,
+      uri: parsed,
+    );
+  }
+
+  /// Canonicalizes an input string into a standard URI (returns null if invalid or unsupported)
+  static Uri? canonicalizeUrl(String input) {
+    final validation = validateAndParse(input);
+    return validation.isValid ? validation.uri : null;
   }
 
   /// Verifies if a hostname is private, loopback, or reserved (SSRF guard)
@@ -488,11 +650,19 @@ class UrlIntelligenceEngine {
 
   /// Performs deep multi-factor URL analysis
   static Future<UrlResult> analyze(String rawUrl) async {
-    final uri = canonicalizeUrl(rawUrl);
-    if (uri == null) {
-      return UrlResult.error(rawUrl, message: 'Invalid URL format');
+    final validation = validateAndParse(rawUrl);
+    if (!validation.isValid) {
+      final status = validation.status;
+      final int score = status == UrlInputStatus.unsupportedScheme ? 25 : 35;
+      return UrlResult.error(
+        rawUrl,
+        message: validation.errorMessage ?? 'Invalid URL format',
+        status: status,
+        riskScore: score,
+      );
     }
 
+    final uri = validation.uri!;
     final rawHost = uri.host.toLowerCase();
     final domain = rawHost.replaceAll(RegExp(r'^www\.'), '');
     final baseDomain = extractBaseDomain(domain);
@@ -601,22 +771,85 @@ class UrlIntelligenceEngine {
       ));
     }
 
-    // ─── 6. DANGEROUS FILE EXTENSION (APK/MALWARE DROPPER) ───────────────────
-    bool isDropper = false;
-    for (final ext in dangerousExtensions) {
-      if (urlPath.endsWith(ext) || urlQuery.contains(ext)) {
-        isDropper = true;
-        riskScore += 65;
+    // ─── 6. SOCIAL ENGINEERING / URGENCY KEYWORDS ────────────────────────────
+    final matchedUrgency = urgencyKeywords.where((kw) => urlPath.contains(kw) || urlQuery.contains(kw)).toList();
+    if (matchedUrgency.isNotEmpty) {
+      riskScore += 20;
+      domainChecks.add(DomainCheckItem(
+        'Social Engineering Signatures',
+        false,
+        'Urgency or scam trigger keywords found in path/query: ${matchedUrgency.join(', ')}.',
+      ));
+    }
+
+    // ─── 7. EXECUTABLE & MOBILE PAYLOAD INSPECTION ───────────────────────────
+    final bool isDesktopExecutable = urlPath.endsWith('.exe') ||
+        urlPath.endsWith('.bat') ||
+        urlPath.endsWith('.cmd') ||
+        urlPath.endsWith('.vbs') ||
+        urlPath.endsWith('.ps1') ||
+        urlPath.endsWith('.scr') ||
+        urlPath.endsWith('.msi') ||
+        urlPath.endsWith('.dex') ||
+        urlPath.endsWith('.jar');
+
+    final bool isDirectApk = urlPath.endsWith('.apk') ||
+        urlPath.endsWith('.xapk') ||
+        urlPath.endsWith('.apks') ||
+        RegExp(r'\.apk(?:$|[?#])').hasMatch(urlPath);
+
+    bool isMaliciousDropper = false;
+    bool isUnverifiedApk = false;
+
+    if (isDesktopExecutable) {
+      isMaliciousDropper = true;
+      riskScore += 65;
+      domainChecks.insert(0, DomainCheckItem(
+        'Malicious Executable Dropper',
+        false,
+        'CRITICAL: URL directly downloads desktop executable or script binary. Extreme malware dropper risk on mobile device.',
+      ));
+    } else if (isDirectApk) {
+      final isVerifiedPublisher = verifiedApkPublishers.contains(domain) ||
+          verifiedApkPublishers.contains(baseDomain);
+
+      if (brandSpoof != null) {
+        isMaliciousDropper = true;
+        riskScore += 70;
         domainChecks.insert(0, DomainCheckItem(
-          'Malicious Executable Dropper',
+          'Brand Impersonation & Trojan Dropper',
           false,
-          'CRITICAL: URL directly downloads executable/mobile payload ($ext). Risk of Trojan or spyware installation.',
+          'CRITICAL: Deceptive brand-impersonating domain directly distributing an Android APK payload. High probability of banking Trojan or spyware.',
         ));
-        break;
+      } else if (hasHighRiskTld || matchedUrgency.isNotEmpty) {
+        isMaliciousDropper = true;
+        riskScore += 60;
+        domainChecks.insert(0, DomainCheckItem(
+          'High-Risk Mobile Malware Dropper',
+          false,
+          'CRITICAL: Android APK payload hosted on high-risk disposable TLD or social engineering lure. Probable malicious dropper.',
+        ));
+      } else if (isVerifiedPublisher) {
+        // Recognized open-source or official release platform (e.g. Signal, F-Droid, GitHub)
+        riskScore += 10;
+        domainChecks.add(DomainCheckItem(
+          'Verified Software Repository APK',
+          true,
+          'APK package hosted on recognized open-source or official release platform ($baseDomain). Binary contents not dynamically inspected; verify cryptographic signature before installation.',
+        ));
+      } else {
+        // Unverified APK from standard or unknown third-party domain
+        isUnverifiedApk = true;
+        riskScore += 35;
+        domainChecks.add(DomainCheckItem(
+          'Unverified APK Download',
+          null,
+          'APK download detected; file security has not been verified. Sideloading applications from third-party sources carries security risks.',
+        ));
       }
     }
 
-    // ─── 7. DEEP REDIRECTION & DESTINATION INSPECTION ────────────────────────
+    // ─── 8. DEEP REDIRECTION & DESTINATION INSPECTION ────────────────────────
     final redirectAnalysis = inspectRedirectionVector(
       uri: uri,
       baseDomain: baseDomain,
@@ -637,17 +870,6 @@ class UrlIntelligenceEngine {
           redirectAnalysis.description,
         ));
       }
-    }
-
-    // ─── 8. SOCIAL ENGINEERING / URGENCY KEYWORDS ────────────────────────────
-    final matchedUrgency = urgencyKeywords.where((kw) => urlPath.contains(kw) || urlQuery.contains(kw)).toList();
-    if (matchedUrgency.isNotEmpty) {
-      riskScore += 20;
-      domainChecks.add(DomainCheckItem(
-        'Social Engineering Signatures',
-        false,
-        'Urgency or scam trigger keywords found in path/query: ${matchedUrgency.join(', ')}.',
-      ));
     }
 
     // ─── 9. DOMAIN STRUCTURE & HYPHEN ENTROPY ────────────────────────────────
@@ -750,7 +972,8 @@ class UrlIntelligenceEngine {
     }
 
     // ─── VERDICT CALIBRATION & RISK LEVEL CLASSIFICATION ─────────────────────
-    final bool hasCriticalThreats = isDropper ||
+    final bool hasCriticalThreats = isMaliciousDropper ||
+        isDesktopExecutable ||
         brandSpoof != null ||
         isHomograph ||
         uri.userInfo.isNotEmpty ||
@@ -777,7 +1000,7 @@ class UrlIntelligenceEngine {
 
     final UrlRiskLevel riskLevel;
     if (riskScore >= 75) {
-      riskLevel = (isDropper || brandSpoof != null || isHomograph || redirectAnalysis.isTargetDropper)
+      riskLevel = (isMaliciousDropper || isDesktopExecutable || brandSpoof != null || isHomograph || redirectAnalysis.isTargetDropper)
           ? UrlRiskLevel.knownMalicious
           : UrlRiskLevel.highRisk;
     } else if (riskScore >= 21) {
@@ -791,8 +1014,10 @@ class UrlIntelligenceEngine {
     String riskExplanation;
     if (redirectAnalysis.hasRedirect && redirectAnalysis.isExternal) {
       riskExplanation = 'Potential unverified external redirect to ${redirectAnalysis.targetHost}.';
-    } else if (isDropper) {
-      riskExplanation = 'Executable mobile/binary payload dropper detected.';
+    } else if (isMaliciousDropper || isDesktopExecutable) {
+      riskExplanation = 'Executable mobile/binary malware dropper detected.';
+    } else if (isUnverifiedApk) {
+      riskExplanation = 'APK download detected; file security has not been verified.';
     } else if (brandSpoof != null) {
       riskExplanation = brandSpoof;
     } else if (isHomograph) {

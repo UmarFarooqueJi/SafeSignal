@@ -66,7 +66,7 @@ void main() {
   graph.addEdge(
     sourceNodeId: urlNode.id,
     targetNodeId: domainNode.id,
-    relationship: 'hosted_on',
+    relationship: 'hosted-on',
     confidence: 0.95,
     timestamp: now,
   );
@@ -74,7 +74,7 @@ void main() {
   graph.addEdge(
     sourceNodeId: domainNode.id,
     targetNodeId: ipNode.id,
-    relationship: 'resolves_to',
+    relationship: 'resolves-to',
     confidence: 0.90,
     timestamp: now,
   );
@@ -82,7 +82,7 @@ void main() {
   graph.addEdge(
     sourceNodeId: urlNode.id,
     targetNodeId: apkNode.id,
-    relationship: 'drops_payload',
+    relationship: 'drops-payload',
     confidence: 1.0,
     timestamp: now,
   );
