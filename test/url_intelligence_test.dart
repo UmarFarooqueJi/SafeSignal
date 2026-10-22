@@ -123,6 +123,112 @@ void main() {
     });
   });
 
+  group('UrlIntelligenceEngine - Open Redirect Defense & Destination Inspection', () {
+    test('Critical Regression: Trusted host with unverified external redirect never forces Score 0', () async {
+      final res = await UrlIntelligenceEngine.analyze('https://incometax.gov.in/redirect?url=https%3A%2F%2Fphishing.example');
+      // Must NOT be safe or zero
+      expect(res.riskScore, greaterThan(0));
+      expect(res.verdict, isNot(UrlVerdict.safe));
+      expect(res.riskLevel, UrlRiskLevel.suspicious);
+      expect(res.isExternalRedirect, isTrue);
+      expect(res.redirectTargetHost, 'phishing.example');
+      expect(res.domainChecks.any((c) => c.name.contains('Open Redirect')), isTrue);
+      expect(res.isVerifiedSafe, isFalse);
+    });
+
+    test('Critical Regression: Synthetic trusted host with external redirect analyzes destination safely without live probe', () async {
+      final res = await UrlIntelligenceEngine.analyze('https://trusted.example/redirect?url=https%3A%2F%2Fphishing.example');
+      expect(res.isExternalRedirect, isTrue);
+      expect(res.redirectTargetHost, 'phishing.example');
+      expect(res.riskScore, greaterThanOrEqualTo(25));
+      expect(res.domainChecks.any((c) => c.name.contains('Open Redirect') && c.passed == false), isTrue);
+    });
+
+    test('External redirect pointing to malicious dropper receives critical danger verdict', () async {
+      final res = await UrlIntelligenceEngine.analyze('https://incometax.gov.in/download?url=https%3A%2F%2Fmalware.top%2Fpayload.apk');
+      expect(res.riskScore, greaterThanOrEqualTo(75));
+      expect(res.verdict, UrlVerdict.dangerous);
+      expect(res.riskLevel, UrlRiskLevel.knownMalicious);
+      expect(res.isExternalRedirect, isTrue);
+    });
+
+    test('Benign internal redirect within same authority preserves low-risk rating', () async {
+      final res = await UrlIntelligenceEngine.analyze('https://incometax.gov.in/login?return_to=https%3A%2F%2Fincometax.gov.in%2Fdashboard');
+      expect(res.isExternalRedirect, isFalse);
+      expect(res.riskScore, 0);
+      expect(res.verdict, UrlVerdict.safe);
+      expect(res.riskLevel, UrlRiskLevel.lowRisk);
+      expect(res.domainChecks.any((c) => c.name == 'Redirection Integrity' && c.passed == true), isTrue);
+    });
+  });
+
+  group('UrlIntelligenceEngine - Held-Out Benchmark & Metrics Validation', () {
+    test('Calculates held-out benchmark: Precision, Recall, F1, and FPR', () async {
+      // 10 Ground-Truth Benign URLs
+      final benignFixtures = [
+        'https://incometax.gov.in',
+        'https://eportal.incometax.gov.in/iec/foservices',
+        'https://uidai.gov.in',
+        'https://sbi.co.in',
+        'https://retail.onlinesbi.sbi',
+        'https://netbanking.hdfcbank.com',
+        'https://www.google.co.in',
+        'https://whatsapp.com',
+        'https://github.com',
+        'https://incometax.gov.in/login?return_to=https%3A%2F%2Fincometax.gov.in%2Fportal',
+      ];
+
+      // 10 Ground-Truth Malicious / High-Risk URLs
+      final maliciousFixtures = [
+        'https://sbi-kyc-verification.xyz/login',
+        'https://hdfc-bank-rewards.top/claim',
+        'https://paytm-lottery-cashback.xyz',
+        'https://update-security-patch.com/agent.apk',
+        'https://xn--sbi-8cd.co.in',
+        'http://192.168.1.1/admin',
+        'https://google.com@phishing-target.net/login',
+        'https://incometax.gov.in/redirect?url=https%3A%2F%2Fphishing.example',
+        'https://incometax.gov.in/download?url=https%3A%2F%2Fmalware.top%2Fpayload.apk',
+        'https://bank-urgent-aadhaar-link-immediate-refund.xyz/verify',
+      ];
+
+      int tp = 0; // True Positive
+      int fp = 0; // False Positive
+      int tn = 0; // True Negative
+      int fn = 0; // False Negative
+
+      final benignResults = await Future.wait(benignFixtures.map(UrlIntelligenceEngine.analyze));
+      for (final res in benignResults) {
+        if (res.verdict == UrlVerdict.safe) {
+          tn++;
+        } else {
+          fp++;
+        }
+      }
+
+      final maliciousResults = await Future.wait(maliciousFixtures.map(UrlIntelligenceEngine.analyze));
+      for (final res in maliciousResults) {
+        if (res.verdict != UrlVerdict.safe) {
+          tp++;
+        } else {
+          fn++;
+        }
+      }
+
+      final precision = tp / (tp + fp);
+      final recall = tp / (tp + fn);
+      final f1 = 2 * (precision * recall) / (precision + recall);
+      final fpr = fp / (fp + tn);
+
+      // Verify benchmark constraints
+      expect(fp, 0, reason: 'False positives on authentic fixtures must be 0');
+      expect(precision, 1.0, reason: 'Precision on benchmark corpus must be 1.0 (100%)');
+      expect(recall, 1.0, reason: 'Recall on benchmark corpus must be 1.0 (100%)');
+      expect(f1, 1.0, reason: 'F1 Score must be 1.0');
+      expect(fpr, 0.0, reason: 'False positive rate must be 0.0%');
+    }, timeout: const Timeout(Duration(minutes: 2)));
+  });
+
   group('LinkGuardService - Shared Intent URL Extraction', () {
     test('Extracts direct URLs', () {
       expect(LinkGuardService.extractUrl('https://example.com'), 'https://example.com');

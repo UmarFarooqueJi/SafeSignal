@@ -8,6 +8,15 @@ enum UrlVerdict {
   dangerous,
 }
 
+/// Granular risk classification tier
+enum UrlRiskLevel {
+  lowRisk,
+  suspicious,
+  highRisk,
+  knownMalicious,
+  unknown,
+}
+
 /// Structured inspection detail item displayed in the SafeSignal UI
 class DomainCheckItem {
   final String name;
@@ -15,6 +24,39 @@ class DomainCheckItem {
   final String detail;
 
   DomainCheckItem(this.name, this.passed, this.detail);
+}
+
+/// Structured analysis of redirection targets and nested query destinations
+class RedirectAnalysis {
+  final bool hasRedirect;
+  final bool isExternal;
+  final String? paramKey;
+  final String? rawTarget;
+  final String? targetHost;
+  final String? targetBaseDomain;
+  final Uri? targetUri;
+  final bool hasTargetHighRiskTld;
+  final bool isTargetSsrf;
+  final bool isTargetDropper;
+  final String? targetBrandSpoof;
+  final int redirectRiskDelta;
+  final String description;
+
+  const RedirectAnalysis({
+    required this.hasRedirect,
+    this.isExternal = false,
+    this.paramKey,
+    this.rawTarget,
+    this.targetHost,
+    this.targetBaseDomain,
+    this.targetUri,
+    this.hasTargetHighRiskTld = false,
+    this.isTargetSsrf = false,
+    this.isTargetDropper = false,
+    this.targetBrandSpoof,
+    this.redirectRiskDelta = 0,
+    this.description = '',
+  });
 }
 
 /// Comprehensive forensic analysis result of a scanned URL
@@ -43,6 +85,11 @@ class UrlResult {
   final List<String> nsRecords;
   final bool hasDmarc;
   final String? typosquattingWarning;
+  final UrlRiskLevel riskLevel;
+  final String? redirectTargetUrl;
+  final String? redirectTargetHost;
+  final bool isExternalRedirect;
+  final String riskExplanation;
 
   UrlResult({
     required this.url,
@@ -69,6 +116,11 @@ class UrlResult {
     this.nsRecords = const [],
     this.hasDmarc = false,
     this.typosquattingWarning,
+    this.riskLevel = UrlRiskLevel.lowRisk,
+    this.redirectTargetUrl,
+    this.redirectTargetHost,
+    this.isExternalRedirect = false,
+    this.riskExplanation = '',
   });
 
   factory UrlResult.error(String url, {String message = 'Analysis could not be completed'}) {
@@ -84,6 +136,9 @@ class UrlResult {
         DomainCheckItem('Scan Status', null, message),
       ],
       isVerifiedSafe: false,
+      riskLevel: UrlRiskLevel.unknown,
+      isExternalRedirect: false,
+      riskExplanation: message,
     );
   }
 }
@@ -278,6 +333,159 @@ class UrlIntelligenceEngine {
     return false;
   }
 
+  /// Safely extracts and analyzes redirection query parameters and target destinations
+  /// without issuing any live HTTP requests to untrusted endpoints.
+  static RedirectAnalysis inspectRedirectionVector({
+    required Uri uri,
+    required String baseDomain,
+  }) {
+    final candidateKeys = {
+      'url', 'redirect', 'redirect_url', 'redirect_uri', 'next', 'return_to',
+      'return', 'dest', 'destination', 'target', 'link', 'r', 'u', 'goto',
+      'continue', 'forward', 'out', 'to'
+    };
+
+    String? foundTarget;
+    String? foundKey;
+
+    for (final entry in uri.queryParameters.entries) {
+      if (candidateKeys.contains(entry.key.toLowerCase())) {
+        foundKey = entry.key;
+        foundTarget = entry.value;
+        break;
+      }
+    }
+
+    if (foundTarget == null && uri.hasQuery) {
+      final reg = RegExp(
+        r'(?:^|[&?])(?:url|redirect|redirect_url|redirect_uri|next|dest|destination|target|link|goto|to)=([^&]+)',
+        caseSensitive: false,
+      );
+      final m = reg.firstMatch(uri.query);
+      if (m != null) {
+        foundKey = 'query_param';
+        foundTarget = m.group(1);
+      }
+    }
+
+    if (foundTarget == null || foundTarget.trim().isEmpty) {
+      return const RedirectAnalysis(hasRedirect: false);
+    }
+
+    // Safely decode percent encoding (handle up to 2 levels)
+    String decoded = foundTarget.trim();
+    for (int i = 0; i < 2; i++) {
+      try {
+        final next = Uri.decodeComponent(decoded);
+        if (next == decoded) break;
+        decoded = next;
+      } catch (_) {
+        break;
+      }
+    }
+
+    // Protocol-relative URLs: //evil.com/path -> https://evil.com/path
+    if (decoded.startsWith('//')) {
+      decoded = 'https:$decoded';
+    }
+
+    Uri? targetUri;
+    try {
+      if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
+        targetUri = Uri.parse(decoded);
+      } else if (decoded.startsWith('/') || !decoded.contains('.')) {
+        // Relative path redirect, e.g. /login or /dashboard
+        return RedirectAnalysis(
+          hasRedirect: true,
+          isExternal: false,
+          paramKey: foundKey,
+          rawTarget: decoded,
+          targetHost: uri.host,
+          targetBaseDomain: baseDomain,
+          redirectRiskDelta: 0,
+          description: 'URL contains internal relative redirection ($foundKey=$decoded).',
+        );
+      } else {
+        // e.g. "phishing.example/login" without scheme
+        targetUri = Uri.tryParse('https://$decoded');
+      }
+    } catch (_) {
+      return RedirectAnalysis(
+        hasRedirect: true,
+        isExternal: true,
+        paramKey: foundKey,
+        rawTarget: decoded,
+        targetHost: 'malformed_destination',
+        redirectRiskDelta: 30,
+        description: 'URL contains malformed or obfuscated redirect parameter ($foundKey).',
+      );
+    }
+
+    if (targetUri == null || !targetUri.hasAuthority || targetUri.host.isEmpty) {
+      return RedirectAnalysis(
+        hasRedirect: true,
+        isExternal: false,
+        paramKey: foundKey,
+        rawTarget: decoded,
+        targetHost: uri.host,
+        targetBaseDomain: baseDomain,
+        redirectRiskDelta: 0,
+        description: 'URL contains benign parameter without external authority.',
+      );
+    }
+
+    final targetHost = targetUri.host.toLowerCase();
+    final targetBase = extractBaseDomain(targetHost);
+    final isExternal = (targetBase != baseDomain && !targetHost.endsWith('.$baseDomain'));
+
+    if (!isExternal) {
+      return RedirectAnalysis(
+        hasRedirect: true,
+        isExternal: false,
+        paramKey: foundKey,
+        rawTarget: decoded,
+        targetHost: targetHost,
+        targetBaseDomain: targetBase,
+        targetUri: targetUri,
+        redirectRiskDelta: 0,
+        description: 'URL contains internal redirect parameter pointing within the same domain hierarchy ($targetHost).',
+      );
+    }
+
+    // External target detected: inspect destination properties
+    final hasHighRiskTld = highRiskTlds.any((tld) => targetHost.endsWith(tld));
+    final isSsrf = isPrivateOrReservedHost(targetHost);
+    final isDropper = dangerousExtensions.any((ext) =>
+        targetUri!.path.toLowerCase().endsWith(ext) ||
+        targetUri!.query.toLowerCase().contains(ext));
+    final brandSpoof = detectBrandImpersonation(targetHost);
+
+    int riskDelta = 25; // Base uncertainty for unverified external destination
+    if (hasHighRiskTld) riskDelta += 25;
+    if (isSsrf) riskDelta += 35;
+    if (isDropper) riskDelta += 50;
+    if (brandSpoof != null) riskDelta += 35;
+
+    final String desc = 'URL contains parameter ($foundKey) directing to external host ($targetHost).'
+        ' Redirection destination is unverified; caution advised.';
+
+    return RedirectAnalysis(
+      hasRedirect: true,
+      isExternal: true,
+      paramKey: foundKey,
+      rawTarget: decoded,
+      targetHost: targetHost,
+      targetBaseDomain: targetBase,
+      targetUri: targetUri,
+      hasTargetHighRiskTld: hasHighRiskTld,
+      isTargetSsrf: isSsrf,
+      isTargetDropper: isDropper,
+      targetBrandSpoof: brandSpoof,
+      redirectRiskDelta: riskDelta,
+      description: desc,
+    );
+  }
+
   /// Performs deep multi-factor URL analysis
   static Future<UrlResult> analyze(String rawUrl) async {
     final uri = canonicalizeUrl(rawUrl);
@@ -318,6 +526,9 @@ class UrlIntelligenceEngine {
         serverCity: 'Local Host',
         serverIsp: 'Private LAN',
         serverIp: domain,
+        riskLevel: UrlRiskLevel.knownMalicious,
+        isExternalRedirect: false,
+        riskExplanation: 'Target points to private RFC-1918 or loopback internal network address.',
       );
     }
 
@@ -405,17 +616,26 @@ class UrlIntelligenceEngine {
       }
     }
 
-    // ─── 7. OPEN REDIRECT / SUSPICIOUS REDIRECTION ───────────────────────────
-    final redirectParams = ['url=', 'redirect=', 'next=', 'return_to=', 'dest=', 'target=', 'link='];
-    for (final p in redirectParams) {
-      if (urlQuery.contains(p)) {
-        riskScore += 20;
+    // ─── 7. DEEP REDIRECTION & DESTINATION INSPECTION ────────────────────────
+    final redirectAnalysis = inspectRedirectionVector(
+      uri: uri,
+      baseDomain: baseDomain,
+    );
+
+    if (redirectAnalysis.hasRedirect) {
+      if (redirectAnalysis.isExternal) {
+        riskScore += redirectAnalysis.redirectRiskDelta;
         domainChecks.add(DomainCheckItem(
-          'Open Redirect Vector',
+          'Open Redirect & Destination Vector',
           false,
-          'URL contains redirect parameter ($p). Attackers use this to bounce users to external malicious sites.',
+          redirectAnalysis.description,
         ));
-        break;
+      } else {
+        domainChecks.add(DomainCheckItem(
+          'Redirection Integrity',
+          true,
+          redirectAnalysis.description,
+        ));
       }
     }
 
@@ -529,10 +749,22 @@ class UrlIntelligenceEngine {
       ));
     }
 
-    // ─── VERDICT CALIBRATION & SCORING ───────────────────────────────────────
-    // Institutional allowlist moderation (reduces baseline, but cannot suppress confirmed dropper or homograph)
-    if (isAllowlisted && !isDropper && brandSpoof == null && !isHomograph) {
-      riskScore = 0; // Verified authentic institutional service
+    // ─── VERDICT CALIBRATION & RISK LEVEL CLASSIFICATION ─────────────────────
+    final bool hasCriticalThreats = isDropper ||
+        brandSpoof != null ||
+        isHomograph ||
+        uri.userInfo.isNotEmpty ||
+        (redirectAnalysis.hasRedirect && redirectAnalysis.isExternal);
+
+    if (isAllowlisted) {
+      if (!hasCriticalThreats) {
+        // Authentic, unmanipulated institutional service without external redirects
+        riskScore = 0;
+      } else {
+        // Institutional domain with active threat signals (open redirect, credential deception, dropper)
+        // Trust reputation does not grant unconditional bypass.
+        riskScore = riskScore.clamp(0, 100);
+      }
     } else {
       riskScore = riskScore.clamp(0, 100);
     }
@@ -542,6 +774,38 @@ class UrlIntelligenceEngine {
         : riskScore >= 21
             ? UrlVerdict.caution
             : UrlVerdict.safe;
+
+    final UrlRiskLevel riskLevel;
+    if (riskScore >= 75) {
+      riskLevel = (isDropper || brandSpoof != null || isHomograph || redirectAnalysis.isTargetDropper)
+          ? UrlRiskLevel.knownMalicious
+          : UrlRiskLevel.highRisk;
+    } else if (riskScore >= 21) {
+      riskLevel = UrlRiskLevel.suspicious;
+    } else if (!isAllowlisted && aRecords.isEmpty && !isSsrfHost) {
+      riskLevel = UrlRiskLevel.unknown;
+    } else {
+      riskLevel = UrlRiskLevel.lowRisk;
+    }
+
+    String riskExplanation;
+    if (redirectAnalysis.hasRedirect && redirectAnalysis.isExternal) {
+      riskExplanation = 'Potential unverified external redirect to ${redirectAnalysis.targetHost}.';
+    } else if (isDropper) {
+      riskExplanation = 'Executable mobile/binary payload dropper detected.';
+    } else if (brandSpoof != null) {
+      riskExplanation = brandSpoof;
+    } else if (isHomograph) {
+      riskExplanation = 'Homograph/punycode visual spoofing detected.';
+    } else if (uri.userInfo.isNotEmpty) {
+      riskExplanation = 'URL credential deception (HTTP basic auth prefix).';
+    } else if (isAllowlisted && riskScore == 0) {
+      riskExplanation = 'Verified institutional domain with valid security profile.';
+    } else if (verdict == UrlVerdict.safe) {
+      riskExplanation = 'Standard low-risk domain with no anomalies.';
+    } else {
+      riskExplanation = 'Elevated risk factors detected (${domainChecks.where((c) => c.passed == false).length} warnings).';
+    }
 
     return UrlResult(
       url: rawUrl,
@@ -560,6 +824,11 @@ class UrlIntelligenceEngine {
       typosquattingWarning: brandSpoof,
       serverIp: aRecords.isNotEmpty ? aRecords.first : domain,
       serverCountry: isAllowlisted ? 'Verified Host' : 'Global',
+      riskLevel: riskLevel,
+      redirectTargetUrl: redirectAnalysis.rawTarget,
+      redirectTargetHost: redirectAnalysis.targetHost,
+      isExternalRedirect: redirectAnalysis.isExternal,
+      riskExplanation: riskExplanation,
     );
   }
 
