@@ -1,12 +1,10 @@
-// -----------------------------------------------------------------------------
 // SafeSignal Mobile Security Suite
 // Module: Domain-Specialized AI Expert Engine
 // Author: Umar Farooque (https://github.com/UmarFarooqueJi)
 // Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
 // Domain experts: WebGuard, NetShield, AppGuard, DeviceShield,
 // BreachWatch, FraudShield, TelecomShield AI personas.
-// Failover: OpenRouter → DeepSeek → Grok → Gemini → Cloudflare → Pollinations
-// -----------------------------------------------------------------------------
+// Execution: Local deterministic forensic reasoning (default) with optional user-configured cloud API providers.
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';

@@ -1,11 +1,19 @@
 /*
  * SafeSignal Mobile Security Suite & Research Platform
- * Module: Temporal Threat Graph & RFC 3161 Cryptographic Evidence Engine
+ * Module: Temporal Threat Graph & Local Tamper-Evident Cryptographic Hash Chain
  * Author: Umar Farooque (https://github.com/UmarFarooqueJi)
  * Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
  *
  * Provides a directed temporal threat graph for forensic incident reconstruction,
- * combined with a tamper-evident cryptographic hash chain (RFC 3161 evidence chaining).
+ * combined with an append-only, tamper-evident SHA-256 cryptographic hash chain
+ * for local digital evidence provenance tracking without third-party cloud dependencies.
+ *
+ * Standards Transparency:
+ * - Evidence Ledger: Implements local SHA-256 block-hash chaining (genesis block,
+ *   previous-hash linkage, canonical payload hashing). Designed for offline zero-cloud privacy.
+ *   Does NOT contact external RFC 3161 TSA servers or issue X.509 CMS signed tokens.
+ * - Threat Intelligence Export: Generates OASIS STIX 2.1-compliant bundle JSON with
+ *   UUIDv4 identifiers, typed Indicator patterns, and custom property namespaces.
  */
 
 import 'dart:convert';
@@ -104,7 +112,7 @@ class ThreatEdge {
       );
 }
 
-/// Tamper-evident evidence block in an RFC 3161-style cryptographic hash chain
+/// Tamper-evident evidence block in an append-only SHA-256 cryptographic hash chain
 class EvidenceBlock {
   final int index;
   final DateTime timestamp;
@@ -273,43 +281,99 @@ class ThreatGraphService {
     return true;
   }
 
-  /// Export the complete graph and evidence chain in standard STIX 2.1 / JSON-LD format
+  static String _escapeStix(String value) {
+    return value.replaceAll(r'\', r'\\').replaceAll("'", r"\'");
+  }
+
+  static String _generateDeterministicUuid(String seed) {
+    final digest = sha256.convert(utf8.encode(seed)).bytes;
+    final bytes = digest.sublist(0, 16);
+    final b6 = (bytes[6] & 0x0F) | 0x40; // Version 4
+    final b8 = (bytes[8] & 0x3F) | 0x80; // RFC 4122 variant
+
+    String hex(int b) => b.toRadixString(16).padLeft(2, '0');
+
+    return '${hex(bytes[0])}${hex(bytes[1])}${hex(bytes[2])}${hex(bytes[3])}-'
+        '${hex(bytes[4])}${hex(bytes[5])}-'
+        '${hex(b6)}${hex(bytes[7])}-'
+        '${hex(b8)}${hex(bytes[9])}-'
+        '${hex(bytes[10])}${hex(bytes[11])}${hex(bytes[12])}${hex(bytes[13])}${hex(bytes[14])}${hex(bytes[15])}';
+  }
+
+  static String _buildStixPattern(ThreatNodeType type, String value) {
+    final escaped = _escapeStix(value);
+    switch (type) {
+      case ThreatNodeType.url:
+        return "[url:value = '$escaped']";
+      case ThreatNodeType.domain:
+        return "[domain-name:value = '$escaped']";
+      case ThreatNodeType.ipAddress:
+        return "[ipv4-addr:value = '$escaped']";
+      case ThreatNodeType.apkPackage:
+        return "[file:name = '$escaped']";
+      case ThreatNodeType.fileHash:
+        return "[file:hashes.'SHA-256' = '$escaped']";
+      case ThreatNodeType.phoneSender:
+        return "[x-safesignal-phone:number = '$escaped']";
+      case ThreatNodeType.upiVpa:
+        return "[x-safesignal-payment:vpa = '$escaped']";
+      case ThreatNodeType.cryptoAddress:
+        return "[cryptocurrency-wallet:address = '$escaped']";
+    }
+  }
+
+  /// Export the complete graph and evidence chain in standard OASIS STIX 2.1 format
   Map<String, dynamic> exportStixBundle() {
     final objects = <Map<String, dynamic>>[];
 
-    // Add nodes as STIX Cyber Observables (SCOs)
+    // Add nodes as STIX 2.1 Indicator objects with typed STIX patterns
     for (final node in _nodes.values) {
+      final indicatorId = 'indicator--${_generateDeterministicUuid("node_${node.id}")}';
       objects.add({
         'type': 'indicator',
         'spec_version': '2.1',
-        'id': 'indicator--${node.id}',
-        'created': node.firstSeen.toIso8601String(),
-        'modified': node.lastSeen.toIso8601String(),
+        'id': indicatorId,
+        'created': node.firstSeen.toUtc().toIso8601String(),
+        'modified': node.lastSeen.toUtc().toIso8601String(),
         'name': node.value,
         'description': 'SafeSignal Observable: ${node.type.name}',
         'confidence': node.threatScore,
+        'pattern_type': 'stix',
+        'pattern': _buildStixPattern(node.type, node.value),
+        'valid_from': node.firstSeen.toUtc().toIso8601String(),
+        'x_safesignal_observable_type': node.type.name,
+        'x_safesignal_metadata': node.metadata,
+        // Backward-compatibility key for existing unit tests
         'custom_properties': node.metadata,
       });
     }
 
-    // Add relationships
+    // Add relationships as STIX 2.1 Relationship objects
     for (final edge in _edges) {
+      final relationshipId = 'relationship--${_generateDeterministicUuid("edge_${edge.id}")}';
+      final sourceRef = 'indicator--${_generateDeterministicUuid("node_${edge.sourceNodeId}")}';
+      final targetRef = 'indicator--${_generateDeterministicUuid("node_${edge.targetNodeId}")}';
+
       objects.add({
         'type': 'relationship',
         'spec_version': '2.1',
-        'id': 'relationship--${edge.id}',
-        'created': edge.timestamp.toIso8601String(),
+        'id': relationshipId,
+        'created': edge.timestamp.toUtc().toIso8601String(),
+        'modified': edge.timestamp.toUtc().toIso8601String(),
         'relationship_type': edge.relationship,
-        'source_ref': 'indicator--${edge.sourceNodeId}',
-        'target_ref': 'indicator--${edge.targetNodeId}',
+        'source_ref': sourceRef,
+        'target_ref': targetRef,
         'confidence': (edge.confidence * 100).toInt(),
       });
     }
 
+    final bundleId = 'bundle--${_generateDeterministicUuid("bundle_${_nodes.keys.join("_")}_${_edges.length}_${_evidenceChain.length}")}';
+
     return {
       'type': 'bundle',
-      'id': 'bundle--safesignal-${DateTime.now().millisecondsSinceEpoch}',
+      'id': bundleId,
       'spec_version': '2.1',
+      // Forensic integrity metadata
       'evidence_chain_verified': verifyChainIntegrity(),
       'evidence_blocks_count': _evidenceChain.length,
       'objects': objects,

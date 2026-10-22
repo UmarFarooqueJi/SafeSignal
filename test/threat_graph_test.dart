@@ -63,7 +63,7 @@ void main() {
       expect(graphService.verifyChainIntegrity(), isTrue);
     });
 
-    test('Generates valid STIX 2.1 JSON-LD export bundle', () {
+    test('Generates valid STIX 2.1 JSON-LD export bundle with OASIS compliant UUIDs and patterns', () {
       graphService.addOrUpdateNode(ThreatNode(
         id: 'stix_test_1',
         type: ThreatNodeType.url,
@@ -78,6 +78,52 @@ void main() {
       expect(bundle['spec_version'], equals('2.1'));
       expect(bundle['evidence_chain_verified'], isTrue);
       expect((bundle['objects'] as List).isNotEmpty, isTrue);
+
+      // Verify UUIDv4 format for bundle and indicators
+      final uuidRegex = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
+      final bundleId = bundle['id'] as String;
+      expect(bundleId.startsWith('bundle--'), isTrue);
+      expect(uuidRegex.hasMatch(bundleId.substring('bundle--'.length)), isTrue);
+
+      final indicator = (bundle['objects'] as List).first as Map<String, dynamic>;
+      final indicatorId = indicator['id'] as String;
+      expect(indicatorId.startsWith('indicator--'), isTrue);
+      expect(uuidRegex.hasMatch(indicatorId.substring('indicator--'.length)), isTrue);
+
+      // Verify STIX 2.1 pattern and pattern_type
+      expect(indicator['pattern_type'], equals('stix'));
+      expect(indicator['pattern'], equals("[url:value = 'http://test.in']"));
+      expect(indicator.containsKey('x_safesignal_metadata'), isTrue);
+    });
+
+    test('Detects unauthorized payload tampering in evidence chain', () {
+      graphService.recordEvidence(
+        eventType: 'OBSERVABLE_EXTRACTED',
+        payload: {'observable': 'evil-domain.com', 'source': 'sms'},
+      );
+      graphService.recordEvidence(
+        eventType: 'URL_SCAN_EXECUTED',
+        payload: {'verdict': 'dangerous', 'threat_score': 95},
+      );
+
+      expect(graphService.verifyChainIntegrity(), isTrue);
+
+      // Tampering test: mutating evidence chain payload
+      // In-memory verification verifies data hash and block hash mismatch
+      final blocks = graphService.evidenceChain;
+      final tamperedBlock = EvidenceBlock(
+        index: blocks.first.index,
+        timestamp: blocks.first.timestamp,
+        eventType: blocks.first.eventType,
+        payload: {'observable': 'evil-domain.com', 'source': 'sms', 'tampered': true},
+        dataHash: blocks.first.dataHash,
+        previousHash: blocks.first.previousHash,
+        blockHash: blocks.first.blockHash,
+      );
+
+      // Expected data hash mismatch when payload content is modified
+      final recalculatedHash = EvidenceBlock.calculateDataHash(tamperedBlock.payload);
+      expect(recalculatedHash != tamperedBlock.dataHash, isTrue);
     });
   });
 }

@@ -137,7 +137,7 @@ class ResearchModeService {
             'Hardware-backed AES-256 encrypted document vault',
             'On-device ML Kit text recognition for screenshot audit',
             'Policy-constrained on-device agentic incident investigation',
-            'Temporal threat graph with RFC 3161 evidence chaining',
+            'Temporal threat graph with tamper-evident cryptographic hash chaining',
           ],
           technicalLimitations: [
             'Cannot terminate other background processes directly',

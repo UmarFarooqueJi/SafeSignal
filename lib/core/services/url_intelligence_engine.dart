@@ -456,8 +456,8 @@ class UrlIntelligenceEngine {
     final hasHighRiskTld = highRiskTlds.any((tld) => targetHost.endsWith(tld));
     final isSsrf = isPrivateOrReservedHost(targetHost);
     final isDropper = dangerousExtensions.any((ext) =>
-        targetUri!.path.toLowerCase().endsWith(ext) ||
-        targetUri!.query.toLowerCase().contains(ext));
+        (targetUri?.path.toLowerCase().endsWith(ext) ?? false) ||
+        (targetUri?.query.toLowerCase().contains(ext) ?? false));
     final brandSpoof = detectBrandImpersonation(targetHost);
 
     int riskDelta = 25; // Base uncertainty for unverified external destination

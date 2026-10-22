@@ -21,7 +21,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:crypto/crypto.dart';
 import 'vault_crypto_service.dart';
 import 'vault_document_viewer_screen.dart';
 

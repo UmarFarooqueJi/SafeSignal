@@ -206,7 +206,7 @@ class AgenticInvestigator {
       }
     }
 
-    // 4. Cryptographic Evidence Anchoring (RFC 3161)
+    // 4. Cryptographic Evidence Anchoring (Local Tamper-Evident Hash Chain)
     threatGraph.recordEvidence(
       eventType: 'INCIDENT_INVESTIGATION_COMPLETED',
       payload: {
