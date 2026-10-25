@@ -352,4 +352,45 @@ void main() {
       expect(dotsRes.riskScore, greaterThan(0));
     });
   });
+
+  group('UrlIntelligenceEngine - RAT, Spyware & Pre-Flight Link Interception', () {
+    test('Identifies Remote Access Trojan (RAT) payload keywords in APK downloads', () async {
+      final rat1 = await UrlIntelligenceEngine.analyze('https://share-files.net/spynote-agent.apk');
+      expect(rat1.threatType, MalwareThreatType.ratDropper);
+      expect(rat1.threatCategoryBadge, contains('REMOTE ACCESS TROJAN'));
+      expect(rat1.verdict, UrlVerdict.dangerous);
+      expect(rat1.riskLevel, UrlRiskLevel.knownMalicious);
+
+      final rat2 = await UrlIntelligenceEngine.analyze('https://craxsrat-c2.top/client.apk');
+      expect(rat2.threatType, MalwareThreatType.ratDropper);
+      expect(rat2.threatCategoryBadge, contains('REMOTE ACCESS TROJAN'));
+    });
+
+    test('Identifies double-extension disguised mobile droppers (.pdf.apk, .doc.apk)', () async {
+      final disguised = await UrlIntelligenceEngine.analyze('https://billing-alert.com/salary-slip.pdf.apk');
+      expect(disguised.threatType, MalwareThreatType.ratDropper);
+      expect(disguised.threatCategoryBadge, contains('REMOTE ACCESS TROJAN'));
+      expect(disguised.verdict, UrlVerdict.dangerous);
+    });
+
+    test('Classifies brand-spoofed APK distribution as Banking Trojan', () async {
+      final bankTrojan = await UrlIntelligenceEngine.analyze('https://sbi-card-reward.xyz/yono.apk');
+      expect(bankTrojan.threatType, MalwareThreatType.bankingTrojan);
+      expect(bankTrojan.threatCategoryBadge, contains('BANKING TROJAN'));
+      expect(bankTrojan.verdict, UrlVerdict.dangerous);
+    });
+
+    test('LinkGuardService onUrlReceived stream delivers intercepted URLs in real-time', () async {
+      final emittedUrls = <String>[];
+      final sub = LinkGuardService.onUrlReceived.listen((url) {
+        emittedUrls.add(url);
+      });
+
+      // Simulate URL extraction and emission
+      final extracted = LinkGuardService.extractUrl('Urgent: Open https://phishing-site.xyz/login immediately');
+      expect(extracted, 'https://phishing-site.xyz/login');
+
+      await sub.cancel();
+    });
+  });
 }

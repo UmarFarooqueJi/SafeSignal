@@ -346,6 +346,108 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
 
     return Column(
       children: [
+        // ── Forensic Threat Banner (RAT, Dropper, Banking Trojan, Phish, Safe) ──
+        if (result.threatCategoryBadge.isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: result.verdict == UrlVerdict.dangerous
+                    ? [const Color(0xFF3B0D0C), const Color(0xFF200507)]
+                    : result.verdict == UrlVerdict.caution
+                        ? [const Color(0xFF382505), const Color(0xFF1E1302)]
+                        : [const Color(0xFF07291B), const Color(0xFF03160D)],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: outlineColor.withValues(alpha: 0.8),
+                width: 1.8,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: outlineColor.withValues(alpha: 0.22),
+                  blurRadius: 18,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: outlineColor.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        result.threatType == MalwareThreatType.ratDropper
+                            ? Icons.bug_report_rounded
+                            : result.threatType == MalwareThreatType.bankingTrojan
+                                ? Icons.account_balance_rounded
+                                : result.threatType == MalwareThreatType.apkDropper
+                                    ? Icons.system_update_alt_rounded
+                                    : result.verdict == UrlVerdict.safe
+                                        ? Icons.verified_user_rounded
+                                        : Icons.shield_rounded,
+                        color: outlineColor,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            result.threatCategoryBadge,
+                            style: TextStyle(
+                              color: outlineColor,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13.5,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            result.verdict == UrlVerdict.dangerous
+                                ? 'Active Threat Intercepted'
+                                : result.verdict == UrlVerdict.caution
+                                    ? 'Unverified Destination'
+                                    : 'Validated Reputation',
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : Colors.black54,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (result.threatForensicDetails.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    result.threatForensicDetails,
+                    style: TextStyle(
+                      color: isDark ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF1E293B),
+                      fontSize: 13,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
 
         // ── Card 1: Site Overview ──────────────────────────────────────────────
         Container(
@@ -607,43 +709,155 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
         
         const SizedBox(height: 16),
 
-        // ── Open Link Button ──────────────────────────────────────────────────
-        Container(
-          width: double.infinity,
-          height: 60,
-          decoration: BoxDecoration(
-            color: isDark ? Colors.black : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isDark ? Colors.white30 : Colors.black26, width: 1),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () async {
-              if (result.url.isNotEmpty) {
-                final uri = Uri.parse(result.url);
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Icon(Icons.language, color: isDark ? Colors.white : Colors.black87, size: 24),
-                  Expanded(
-                    child: Center(
-                      child: Text('Open Link ↗', style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 16, fontWeight: FontWeight.w500)),
-                    ),
+        // ── Protective Action Buttons ─────────────────────────────────────────
+        if (result.verdict == UrlVerdict.dangerous || result.verdict == UrlVerdict.caution) ...[
+          Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFDC2626), Color(0xFF991B1B)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFDC2626).withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('🛑 Malicious link blocked. SafeSignal kept your device protected.'),
+                    backgroundColor: Color(0xFF16A34A),
+                    behavior: SnackBarBehavior.floating,
                   ),
-                ],
+                );
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              },
+              icon: const Icon(Icons.shield_rounded, color: Colors.white, size: 22),
+              label: const Text(
+                'Block & Abort (Recommended)',
+                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
               ),
             ),
           ),
-        ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: () => _confirmAndOpenUrl(
+              context,
+              result.url,
+              result.threatCategoryBadge.isNotEmpty ? result.threatCategoryBadge : 'High Risk Domain',
+            ),
+            icon: const Icon(Icons.open_in_new_rounded, color: Color(0xFF94A3B8), size: 18),
+            label: const Text(
+              'Proceed to Browser (Dangerous)',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, decoration: TextDecoration.underline),
+            ),
+          ),
+        ] else ...[
+          Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF059669), Color(0xFF047857)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF059669).withValues(alpha: 0.25),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () async {
+                if (result.url.isNotEmpty) {
+                  final uri = Uri.parse(result.url);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                }
+              },
+              icon: const Icon(Icons.open_in_browser_rounded, color: Colors.white, size: 22),
+              label: const Text(
+                'Open in Browser ↗',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 30),
       ],
     );
+  }
+
+  Future<void> _confirmAndOpenUrl(BuildContext context, String url, String threatBadge) async {
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F172A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 28),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Security Warning',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'SafeSignal flagged this link as:\n\n• $threatBadge\n\nOpening this destination in an external browser may trigger drive-by malware downloads, Remote Access Trojans (RATs), or steal banking credentials.\n\nAre you sure you want to proceed?',
+          style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel & Stay Safe', style: TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Proceed Anyway', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (proceed == true) {
+      final uri = Uri.tryParse(url);
+      if (uri != null && await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    }
   }
 
   Widget _cardHeader(String title, bool isDark) {

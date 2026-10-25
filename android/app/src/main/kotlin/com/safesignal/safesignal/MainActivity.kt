@@ -43,6 +43,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterFragmentActivity() {
     private val CHANNEL = "com.safesignal/app_scanner"
     private var sharedText: String? = null
+    private var appScannerChannel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -69,8 +70,21 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun handleSendIntent(intent: Intent?) {
-        if (intent?.action == Intent.ACTION_SEND && (intent.type == "text/plain" || intent.type?.startsWith("text/") == true)) {
-            sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+        val action = intent?.action
+        var extracted: String? = null
+        if (action == Intent.ACTION_SEND && (intent.type == "text/plain" || intent.type?.startsWith("text/") == true)) {
+            extracted = intent.getStringExtra(Intent.EXTRA_TEXT)
+        } else if (action == Intent.ACTION_VIEW) {
+            extracted = intent.dataString ?: intent.data?.toString()
+        }
+
+        if (!extracted.isNullOrBlank()) {
+            sharedText = extracted
+            try {
+                appScannerChannel?.invokeMethod("onUrlIntercepted", extracted)
+            } catch (e: Exception) {
+                // If FlutterEngine is not ready, getSharedText will retrieve it upon startup
+            }
         }
     }
 
@@ -266,7 +280,9 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler(appScannerHandler)
+        val scannerChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        appScannerChannel = scannerChannel
+        scannerChannel.setMethodCallHandler(appScannerHandler)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "safesignal/device").setMethodCallHandler(appScannerHandler)
 
         // ── Call Shield Channel (CallScreeningService Integration) ───────────────

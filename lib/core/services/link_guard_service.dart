@@ -1,11 +1,31 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 
 /// LinkGuardService handles interception of shared links and text from Android system
-/// intents (ACTION_SEND) via the native MethodChannel bridge.
+/// intents (ACTION_SEND and ACTION_VIEW) via the native MethodChannel bridge.
 class LinkGuardService {
   static const MethodChannel _channel = MethodChannel('com.safesignal/app_scanner');
+  static final StreamController<String> _urlController = StreamController<String>.broadcast();
 
-  /// Checks for any pending shared text passed from Android ACTION_SEND intent
+  /// Live stream of URLs intercepted in real-time while the application is active or resumed
+  static Stream<String> get onUrlReceived => _urlController.stream;
+
+  /// Initializes the native MethodChannel handler for real-time link interception
+  static void initialize() {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'onUrlIntercepted') {
+        final raw = call.arguments as String?;
+        if (raw != null && raw.trim().isNotEmpty) {
+          final extracted = extractUrl(raw.trim());
+          if (extracted != null && extracted.isNotEmpty) {
+            _urlController.add(extracted);
+          }
+        }
+      }
+    });
+  }
+
+  /// Checks for any pending shared text passed from Android ACTION_SEND or ACTION_VIEW intent
   static Future<String?> checkPendingSharedUrl() async {
     try {
       final sharedText = await _channel.invokeMethod<String?>('getSharedText');

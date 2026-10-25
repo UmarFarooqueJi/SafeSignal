@@ -10,8 +10,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/services/notification_service.dart';
 import 'features/settings/settings_screen.dart';
 
+import 'core/services/link_guard_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize LinkGuard real-time native intent listener
+  LinkGuardService.initialize();
 
   // Initialize Local Hive Storage safely
   try {

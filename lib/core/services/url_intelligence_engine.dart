@@ -26,6 +26,19 @@ enum UrlInputStatus {
   analysisError,
 }
 
+/// Granular cyber threat & payload classification
+enum MalwareThreatType {
+  clean,
+  ratDropper,
+  bankingTrojan,
+  spywareDropper,
+  apkDropper,
+  phishingScam,
+  credentialHarvester,
+  suspiciousRedirect,
+  unknownThreat,
+}
+
 /// Structured inspection detail item displayed in the SafeSignal UI
 class DomainCheckItem {
   final String name;
@@ -117,6 +130,9 @@ class UrlResult {
   final bool isExternalRedirect;
   final String riskExplanation;
   final UrlInputStatus status;
+  final MalwareThreatType threatType;
+  final String threatCategoryBadge;
+  final String threatForensicDetails;
 
   UrlResult({
     required this.url,
@@ -149,6 +165,9 @@ class UrlResult {
     this.isExternalRedirect = false,
     this.riskExplanation = '',
     this.status = UrlInputStatus.validUrl,
+    this.threatType = MalwareThreatType.clean,
+    this.threatCategoryBadge = '',
+    this.threatForensicDetails = '',
   });
 
   factory UrlResult.error(
@@ -173,6 +192,9 @@ class UrlResult {
       isExternalRedirect: false,
       riskExplanation: message,
       status: status,
+      threatType: MalwareThreatType.unknownThreat,
+      threatCategoryBadge: 'ANALYSIS NOTICE',
+      threatForensicDetails: message,
     );
   }
 }
@@ -699,6 +721,9 @@ class UrlIntelligenceEngine {
         riskLevel: UrlRiskLevel.knownMalicious,
         isExternalRedirect: false,
         riskExplanation: 'Target points to private RFC-1918 or loopback internal network address.',
+        threatType: MalwareThreatType.unknownThreat,
+        threatCategoryBadge: 'INTERNAL NETWORK TARGET (SSRF)',
+        threatForensicDetails: 'Target points to private RFC-1918 or loopback internal network address. Outbound connection blocked.',
       );
     }
 
@@ -798,10 +823,38 @@ class UrlIntelligenceEngine {
         urlPath.endsWith('.apks') ||
         RegExp(r'\.apk(?:$|[?#])').hasMatch(urlPath);
 
+    final ratSignatures = [
+      'rat', 'spynote', 'craxs', 'anatsa', 'cerberus', 'teabot', 'hydra',
+      'sova', 'alien', 'ermac', 'hook', 'vultur', 'chameleon', 'flubot',
+      'brata', 'gustuff', 'triada', 'stealer', 'keylogger', 'screenlogger',
+      'screen-share', 'remote-control', 'remote-admin', 'c2-server', 'botnet',
+      'quicksupport', 'anydesk-support', 'teamviewer-support', 'screenshare',
+      'auto-clicker', 'bank-bot'
+    ];
+
+    final isDoubleExtDropper = RegExp(
+      r'\.(?:pdf|jpg|jpeg|png|doc|docx|xls|xlsx|txt|mp4)\.(?:apk|xapk|dex|exe|sh|bin)$',
+      caseSensitive: false,
+    ).hasMatch(urlPath);
+
+    final bool hasRatKeyword = ratSignatures.any((sig) =>
+      urlPath.contains(sig) || urlQuery.contains(sig) || domain.contains(sig)
+    );
+
+    bool isRatDropper = false;
     bool isMaliciousDropper = false;
     bool isUnverifiedApk = false;
 
-    if (isDesktopExecutable) {
+    if ((isDirectApk || isDesktopExecutable) && (hasRatKeyword || isDoubleExtDropper)) {
+      isRatDropper = true;
+      isMaliciousDropper = true;
+      riskScore += 75;
+      domainChecks.insert(0, DomainCheckItem(
+        'Remote Access Trojan (RAT) Vector',
+        false,
+        'CRITICAL: Remote Access Trojan (RAT), spyware payload, or stealth double-extension executable dropper signature identified in target path.',
+      ));
+    } else if (isDesktopExecutable) {
       isMaliciousDropper = true;
       riskScore += 65;
       domainChecks.insert(0, DomainCheckItem(
@@ -972,7 +1025,8 @@ class UrlIntelligenceEngine {
     }
 
     // ─── VERDICT CALIBRATION & RISK LEVEL CLASSIFICATION ─────────────────────
-    final bool hasCriticalThreats = isMaliciousDropper ||
+    final bool hasCriticalThreats = isRatDropper ||
+        isMaliciousDropper ||
         isDesktopExecutable ||
         brandSpoof != null ||
         isHomograph ||
@@ -1000,7 +1054,7 @@ class UrlIntelligenceEngine {
 
     final UrlRiskLevel riskLevel;
     if (riskScore >= 75) {
-      riskLevel = (isMaliciousDropper || isDesktopExecutable || brandSpoof != null || isHomograph || redirectAnalysis.isTargetDropper)
+      riskLevel = (isRatDropper || isMaliciousDropper || isDesktopExecutable || brandSpoof != null || isHomograph || redirectAnalysis.isTargetDropper)
           ? UrlRiskLevel.knownMalicious
           : UrlRiskLevel.highRisk;
     } else if (riskScore >= 21) {
@@ -1012,7 +1066,9 @@ class UrlIntelligenceEngine {
     }
 
     String riskExplanation;
-    if (redirectAnalysis.hasRedirect && redirectAnalysis.isExternal) {
+    if (isRatDropper) {
+      riskExplanation = 'Remote Access Trojan (RAT) / C2 surveillance payload dropper detected.';
+    } else if (redirectAnalysis.hasRedirect && redirectAnalysis.isExternal) {
       riskExplanation = 'Potential unverified external redirect to ${redirectAnalysis.targetHost}.';
     } else if (isMaliciousDropper || isDesktopExecutable) {
       riskExplanation = 'Executable mobile/binary malware dropper detected.';
@@ -1030,6 +1086,64 @@ class UrlIntelligenceEngine {
       riskExplanation = 'Standard low-risk domain with no anomalies.';
     } else {
       riskExplanation = 'Elevated risk factors detected (${domainChecks.where((c) => c.passed == false).length} warnings).';
+    }
+
+    final MalwareThreatType threatType;
+    final String threatCategoryBadge;
+    final String threatForensicDetails;
+
+    if (isRatDropper || (hasRatKeyword && (isMaliciousDropper || hasHighRiskTld))) {
+      threatType = MalwareThreatType.ratDropper;
+      threatCategoryBadge = 'REMOTE ACCESS TROJAN (RAT) DROPPER';
+      threatForensicDetails = 'This link directly distributes a remote surveillance or Remote Access Trojan (RAT) payload designed to seize administrative device control, record screen activity, and intercept OTPs/banking credentials.';
+    } else if (isDirectApk && brandSpoof != null) {
+      threatType = MalwareThreatType.bankingTrojan;
+      threatCategoryBadge = 'BANKING TROJAN / UPI PHISHING';
+      threatForensicDetails = 'This deceptive domain impersonates a financial institution or payment service to distribute an unauthorized Android banking APK dropper.';
+    } else if (isDesktopExecutable) {
+      threatType = MalwareThreatType.apkDropper;
+      threatCategoryBadge = 'EXECUTABLE BINARY / SCRIPT DROPPER';
+      threatForensicDetails = 'URL directly delivers desktop executable or script binary payload ($urlPath). High malware dropper risk on mobile device.';
+    } else if (isDirectApk && (hasHighRiskTld || matchedUrgency.isNotEmpty)) {
+      threatType = MalwareThreatType.apkDropper;
+      threatCategoryBadge = 'MALWARE APK DROPPER';
+      threatForensicDetails = 'Android APK payload hosted alongside disposable high-risk TLD or social engineering lure. Probable malicious dropper.';
+    } else if (isUnverifiedApk) {
+      threatType = MalwareThreatType.apkDropper;
+      threatCategoryBadge = 'UNVERIFIED APK PACKAGE';
+      threatForensicDetails = 'Direct APK download detected from an unverified third-party host. Sideloading applications outside official stores carries security risks.';
+    } else if (brandSpoof != null) {
+      threatType = MalwareThreatType.phishingScam;
+      threatCategoryBadge = 'PHISHING & BRAND IMPERSONATION';
+      threatForensicDetails = brandSpoof;
+    } else if (isHomograph) {
+      threatType = MalwareThreatType.phishingScam;
+      threatCategoryBadge = 'HOMOGRAPH VISUAL DECEPTION';
+      threatForensicDetails = 'Punycode or mixed-character lookalike domain detected ($domain). High probability of visual brand spoofing.';
+    } else if (uri.userInfo.isNotEmpty) {
+      threatType = MalwareThreatType.credentialHarvester;
+      threatCategoryBadge = 'CREDENTIAL HARVESTING ATTEMPT';
+      threatForensicDetails = 'URL utilizes HTTP Basic Auth prefix (${uri.userInfo}@) to disguise real target destination: $rawHost.';
+    } else if (redirectAnalysis.hasRedirect && redirectAnalysis.isExternal) {
+      threatType = MalwareThreatType.suspiciousRedirect;
+      threatCategoryBadge = 'UNVERIFIED EXTERNAL REDIRECT';
+      threatForensicDetails = 'URL contains open redirection parameter pointing to an unverified external destination (${redirectAnalysis.targetHost}).';
+    } else if (isAllowlisted && riskScore <= 20) {
+      threatType = MalwareThreatType.clean;
+      threatCategoryBadge = 'VERIFIED AUTHENTIC & SAFE';
+      threatForensicDetails = 'Verified institutional domain with authenticated security profile.';
+    } else if (verdict == UrlVerdict.dangerous) {
+      threatType = MalwareThreatType.unknownThreat;
+      threatCategoryBadge = 'HIGH-RISK SUSPICIOUS DOMAIN';
+      threatForensicDetails = 'Multiple anomalous threat signals detected across domain registration, transport security, and host records.';
+    } else if (verdict == UrlVerdict.caution) {
+      threatType = MalwareThreatType.unknownThreat;
+      threatCategoryBadge = 'CAUTIONARY DOMAIN';
+      threatForensicDetails = 'Domain exhibits minor risk indicators or unverified reputation.';
+    } else {
+      threatType = MalwareThreatType.clean;
+      threatCategoryBadge = 'CLEAN STANDARD DOMAIN';
+      threatForensicDetails = 'No malicious indicators or spoofing patterns detected.';
     }
 
     return UrlResult(
@@ -1054,6 +1168,9 @@ class UrlIntelligenceEngine {
       redirectTargetHost: redirectAnalysis.targetHost,
       isExternalRedirect: redirectAnalysis.isExternal,
       riskExplanation: riskExplanation,
+      threatType: threatType,
+      threatCategoryBadge: threatCategoryBadge,
+      threatForensicDetails: threatForensicDetails,
     );
   }
 

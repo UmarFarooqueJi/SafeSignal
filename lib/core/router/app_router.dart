@@ -30,8 +30,22 @@ import '../../data/models/verdict_model.dart';
 import '../services/link_guard_service.dart';
 
 
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+bool _isLinkGuardSubscribed = false;
+
 final appRouterProvider = Provider<GoRouter>((ref) {
+  if (!_isLinkGuardSubscribed) {
+    _isLinkGuardSubscribed = true;
+    LinkGuardService.onUrlReceived.listen((url) {
+      final context = rootNavigatorKey.currentContext;
+      if (context != null && context.mounted) {
+        GoRouter.of(context).push('/url-scanner', extra: url);
+      }
+    });
+  }
+
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     routes: [
       GoRoute(
