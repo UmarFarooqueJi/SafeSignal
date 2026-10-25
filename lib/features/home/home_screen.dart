@@ -234,18 +234,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
           const SizedBox(height: 20),
 
-          // Big tagline — inline rich text matching reference exactly
+          // Big tagline — inline rich text with balanced typography
           RichText(
             text: TextSpan(
               style: TextStyle(
                 color: textMain,
-                fontSize: 34,
+                fontSize: 26,
                 fontWeight: FontWeight.w900,
-                height: 1.15,
-                letterSpacing: -0.5,
+                height: 1.22,
+                letterSpacing: -0.3,
               ),
               children: const [
-                TextSpan(text: 'Protect Your Digital Life, '),
+                TextSpan(text: 'Protect Your Digital Life,\n'),
                 TextSpan(
                   text: 'Get Security Alerts',
                   style: TextStyle(
@@ -268,8 +268,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildCardGrid(BuildContext context) {
     final cards = [
       _CardData(
-        title: 'App Spyware\nAudit',
-        subtitle: 'Malware Check',
+        title: 'App Spyware Audit',
+        subtitle: 'Malware & Trojan Check',
         icon: Icons.android_rounded,
         gradient: const LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -279,7 +279,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         route: '/app-scanner',
       ),
       _CardData(
-        title: 'WiFi Security\nScanner',
+        title: 'Website Analyzer',
+        subtitle: 'Phishing & RAT Radar',
+        icon: Icons.language_rounded,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [Color(0xFF0F1A0F), Color(0xFF0A2A1A)],
+        ),
+        accentColor: const Color(0xFF4ADE80),
+        route: '/url-scanner',
+      ),
+      _CardData(
+        title: 'WiFi Security Scanner',
         subtitle: 'Network Threat Alert',
         icon: Icons.wifi_password_rounded,
         gradient: const LinearGradient(
@@ -290,51 +301,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         route: '/wifi-scanner',
       ),
       _CardData(
-        title: 'Website\nAnalyzer',
-        subtitle: 'Phishing Check',
-        icon: Icons.language_rounded,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF0F1A0F), Color(0xFF0A2A1A)],
-        ),
-        accentColor: const Color(0xFF4ADE80),
-        route: '/url-scanner',
-      ),
-      _CardData(
-        title: 'Call Shield\nAnalysis',
-        subtitle: 'Spam Call Protection',
-        icon: Icons.phone_in_talk_rounded,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF0A1A2A), Color(0xFF0C2A4D)],
-        ),
-        accentColor: const Color(0xFF38BDF8),
-        route: '/call-shield',
-      ),
-      _CardData(
-        title: 'SMS Scam\nRadar',
-        subtitle: 'Fake SMS & Phishing',
-        icon: Icons.sms_failed_rounded,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF1A0A00), Color(0xFF2D1200)],
-        ),
-        accentColor: const Color(0xFFFB923C),
-        route: '/sms-inbox',
-      ),
-      _CardData(
-        title: 'Hardware\nSecurity Vault',
-        subtitle: 'AES-256 Secret Storage',
-        icon: Icons.shield_rounded,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF0B1B15), Color(0xFF0D3326)],
-        ),
-        accentColor: const Color(0xFF10B981),
-        route: '/vault',
-      ),
-      _CardData(
-        title: 'Data Breach\nCheck',
+        title: 'Data Breach Check',
         subtitle: 'Email Exposure Scan',
         icon: Icons.lock_open_rounded,
         gradient: const LinearGradient(
@@ -345,7 +312,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         route: '/email-breach',
       ),
       _CardData(
-        title: 'Digital OSINT\nFootprint',
+        title: 'Digital OSINT Footprint',
         subtitle: 'Username & Profile Recon',
         icon: Icons.person_search_rounded,
         gradient: const LinearGradient(
@@ -356,8 +323,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         route: '/social-osint',
       ),
       _CardData(
-        title: 'Scan QR & UPI\nShield',
-        subtitle: 'Safe Link & Payment Scan',
+        title: 'Scan QR & UPI Shield',
+        subtitle: 'Safe Link & Pay Scan',
         icon: Icons.qr_code_scanner_rounded,
         gradient: const LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -367,8 +334,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         route: '/qr-scanner',
       ),
       _CardData(
-        title: 'AI Threat\nCopilot',
-        subtitle: 'Ask AI Anything',
+        title: 'Hardware Security Vault',
+        subtitle: 'AES-256 Multi-Template',
+        icon: Icons.shield_rounded,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [Color(0xFF0B1B15), Color(0xFF0D3326)],
+        ),
+        accentColor: const Color(0xFF10B981),
+        route: '/vault',
+      ),
+      _CardData(
+        title: 'Call Shield Analysis',
+        subtitle: 'Spam Call Protection',
+        icon: Icons.phone_in_talk_rounded,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [Color(0xFF0A1A2A), Color(0xFF0C2A4D)],
+        ),
+        accentColor: const Color(0xFF38BDF8),
+        route: '/call-shield',
+      ),
+      _CardData(
+        title: 'SMS Scam Radar',
+        subtitle: 'Fake SMS & OTP Guard',
+        icon: Icons.sms_failed_rounded,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [Color(0xFF1A0A00), Color(0xFF2D1200)],
+        ),
+        accentColor: const Color(0xFFFB923C),
+        route: '/sms-inbox',
+      ),
+      _CardData(
+        title: 'AI Threat Copilot',
+        subtitle: 'On-Device Cyber Assistant',
         icon: Icons.smart_toy_rounded,
         gradient: const LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -378,8 +378,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         route: '/chat',
       ),
       _CardData(
-        title: 'Incident\nResponse',
-        subtitle: 'Emergency Protocol',
+        title: 'Incident Response',
+        subtitle: 'Emergency 1930 Protocol',
         icon: Icons.bolt_rounded,
         gradient: const LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -399,7 +399,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 0.95,
+          childAspectRatio: 0.98,
         ),
         itemCount: cards.length,
         itemBuilder: (context, i) => _FeatureCard(data: cards[i]),
@@ -689,15 +689,15 @@ class _FeatureCardState extends State<_FeatureCard>
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Icon directly rendered without any square box — centered with accent glow
+                        // Icon directly rendered with accent glow
                         Icon(
                           widget.data.icon,
-                          size: 38,
+                          size: 34,
                           color: widget.data.accentColor,
                           shadows: [
                             Shadow(
                               color: widget.data.accentColor.withValues(alpha: 0.38),
-                              blurRadius: 12,
+                              blurRadius: 10,
                               offset: const Offset(0, 2),
                             ),
                           ],
@@ -705,18 +705,23 @@ class _FeatureCardState extends State<_FeatureCard>
 
                         const SizedBox(height: 8),
 
-                        // Title
-                        Text(
-                          widget.data.title,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                            height: 1.25,
-                            letterSpacing: -0.2,
+                        // Title with uniform normalized height to keep all cards perfectly aligned
+                        SizedBox(
+                          height: 36,
+                          child: Center(
+                            child: Text(
+                              widget.data.title,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
                           ),
                         ),
 

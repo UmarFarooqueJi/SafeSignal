@@ -12,6 +12,7 @@ import '../../features/verdict/verdict_screen.dart';
 import '../../features/feed/feed_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/url_scanner/url_scanner_screen.dart';
+import '../../features/url_scanner/in_app_browser_screen.dart';
 import '../../features/wifi_scanner/wifi_scanner_screen.dart';
 import '../../features/app_scanner/app_scanner_screen.dart';
 import '../../features/home/otp_guard_screen.dart';
@@ -98,6 +99,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final initialUrl = state.extra as String? ?? state.uri.queryParameters['url'];
           return UrlScannerScreen(initialUrl: initialUrl);
+        },
+      ),
+      GoRoute(
+        path: '/in-app-browser',
+        builder: (context, state) {
+          final url = state.extra as String? ?? state.uri.queryParameters['url'] ?? 'https://google.com';
+          return InAppBrowserScreen(url: url);
         },
       ),
       GoRoute(

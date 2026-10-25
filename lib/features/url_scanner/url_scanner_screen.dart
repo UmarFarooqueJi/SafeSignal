@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/url_intelligence_engine.dart';
 import '../../core/services/link_guard_service.dart';
+import 'in_app_browser_screen.dart';
 
 class UrlScannerScreen extends StatefulWidget {
   final String? initialUrl;
@@ -833,17 +834,13 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                 shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
-              onPressed: () async {
-                final uri = Uri.tryParse(result.url);
-                if (uri != null) {
-                  try {
-                    final launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
-                    if (!launched) {
-                      await launchUrl(uri, mode: LaunchMode.inAppWebView);
-                    }
-                  } catch (_) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
+              onPressed: () {
+                if (result.url.isNotEmpty) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => InAppBrowserScreen(url: result.url),
+                    ),
+                  );
                 }
               },
               icon: const Icon(Icons.shield_outlined, color: Colors.black, size: 22),
@@ -1064,7 +1061,16 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(flex: 2, child: Text(label, style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 14, fontWeight: FontWeight.w600))),
-          Expanded(flex: 3, child: Text(value, style: TextStyle(color: valueColor, fontSize: 14, fontWeight: FontWeight.bold), textAlign: TextAlign.right, overflow: TextOverflow.ellipsis)),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: TextStyle(color: valueColor, fontSize: 13.5, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.right,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
