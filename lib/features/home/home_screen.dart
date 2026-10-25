@@ -50,7 +50,67 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final pendingUrl = await LinkGuardService.checkPendingSharedUrl();
     if (pendingUrl != null && pendingUrl.isNotEmpty && mounted) {
       context.push('/url-scanner', extra: pendingUrl);
+      return;
     }
+
+    // Inspect clipboard for copied links (e.g. copied from WhatsApp)
+    final clipUrl = await LinkGuardService.checkClipboardUrl();
+    if (clipUrl != null && clipUrl.isNotEmpty && mounted) {
+      _showCopiedLinkBanner(clipUrl);
+    }
+  }
+
+  void _showCopiedLinkBanner(String url) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF0F172A),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF00E676), width: 1.2),
+        ),
+        duration: const Duration(seconds: 8),
+        content: Row(
+          children: [
+            const Icon(Icons.link_rounded, color: Color(0xFF00E676), size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Link Copied from External App',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  Text(
+                    url,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        action: SnackBarAction(
+          label: 'Scan Now',
+          textColor: const Color(0xFF00E676),
+          onPressed: () {
+            context.push('/url-scanner', extra: url);
+          },
+        ),
+      ),
+    );
   }
 
   @override

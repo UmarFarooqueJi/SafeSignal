@@ -56,13 +56,19 @@ class _FeedScreenState extends State<FeedScreen> {
       final dio = Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 12),
         receiveTimeout: const Duration(seconds: 14),
+        headers: {
+          'User-Agent':
+              'Mozilla/5.0 (Linux; Android 11; RMX3268) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+          'Accept':
+              'application/rss+xml, application/xml, text/xml, application/json, */*',
+        },
       ));
 
       final allParsed = <AlertModel>[];
 
-      // 1. Direct Indian Cyber Threat Google News RSS XML (Air-gapped friendly, keyless, zero rate-limit)
+      // 1. Direct Indian Cyber Threat Google News RSS XML
       try {
-        const directRss = 'https://news.google.com/rss/search?q=cyber+scam+OR+fraud+OR+"digital+arrest"+india&hl=en-IN&gl=IN&ceid=IN:en';
+        const directRss = 'https://news.google.com/rss/search?q=cyber+crime+india+OR+"digital+arrest"+OR+"online+fraud"+when:7d&hl=en-IN&gl=IN&ceid=IN:en';
         final rssRes = await dio.get(
           directRss,
           options: Options(responseType: ResponseType.plain),
@@ -74,32 +80,38 @@ class _FeedScreenState extends State<FeedScreen> {
           }
         }
       } catch (e) {
-        debugPrint('[FeedScreen] Direct RSS XML failed: $e, trying aggregator fallback');
+        debugPrint('[FeedScreen] Direct Google News RSS failed: $e');
       }
 
-      // 2. Secondary public RSS-to-JSON aggregators
+      // 2. High-signal cybersecurity RSS feeds
       try {
-        final inQuery = Uri.encodeComponent('https://news.google.com/rss/search?q=cyber+scam+OR+fraud+OR+"digital+arrest"+india&hl=en-IN&gl=IN&ceid=IN:en');
-        final thnQuery = Uri.encodeComponent('https://feeds.feedburner.com/TheHackersNews');
-
-        final rssResults = await Future.wait([
-          dio.get('https://api.rss2json.com/v1/api.json?rss_url=$inQuery').catchError((_) => Response(requestOptions: RequestOptions(), statusCode: 500)),
-          dio.get('https://api.rss2json.com/v1/api.json?rss_url=$thnQuery').catchError((_) => Response(requestOptions: RequestOptions(), statusCode: 500)),
-        ]);
-
-        final allItems = <dynamic>[];
-        for (final r in rssResults) {
-          if (r.statusCode == 200 && r.data != null && r.data['status'] == 'ok') {
-            final items = r.data['items'] as List? ?? [];
-            allItems.addAll(items);
+        const thnRss = 'https://feeds.feedburner.com/TheHackersNews';
+        final thnRes = await dio.get(
+          thnRss,
+          options: Options(responseType: ResponseType.plain),
+        );
+        if (thnRes.statusCode == 200 && thnRes.data != null) {
+          final fromXml = _NewsDataParser.parseRssXml(thnRes.data.toString());
+          if (fromXml.isNotEmpty) {
+            allParsed.addAll(fromXml);
           }
         }
-        if (allItems.isNotEmpty) {
-          final fromJson = _NewsDataParser.parse(allItems);
-          allParsed.addAll(fromJson);
-        }
       } catch (e) {
-        debugPrint('[FeedScreen] Aggregator fetch failed: $e');
+        debugPrint('[FeedScreen] THN RSS failed: $e');
+      }
+
+      // 3. Fallback to public RSS JSON gateway if XML was blocked
+      if (allParsed.isEmpty) {
+        try {
+          final inQuery = Uri.encodeComponent('https://news.google.com/rss/search?q=cyber+scam+OR+fraud+OR+"digital+arrest"+india&hl=en-IN&gl=IN&ceid=IN:en');
+          final r = await dio.get('https://api.rss2json.com/v1/api.json?rss_url=$inQuery');
+          if (r.statusCode == 200 && r.data != null && r.data['status'] == 'ok') {
+            final items = r.data['items'] as List? ?? [];
+            if (items.isNotEmpty) {
+              allParsed.addAll(_NewsDataParser.parse(items));
+            }
+          }
+        } catch (_) {}
       }
 
       // Deduplicate by headline
@@ -703,6 +715,42 @@ class _NewsDataParser {
         .trim();
   }
 
+  static DateTime _parseDate(String? raw, int fallbackHours) {
+    final now = DateTime.now();
+    if (raw == null || raw.trim().isEmpty) {
+      return now.subtract(Duration(hours: fallbackHours));
+    }
+    final str = raw.trim();
+
+    // 1. Try ISO 8601
+    final iso = DateTime.tryParse(str);
+    if (iso != null) return iso;
+
+    // 2. Try RFC 822 / RFC 1123 (e.g. "Sun, 25 Oct 2026 07:15:23 GMT" or "25 Oct 2026 07:15:23 +0530")
+    try {
+      const months = {
+        'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+        'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+      };
+      final match = RegExp(
+        r'(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?',
+      ).firstMatch(str);
+
+      if (match != null) {
+        final day = int.parse(match.group(1)!);
+        final monthStr = match.group(2)!.toLowerCase();
+        final year = int.parse(match.group(3)!);
+        final hour = int.parse(match.group(4)!);
+        final minute = int.parse(match.group(5)!);
+        final second = int.tryParse(match.group(6) ?? '0') ?? 0;
+        final month = months[monthStr] ?? 1;
+        return DateTime(year, month, day, hour, minute, second);
+      }
+    } catch (_) {}
+
+    return now.subtract(Duration(hours: fallbackHours));
+  }
+
   static List<AlertModel> parse(List results) {
     final list = <AlertModel>[];
     final seenIds = <String>{};
@@ -748,12 +796,7 @@ class _NewsDataParser {
       }
       if (source.isEmpty) source = 'Cyber News';
 
-      DateTime publishedAt;
-      try {
-        publishedAt = DateTime.parse(pubDateStr ?? '');
-      } catch (_) {
-        publishedAt = now.subtract(Duration(hours: count * 2));
-      }
+      final publishedAt = _parseDate(pubDateStr, count * 2);
 
       // isNew: published within last 24 hours
       final isNew = now.difference(publishedAt).inHours < 24;
@@ -818,13 +861,7 @@ class _NewsDataParser {
       final pubDateMatch = RegExp(r'<pubDate>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</pubDate>', caseSensitive: false).firstMatch(block);
       final pubDateStr = pubDateMatch?.group(1)?.trim();
 
-      DateTime publishedAt;
-      try {
-        publishedAt = DateTime.parse(pubDateStr ?? '');
-      } catch (_) {
-        publishedAt = now.subtract(Duration(hours: count * 2));
-      }
-
+      final publishedAt = _parseDate(pubDateStr, count);
       final isNew = now.difference(publishedAt).inHours < 48;
 
       final lowerText = '${title.toLowerCase()} ${description.toLowerCase()}';

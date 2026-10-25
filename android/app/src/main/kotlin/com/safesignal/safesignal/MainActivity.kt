@@ -276,6 +276,76 @@ class MainActivity : FlutterFragmentActivity() {
                     sharedText = null
                     result.success(text)
                 }
+                "isBrowserRoleHeld" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val roleManager = getSystemService(Context.ROLE_SERVICE) as? RoleManager
+                        result.success(roleManager?.isRoleHeld(RoleManager.ROLE_BROWSER) == true)
+                    } else {
+                        result.success(false)
+                    }
+                }
+                "requestBrowserRole" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val roleManager = getSystemService(Context.ROLE_SERVICE) as? RoleManager
+                        if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_BROWSER)) {
+                            if (!roleManager.isRoleHeld(RoleManager.ROLE_BROWSER)) {
+                                val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_BROWSER)
+                                startActivityForResult(intent, 9022)
+                                result.success(true)
+                            } else {
+                                result.success(true)
+                            }
+                        } else {
+                            openDefaultApps()
+                            result.success(true)
+                        }
+                    } else {
+                        openDefaultApps()
+                        result.success(true)
+                    }
+                }
+                "openDefaultAppsSettings" -> {
+                    openDefaultApps()
+                    result.success(true)
+                }
+                "openUrlInSystemBrowser" -> {
+                    val url = call.argument<String>("url")
+                    if (!url.isNullOrBlank()) {
+                        try {
+                            val uri = android.net.Uri.parse(url)
+                            val viewIntent = Intent(Intent.ACTION_VIEW, uri)
+                            val pm = packageManager
+                            val resolved = pm.queryIntentActivities(viewIntent, PackageManager.MATCH_DEFAULT_ONLY)
+                            var targetPkg: String? = null
+                            for (info in resolved) {
+                                val p = info.activityInfo.packageName
+                                if (p != packageName && (p.contains("chrome") || p.contains("browser") || p.contains("firefox") || p.contains("opera") || p.contains("edge") || p.contains("samsung"))) {
+                                    targetPkg = p
+                                    break
+                                }
+                            }
+                            if (targetPkg == null) {
+                                for (info in resolved) {
+                                    val p = info.activityInfo.packageName
+                                    if (p != packageName) {
+                                        targetPkg = p
+                                        break
+                                    }
+                                }
+                            }
+                            if (targetPkg != null) {
+                                viewIntent.setPackage(targetPkg)
+                            }
+                            viewIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            startActivity(viewIntent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("LAUNCH_FAILED", e.message, null)
+                        }
+                    } else {
+                        result.error("INVALID_ARGUMENT", "URL is required", null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
@@ -991,5 +1061,23 @@ class MainActivity : FlutterFragmentActivity() {
             "deviceAdmins" to activeAdminsList,
             "sideloadAllowedApps" to sideloadAllowedApps
         )
+    }
+
+    private fun openDefaultApps() {
+        try {
+            val intent = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            try {
+                val intent = Intent(Settings.ACTION_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(intent)
+            } catch (e2: Exception) {
+                e2.printStackTrace()
+            }
+        }
     }
 }

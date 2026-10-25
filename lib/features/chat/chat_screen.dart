@@ -21,6 +21,7 @@ class ChatMessage {
   final bool isLoading;
   final VerdictModel? verdict;
   final File? image;
+  final String? ocrText;
 
   const ChatMessage({
     required this.text,
@@ -28,6 +29,7 @@ class ChatMessage {
     this.isLoading = false,
     this.verdict,
     this.image,
+    this.ocrText,
   });
 }
 
@@ -59,8 +61,8 @@ class ChatNotifier extends Notifier<List<ChatMessage>> {
 
     // Loading indicator
     final loadingText = image != null
-        ? (language == 'hi' ? 'Screenshot scan ho raha hai... 🔍' : 'Scanning screenshot with AI... 🔍')
-        : (language == 'hi' ? 'AI jaanch ho rahi hai... 🔍' : 'AI is analyzing... 🔍');
+        ? (language == 'hi' ? 'Screenshot ka on-device OCR scan ho raha hai... 🔍' : 'Scanning screenshot with on-device OCR... 🔍')
+        : (language == 'hi' ? 'AI cyber jaanch ho rahi hai... 🔍' : 'Analyzing cyber threat intelligence... 🔍');
     state = [
       ...state,
       ChatMessage(text: loadingText, isUser: false, isLoading: true),
@@ -70,9 +72,16 @@ class ChatNotifier extends Notifier<List<ChatMessage>> {
     String? ocrText;
 
     try {
-      // 1. If image is provided, run real on-device OCR to extract all visible text from the screenshot
+      // 1. If image is provided, run real on-device dual-script OCR (Devanagari + Latin)
       if (image != null) {
         ocrText = await _extractTextFromImage(image);
+        // Bind OCR extracted text to the user's message in state for instant UI visibility
+        final userIdx = state.indexOf(userMsg);
+        if (userIdx != -1) {
+          final updated = List<ChatMessage>.from(state);
+          updated[userIdx] = ChatMessage(text: text, isUser: true, image: image, ocrText: ocrText);
+          state = updated;
+        }
       }
 
       final hasCloudKey = !AppConstants.isAirGappedMode &&
@@ -134,31 +143,53 @@ User Note / Query: ${text.isEmpty || text == '[Screenshot Analysis Request]' ? '
   }
 
   /// On-Device Private OCR Text Extraction for uploaded screenshots (Zero Cloud Egress)
+  /// Runs Devanagari script model first (handles Hindi + Latin), supplements with Latin model if needed.
   static Future<String> _extractTextFromImage(File image) async {
+    final lines = <String>[];
+    final inputImage = InputImage.fromFilePath(image.path);
+
+    // 1. Try Devanagiri Script Recognizer (handles Hindi, Devanagari + Latin numbers/words)
     try {
-      final inputImage = InputImage.fromFilePath(image.path);
-      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      final devRecognizer = TextRecognizer(script: TextRecognitionScript.devanagiri);
       try {
-        final recognizedText = await textRecognizer.processImage(inputImage);
-        final lines = <String>[];
+        final recognizedText = await devRecognizer.processImage(inputImage);
         for (final block in recognizedText.blocks) {
           for (final line in block.lines) {
             final t = line.text.trim();
-            if (t.isNotEmpty) lines.add(t);
+            if (t.isNotEmpty && !lines.contains(t)) lines.add(t);
           }
         }
-        if (lines.isNotEmpty) {
-          final result = lines.join('\n').trim();
-          debugPrint('[ChatOCR] Successfully extracted ${lines.length} lines, total length: ${result.length}');
-          return result;
-        }
-        final parsed = recognizedText.text.trim();
-        if (parsed.isNotEmpty) return parsed;
       } finally {
-        await textRecognizer.close();
+        await devRecognizer.close();
       }
     } catch (e) {
-      debugPrint('[ChatOCR] On-device OCR processing error: $e. Ensuring zero cloud leakage.');
+      debugPrint('[ChatOCR] Devanagari recognizer note: $e');
+    }
+
+    // 2. If Devanagari returned empty or sparse lines, supplement with Latin recognizer
+    if (lines.isEmpty || lines.join(' ').length < 25) {
+      try {
+        final latinRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+        try {
+          final recognizedText = await latinRecognizer.processImage(inputImage);
+          for (final block in recognizedText.blocks) {
+            for (final line in block.lines) {
+              final t = line.text.trim();
+              if (t.isNotEmpty && !lines.contains(t)) lines.add(t);
+            }
+          }
+        } finally {
+          await latinRecognizer.close();
+        }
+      } catch (e) {
+        debugPrint('[ChatOCR] Latin recognizer note: $e');
+      }
+    }
+
+    if (lines.isNotEmpty) {
+      final result = lines.join('\n').trim();
+      debugPrint('[ChatOCR] Successfully extracted ${lines.length} lines, total length: ${result.length}');
+      return result;
     }
     return '';
   }
@@ -531,7 +562,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
     final isHindi = language == 'hi';
 
     // 1. Dynamic Greeting Detection
-    if (lower == 'hi' || lower == 'hello' || lower == 'hey' || lower.contains('namaste') || lower.contains('kaise ho') || lower == 'salam') {
+    if (lower == 'hi' || lower == 'hello' || lower == 'hey' || lower.contains('namaste') || lower.contains('kaise ho') || lower == 'salam' || lower == 'shuru') {
       return VerdictModel(
         checkId: 'local_${DateTime.now().millisecondsSinceEpoch}',
         verdict: 'INFO',
@@ -539,9 +570,9 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
         scamType: 'Greeting',
         escalated: false,
         why: isHindi ? [
-          'Namaste! Main SafeSignal AI cyber security expert hoon.\n\nMain aapko online fraud, fake banking SMS, phishing link, digital arrest call aur Android spyware se bachane ke liye on-device intelligence par kaam karta hoon.\n\nAap mujhse koi bhi sawaal pooch sakte hain ya koi suspicious message yahan paste kar sakte hain!'
+          'Namaste! Main SafeSignal AI cyber security expert hoon.\n\nMain aapko online fraud, fake banking SMS, phishing link, digital arrest call, WhatsApp hijacking aur Android spyware se bachane ke liye on-device intelligence par kaam karta hoon.\n\nAap mujhse koi bhi sawaal pooch sakte hain ya koi suspicious message yahan paste kar sakte hain!'
         ] : [
-          'Hello! I am SafeSignal AI, your on-device cybersecurity specialist.\n\nI protect you against online fraud, phishing links, fake bank SMS, digital arrest threats, and Android stalkerware.\n\nAsk me any question or paste any suspicious message or link here!'
+          'Hello! I am SafeSignal AI, your on-device cybersecurity specialist.\n\nI protect you against online fraud, phishing links, fake bank SMS, digital arrest threats, WhatsApp hijacking, and Android spyware.\n\nAsk me any question or paste any suspicious message or link here!'
         ],
         whatToDo: [],
         language: language,
@@ -554,7 +585,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
     }
 
     // 2. Identity / Developer / Architecture Queries
-    if (lower.contains('umar farooque') || lower.contains('umar') || lower.contains('farooque') || lower.contains('developer') || lower.contains('banaya') || lower.contains('kisne') || lower.contains('who made') || lower.contains('author')) {
+    if (lower.contains('umar farooque') || lower.contains('umar') || lower.contains('farooque') || lower.contains('developer') || lower.contains('banaya') || lower.contains('kisne') || lower.contains('who made') || lower.contains('author') || lower.contains('github') || lower.contains('open source')) {
       return VerdictModel(
         checkId: 'local_${DateTime.now().millisecondsSinceEpoch}',
         verdict: 'INFO',
@@ -562,7 +593,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
         scamType: 'Developer Info',
         escalated: false,
         why: isHindi ? [
-          'Umar Farooque SafeSignal ke lead developer aur cybersecurity researcher hain, jinhone is application ko citizen digital protection aur open-source threat intelligence ke liye build kiya hai.\n\nSafeSignal ek 100% open-source, air-gapped, on-device cyber defense suite hai jo bina kisi cloud leak ke kaam karta hai.'
+          'Umar Farooque SafeSignal ke lead developer aur cybersecurity researcher hain, jinhone is application ko citizen digital protection aur open-source threat intelligence ke liye build kiya hai.\n\nSafeSignal ek 100% open-source, air-gapped, on-device cyber defense suite hai jo bina kisi cloud leak ke kaam karta hai aur user privacy ki 100% guarantee deta hai.'
         ] : [
           'Umar Farooque is the lead developer and cybersecurity researcher behind SafeSignal, building open-source intelligence and citizen defense systems.\n\nSafeSignal is a 100% open-source, air-gapped, on-device cyber defense suite operating with zero private cloud leakage.'
         ],
@@ -576,7 +607,337 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 3. Digital Arrest Query & Guidance
+    // 3. Phone Hacked / Spyware / RAT / Stalkerware Signs & Removal
+    if (lower.contains('phone hack') || lower.contains('hack ho gaya') || lower.contains('spyware') || lower.contains('stalkerware') || lower.contains('virus') || lower.contains('phone tap') || lower.contains('tapped') || lower.contains('battery jaldi') || lower.contains('phone garam') || lower.contains('rat ') || lower.contains('trojan') || lower.contains('unknown app') || lower.contains('screen apne aap') || lower.contains('remote access') || lower.contains('phone safe hai')) {
+      return VerdictModel(
+        checkId: 'local_hack_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'INFO',
+        confidence: 0.98,
+        scamType: isHindi ? 'Device Compromise & Spyware Audit' : 'Device Compromise & Spyware Audit',
+        escalated: false,
+        why: isHindi ? [
+          'Agar aapko lagta hai ki aapka phone hack ya monitor ho raha hai, toh ye 5 pramukh sanket check karein:\n\n'
+          '• Battery ka achanak bahut tezi se khatam hona aur phone bina use kiye garam hona.\n'
+          '• Data usage ka achanak spike hona (background mein audio/video/screen upload hona).\n'
+          '• Calls ke dauran ajeeb echo, beep ya clicking aawazein aana.\n'
+          '• Keyboard par typing lag ya screen ka apne aap touch hona.'
+        ] : [
+          'If you suspect device surveillance or malware infection, verify these 5 telemetry signs:\n\n'
+          '• Rapid battery depletion coupled with unexpected device thermal spikes during idle.\n'
+          '• Massive unaccounted background data transmission (exfiltrating media/screen captures).\n'
+          '• In-call audio anomalies (beeps, continuous echoes, remote clicks).\n'
+          '• Ghost touches or keyboard input latency caused by remote overlays.'
+        ],
+        whatToDo: isHindi ? [
+          'Turant Airplane Mode ON karein taaki spyware ka internet link cut ho jaye',
+          'Settings > Apps > Special App Access > Accessibility check karein aur anjaan apps ko band karein',
+          'Settings > Security > Device Admin Apps mein jakar unauthorized admin apps remove karein',
+          'Files / Downloads folder se sabhi anjaan .APK files delete karein',
+          'SafeSignal ke App Scanner se sabhi installed apps ki permission audit karein',
+        ] : [
+          'Enable Airplane Mode immediately to terminate remote C2 server connections',
+          'Inspect Settings > Accessibility Services and revoke privileges from any unverified apps',
+          'Audit Settings > Security > Device Admin Apps and disable unauthorized managers',
+          'Delete all unsolicited .APK downloads from storage',
+          'Execute a full audit using SafeSignal\'s On-Device App Scanner',
+        ],
+        trendNote: isHindi ? 'Android stalkerware accessibility permissions ka durupyog karta hai.' : 'Stalkerware relies primarily on abused Accessibility Services.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device security assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 4. WhatsApp Call Forwarding / Hijacking (*401* Scam)
+    if (lower.contains('*401*') || lower.contains('*21*') || lower.contains('*62*') || lower.contains('*67*') || lower.contains('call forward') || lower.contains('forwarding') || lower.contains('whatsapp hack') || lower.contains('whatsapp hijack') || lower.contains('##002#') || lower.contains('call diver')) {
+      return VerdictModel(
+        checkId: 'local_fwd_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.99,
+        scamType: isHindi ? 'Call Forwarding / WhatsApp Hijack Scam' : 'Call Forwarding WhatsApp Hijack Racket',
+        escalated: true,
+        why: isHindi ? [
+          'DANGER: *401* ek USSD code hai jo aapki sabhi incoming calls ko scammer ke phone par unconditional forward kar deta hai!',
+          'Scammer aksar delivery boy, courier agent ya SIM company ban kar call karte hain aur kehte hain: "*401* ke baad ye number dial karo."',
+          'Jaise hi aap dial karte hain, aapke OTP aur WhatsApp verification voice calls scammer ke paas chale jaate hain aur wo aapka WhatsApp apne phone mein chala lete hain.',
+        ] : [
+          'CRITICAL THREAT: *401* is a telecom USSD code that enables unconditional call forwarding to the attacker\'s phone.',
+          'Attackers impersonate delivery drivers or telecom customer care, asking you to dial *401*<mobile_number>.',
+          'Once dialed, all incoming voice OTPs and WhatsApp login verification calls are intercepted by the scammer, triggering an instant account hijack.',
+        ],
+        whatToDo: isHindi ? [
+          'Turant phone dialer kholein aur ##002# dial karein (ye sabhi call forwardings ko cancel karta hai)',
+          'WhatsApp Settings > Linked Devices par jakar sabhi unknown sessions ko log out karein',
+          'WhatsApp Settings > Account > Two-Step Verification par jakar 6-digit PIN lagayein',
+          'Kisi ke kehne par kabhi bhi *401* ya *21* dial na karein',
+        ] : [
+          'Open Phone dialer and immediately dial ##002# to disable all unconditional and conditional call forwarding',
+          'Go to WhatsApp > Linked Devices and log out of all active web/desktop sessions',
+          'Navigate to WhatsApp Settings > Account > Two-Step Verification and set a 6-digit PIN',
+          'Never dial *401* or *21* codes under any circumstances',
+        ],
+        trendNote: isHindi ? 'Ye scam pure desh mein WhatsApp takeover ke liye sabse zyada use ho raha hai.' : 'Most rampant mobile takeover vector in India.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai. Zaruri maamlon mein 1930 pe call karein.' : 'SafeSignal is an on-device security assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 5. Lost / Stolen Phone / CEIR Portal Blocking Procedure
+    if (lower.contains('phone kho gaya') || lower.contains('phone chori') || lower.contains('lost phone') || lower.contains('stolen phone') || lower.contains('ceir') || lower.contains('imei block') || lower.contains('phone mil nahi') || lower.contains('mobile chori')) {
+      return VerdictModel(
+        checkId: 'local_ceir_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'INFO',
+        confidence: 0.99,
+        scamType: isHindi ? 'Lost / Stolen Phone Defense (CEIR)' : 'Lost / Stolen Mobile Response (CEIR)',
+        escalated: false,
+        why: isHindi ? [
+          'Agar aapka phone kho gaya ya chori ho gaya hai, toh Bharat Sarkar ke CEIR (Central Equipment Identity Register) portal se aap pure desh ke sabhi telecom networks par us phone ko permanently block kar sakte hain.',
+          'Block karne ke baad chor agar naya SIM bhi daalega, tab bhi phone kaam nahi karega aur police ko uski location mil jayegi.'
+        ] : [
+          'The Government of India\'s CEIR (Central Equipment Identity Register) portal allows citizens to blacklist lost/stolen handsets nationwide.',
+          'Once blacklisted, the device is barred across all Indian telecom networks (Jio, Airtel, Vi, BSNL) even if a new SIM card is inserted.'
+        ],
+        whatToDo: isHindi ? [
+          'Step 1: Telecom operator (Jio/Airtel/Vi) ko call karke purana SIM turant block karwayein aur duplicate SIM lein',
+          'Step 2: Apne nazdiki police station ya state police portal par Lost Phone ki e-FIR / Complaint darj karein',
+          'Step 3: ceir.sancharsaathi.gov.in par jayein > "Block Stolen/Lost Mobile" par click karein',
+          'Step 4: Phone ke dono IMEI numbers aur police complaint copy upload karke phone block karein',
+          'Step 5: Google Find My Device (android.com/find) se remote erase trigger karein',
+        ] : [
+          'Step 1: Contact your carrier (Jio/Airtel/Vi) to immediately block the lost SIM and issue a duplicate',
+          'Step 2: File an e-FIR / police lost report to receive an official complaint number',
+          'Step 3: Visit ceir.sancharsaathi.gov.in and click "Block Stolen/Lost Mobile"',
+          'Step 4: Submit IMEI 1 & 2 along with the police complaint receipt',
+          'Step 5: Remotely wipe sensitive credentials via Google Find My Device (android.com/find)',
+        ],
+        trendNote: isHindi ? 'DoT aur Sanchar Saathi dwara sanchalit official portal.' : 'Managed by Department of Telecommunications (DoT).',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device security assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 6. Bank Account Debited / Money Lost / Panic Recovery (Golden Hour Protocol)
+    if (lower.contains('paise cut gaye') || lower.contains('paisa cut gaya') || lower.contains('fraud ho gaya') || lower.contains('paisa chala gaya') || lower.contains('account khali') || lower.contains('debit ho gaya') || lower.contains('scam ho gaya') || lower.contains('paise wapas') || lower.contains('paisa phas gaya') || lower.contains('refund kaise')) {
+      return VerdictModel(
+        checkId: 'local_debit_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.99,
+        scamType: isHindi ? 'Financial Cyber Fraud Emergency' : 'Financial Cyber Fraud Emergency Response',
+        escalated: true,
+        why: isHindi ? [
+          'EMERGENCY GOLDEN HOUR: Online financial fraud mein shuruati 2 ghante sabse critical hote hain.',
+          'MHA ka CFCFRMS system (1930 helpline) turant fraud transaction ke recipient accounts par lien (freeze) laga sakta hai taaki paisa aage withdraw na ho sake.',
+          'Agar aap jaldi action lenge toh aapka 100% paisa wapas milne ke chances hote hain.'
+        ] : [
+          'GOLDEN HOUR PROTOCOL: The initial 2 hours post-fraud are crucial for financial recovery.',
+          'MHA\'s Citizen Financial Cyber Fraud Reporting System (CFCFRMS via 1930) can instantly invoke automated banking liens to freeze stolen funds before ATM withdrawal.',
+          'Rapid response drastically increases the probability of complete capital restoration.'
+        ],
+        whatToDo: isHindi ? [
+          '1. Turant 1930 National Cybercrime Helpline par call karein aur UTR number, bank details batayein',
+          '2. Apne bank ke 24x7 helpline par call karke NetBanking aur UPI services freeze karwayein',
+          '3. cybercrime.gov.in par jakar formal acknowledgment number ke sath incident complete karein',
+          '4. Bank branch jakar dispute form (chargeback request) submit karein',
+        ] : [
+          '1. Dial 1930 immediately with Transaction UTR, timestamp, and beneficiary details',
+          '2. Contact your bank\'s 24x7 toll-free emergency desk to freeze compromised cards/UPI',
+          '3. Finalize incident submission at cybercrime.gov.in for formal FIR generation',
+          '4. Visit your home bank branch to file an official unauthorized transaction dispute',
+        ],
+        trendNote: isHindi ? 'Golden Hour mein 1930 par call karne se hazaron crore bachaye gaye hain.' : 'Prompt 1930 reporting prevents multi-hop account dispersion.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai. Turant 1930 par call karein.' : 'SafeSignal is an on-device security assistant. Dial 1930 immediately.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 7. Sextortion / Video Call Blackmail
+    if (lower.contains('sextortion') || lower.contains('video call blackmail') || lower.contains('nude video') || lower.contains('blackmail') || lower.contains('morphed') || lower.contains('recording bhej raha') || lower.contains('viral karne') || lower.contains('delhi police video')) {
+      return VerdictModel(
+        checkId: 'local_sex_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.99,
+        scamType: isHindi ? 'Sextortion Video Blackmail Advisory' : 'Sextortion Video Blackmail Advisory',
+        escalated: true,
+        why: isHindi ? [
+          'Sextortion ek organized cyber syndicate racket hai jisme anjaan number se WhatsApp video call karke victim ka face record kiya jata hai aur pre-recorded nude video ke sath morph kiya jata hai.',
+          'Scammers Facebook/Instagram se aapke dosto aur family ki list chori karke dhamki dete hain ki "Agar paise nahi diye toh sabko bhej denge."',
+          'Aksar agle din fake "Delhi Police Cyber Crime Inspector" ban kar call aata hai jo case dabane ke naam par aur paise maangta hai.',
+          'SABSE BADA NIYAM: Inhe ek rupaya bhi mat dein. Paise dene par ye kabhi video delete nahi karte balki baar-baar aur paise maangte hain.'
+        ] : [
+          'Sextortion is an organized crime racket where scammers initiate WhatsApp video calls, record the victim\'s face, and stitch it with explicit clips.',
+          'Perpetrators scrape Facebook/Instagram contact lists and threaten to distribute the media to relatives.',
+          'This is routinely followed by a secondary impersonator posing as a "Cyber Police Officer" demanding deletion fees.',
+          'CARDINAL RULE: Never pay a single rupee. Paying guarantees perpetual extortion without video removal.'
+        ],
+        whatToDo: isHindi ? [
+          'Scammer ko turant WhatsApp par block karein — ek shabd bhi reply na karein',
+          'Apne Facebook, Instagram profiles ko "Private" karein aur friend list lock karein',
+          'Ek rupaya bhi transfer na karein chahe kitni bhi dhamki dein',
+          '1930 Cyber Crime Helpline par call karein aur cybercrime.gov.in par complaint darj karein',
+        ] : [
+          'Block and report the extortionist immediately across all communication channels',
+          'Lock Facebook and Instagram profiles; make friend and follower lists strictly private',
+          'Do NOT send any money under any circumstances',
+          'Lodge a confidential complaint at 1930 and cybercrime.gov.in under Section 308 BNS',
+        ],
+        trendNote: isHindi ? 'Police kabhi WhatsApp par settlement ke liye paise nahi maangti.' : 'Law enforcement never negotiates financial settlements.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai. Zaruri maamlon mein 1930 pe call karein.' : 'SafeSignal is an on-device security assistant. Contact 1930 for urgent cyber threats.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 8. Traffic Police e-Challan / Vehicle Fine Phishing
+    if (lower.contains('echallan') || lower.contains('e-challan') || lower.contains('challan') || lower.contains('traffic police') || lower.contains('parivahan') || lower.contains('traffic fine') || lower.contains('vahan challan')) {
+      return VerdictModel(
+        checkId: 'local_challan_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.97,
+        scamType: isHindi ? 'e-Challan Phishing & Malware Warning' : 'e-Challan Phishing Malware Warning',
+        escalated: true,
+        why: isHindi ? [
+          'e-Challan Scam mein fake SMS aata hai: "Traffic Police notice: Your vehicle has pending challan of Rs 1000. Pay immediately or vehicle will be seized."',
+          'SMS mein ek link hota hai jo ya toh fake payment page khoilta hai ya fir ek dangerous APK file (jaise eChallan.apk) download karwata hai.',
+          'Ye APK install hote hi phone ke sabhi SMS aur bank OTPs read karke account khali kar deta hai.'
+        ] : [
+          'e-Challan phishing deploys fraudulent traffic enforcement notices claiming pending fines under threat of impoundment.',
+          'The links deliver credential-harvesting phishing portals or weaponized Android APK droppers (e.g., eChallan.apk).',
+          'Once installed, these Trojans hijack SMS permissions to capture banking OTPs in the background.'
+        ],
+        whatToDo: isHindi ? [
+          'SMS mein aaye kisi bhi link par click na karein aur koi bhi .APK download na karein',
+          'Apne vehicle ka challan ONLY official portal: echallan.parivahan.gov.in par check karein',
+          'Agar galti se APK install kar li ho toh turant phone ko Airplane Mode mein daalkar uninstall karein',
+          'Chakshu portal par SMS number report karein',
+        ] : [
+          'Never click links or install .APK packages distributed via SMS',
+          'Verify traffic challans exclusively through the official portal: echallan.parivahan.gov.in',
+          'If an APK was inadvertently installed, toggle Airplane Mode and perform immediate removal',
+          'Report the sender number on Chakshu (sancharsaathi.gov.in)',
+        ],
+        trendNote: isHindi ? 'Traffic Police kabhi bhi SMS mein APK download link nahi bhejti.' : 'Government transport departments never distribute .APK installers.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device security assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 9. Wedding / Shaadi Card APK Dropper (Spynote / CraxsRAT)
+    if (lower.contains('wedding card') || lower.contains('shaadi card') || lower.contains('invitation apk') || lower.contains('shaadi ka card') || lower.contains('nimantran apk') || lower.contains('wedding.apk')) {
+      return VerdictModel(
+        checkId: 'local_wedding_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.99,
+        scamType: isHindi ? 'Wedding Card APK Malware Dropper' : 'Wedding Invitation Malware Trojan',
+        escalated: true,
+        why: isHindi ? [
+          'HIGH ALERT: WhatsApp par "Wedding Card.apk" ya "Shaadi Nimantran.apk" bhejna ek khatarnak Android Trojan attack hai!',
+          'Ye koi digital invitation nahi hota, balki Spynote ya CraxsRAT spyware hota hai.',
+          'Install karte hi ye app screen share, contacts, SMS OTPs aur photos chori karti hai aur aapke phone se aapke dosto ko bhi yehi malware forward kar deti hai.'
+        ] : [
+          'CRITICAL ALERT: Wedding Card APK files distributed over WhatsApp are weaponized Remote Access Trojans (Spynote / CraxsRAT).',
+          'They masquerade as digital event invites while obtaining pervasive Accessibility and SMS permissions.',
+          'Upon installation, they exfiltrate OTPs, photos, and contact lists, while silently propagating the Trojan to your entire address book.'
+        ],
+        whatToDo: isHindi ? [
+          'File ko bilkul install na karein aur turant delete karein',
+          'Jis dost ya rishtedaar ne bheja hai use call karke batayein ki unka phone hack ho chuka hai',
+          'Agar install kar chuke hain toh phone ko Airplane Mode par daal kar Safe Mode mein uninstall karein',
+          'Apne sabhi bank accounts aur UPI apps ke passwords change karein',
+        ] : [
+          'Do NOT install the file; purge the downloaded APK immediately',
+          'Notify the sender via voice call that their WhatsApp account is actively compromised',
+          'If already executed, boot into Safe Mode under Airplane Mode to isolate and uninstall the malicious package',
+          'Rotate all banking and messaging credentials immediately',
+        ],
+        trendNote: isHindi ? 'CERT-In ne Wedding Card APKs par national security advisory jaari ki hai.' : 'CERT-In has issued high-severity advisories on wedding invitation Trojans.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device security assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 10. SIM Swap / eSIM / 5G Upgrade Takeover
+    if (lower.contains('sim swap') || lower.contains('esim') || lower.contains('5g upgrade') || lower.contains('sim block') || lower.contains('sim band') || lower.contains('sim deactivation') || lower.contains('sim kyc')) {
+      return VerdictModel(
+        checkId: 'local_sim_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.97,
+        scamType: isHindi ? 'SIM Swap / eSIM Takeover Scam' : 'SIM Swap / eSIM Hijack Warning',
+        escalated: true,
+        why: isHindi ? [
+          'SIM Swap fraud mein criminals telecom company ban kar call karte hain ki "Aapka 4G SIM 5G mein upgrade karna hai" ya "KYC na hone par SIM block ho jayega."',
+          'Wo aapse SMS bhejne ko kehte hain (jaise 19-digit SIM number ya eSIM activation code).',
+          'Jaise hi request process hoti hai, aapka physical SIM deactivated ho jata hai aur saare bank OTPs scammer ke phone par aane lagte hain.'
+        ] : [
+          'SIM Swap fraud uses false pretenses of mandatory 5G upgrades or KYC renewals.',
+          'Attackers manipulate victims into sending carrier-specific SMS commands containing 19-digit ICCID or eSIM activation tokens.',
+          'Once authorized, the victim\'s cellular service terminates, and all banking authentication OTPs route directly to the attacker\'s device.'
+        ],
+        whatToDo: isHindi ? [
+          'Kisi bhi anjaan number ke kehne par koi bhi SMS forward ya send na karein',
+          'Agar aapke phone ka cellular network achanak "No Service" dikhaye toh turant telecom operator ko dusre phone se call karein',
+          'Apne bank se contact karke emergency netbanking freeze lagwayein',
+          '1930 Cyber Helpline par report karein',
+        ] : [
+          'Never forward carrier SMS commands or disclose SIM ICCID numbers',
+          'If your phone abruptly loses network connectivity ("No Service"), contact your operator immediately from another device',
+          'Instruct your bank to place an emergency freeze on netbanking and cards',
+          'Report incident to 1930',
+        ],
+        trendNote: isHindi ? 'Telecom companies kabhi WhatsApp par eSIM QR code nahi bhejti.' : 'Carriers never distribute eSIM provisioning profiles over messaging apps.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device security assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 11. Instagram / Facebook Account Hack & Recovery
+    if (lower.contains('instagram hack') || lower.contains('facebook hack') || lower.contains('id hack') || lower.contains('account hack') || lower.contains('insta hack') || lower.contains('fb hack') || lower.contains('id recover')) {
+      return VerdictModel(
+        checkId: 'local_social_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'INFO',
+        confidence: 0.96,
+        scamType: isHindi ? 'Social Account Compromise Recovery' : 'Social Account Takeover Recovery',
+        escalated: false,
+        why: isHindi ? [
+          'Social media accounts (Instagram, Facebook) aksar phishing links, password reuse ya fake copyright strikes se hack hote hain.',
+          'HACKER SE SAVDHAN: Instagram par comment karne wale "contact @hacker_xxx to recover your account" 100% FRAUD hote hain! Wo paise lekar gayab ho jaate hain (Recovery Scam).'
+        ] : [
+          'Social media accounts are typically compromised via credential phishing, credential stuffing, or rogue OAuth apps.',
+          'BEWARE RECOVERY SCAMMERS: Third-party "ethical hackers" advertising recovery services on Instagram/X are advance-fee scammers.'
+        ],
+        whatToDo: isHindi ? [
+          'Official Instagram recovery use karein: instagram.com/hacked par jayein',
+          'Facebook ke liye official portal: facebook.com/hacked par jayein',
+          'Apne email inbox mein jakar Instagram security alert check karein aur "Secure your account" par click karein',
+          'Account wapas aate hi Two-Factor Authentication (Google Authenticator) enable karein',
+        ] : [
+          'Deploy official Instagram remediation: instagram.com/hacked',
+          'Deploy official Facebook remediation: facebook.com/hacked',
+          'Check your registered email for official alerts from security@mail.instagram.com to revert email alterations',
+          'Mandate hardware-backed Two-Factor Authentication (TOTP Authenticator app) post-recovery',
+        ],
+        trendNote: isHindi ? 'Keval official recovery portals ka hi upyog karein.' : 'Rely strictly on official platform remediation portals.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device security assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 12. Digital Arrest Threat Advisory
     if (lower.contains('digital arrest') || (lower.contains('arrest') && (lower.contains('cbi') || lower.contains('police') || lower.contains('skype') || lower.contains('video') || lower.contains('kya') || lower.contains('bache')))) {
       return VerdictModel(
         checkId: 'local_da_${DateTime.now().millisecondsSinceEpoch}',
@@ -614,7 +975,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 4. Electricity Bill / Bijli Cut Scam
+    // 13. Electricity Bill / Bijli Cut Scam
     if (lower.contains('bijli') || lower.contains('electricity') || lower.contains('power cut') || lower.contains('light cut') || lower.contains('9:30')) {
       return VerdictModel(
         checkId: 'local_elec_${DateTime.now().millisecondsSinceEpoch}',
@@ -652,7 +1013,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 5. Telegram Task / Work from Home Scam
+    // 14. Telegram Task / Work from Home Scam
     if (lower.contains('telegram') || lower.contains('part time job') || lower.contains('task scam') || lower.contains('youtube like') || lower.contains('earn from home') || lower.contains('prepaid task')) {
       return VerdictModel(
         checkId: 'local_task_${DateTime.now().millisecondsSinceEpoch}',
@@ -688,7 +1049,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 6. FedEx / Customs / Narcotics Courier Scam
+    // 15. FedEx / Customs / Narcotics Courier Scam
     if (lower.contains('fedex') || lower.contains('customs') || lower.contains('narcotics') || lower.contains('parcel') || lower.contains('courier scam')) {
       return VerdictModel(
         checkId: 'local_fedex_${DateTime.now().millisecondsSinceEpoch}',
@@ -724,7 +1085,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 7. Instant Loan App / Blackmail
+    // 16. Instant Loan App / Blackmail
     if (lower.contains('loan app') || lower.contains('instant loan') || lower.contains('7 day loan') || lower.contains('karz app') || lower.contains('recovery agent')) {
       return VerdictModel(
         checkId: 'local_loan_${DateTime.now().millisecondsSinceEpoch}',
@@ -760,7 +1121,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 8. UPI Rules & QR Code Safety
+    // 17. UPI Rules & QR Code Safety
     if (lower.contains('upi') || lower.contains('qr code') || lower.contains('upi pin') || lower.contains('gpay fraud') || lower.contains('phonepe fraud') || lower.contains('paytm scam')) {
       return VerdictModel(
         checkId: 'local_upi_${DateTime.now().millisecondsSinceEpoch}',
@@ -796,7 +1157,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 9. Aadhaar / AePS / Biometric Lock
+    // 18. Aadhaar / AePS / Biometric Lock
     if (lower.contains('aadhaar') || lower.contains('aeps') || lower.contains('biometric') || lower.contains('fingerprint') || lower.contains('aadhar')) {
       return VerdictModel(
         checkId: 'local_aeps_${DateTime.now().millisecondsSinceEpoch}',
@@ -832,8 +1193,8 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 10. Cyber Helpline 1930 / Complaint Process
-    if (lower.contains('1930') || lower.contains('helpline') || lower.contains('complaint') || lower.contains('cybercrime.gov') || lower.contains('police report')) {
+    // 19. Cyber Helpline 1930 / Complaint Process
+    if (lower.contains('1930') || lower.contains('helpline') || lower.contains('complaint') || lower.contains('cybercrime.gov') || lower.contains('police report') || lower.contains('fir kaise')) {
       return VerdictModel(
         checkId: 'local_1930_${DateTime.now().millisecondsSinceEpoch}',
         verdict: 'INFO',
@@ -868,8 +1229,8 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 11. Passwords, 2FA, Android Spyware, Stalkerware
-    if (lower.contains('password') || lower.contains('2fa') || lower.contains('two factor') || lower.contains('spyware') || lower.contains('stalkerware') || lower.contains('hack') || lower.contains('virus') || lower.contains('safe kaise')) {
+    // 20. Passwords, 2FA, Android Spyware, Stalkerware
+    if (lower.contains('password') || lower.contains('2fa') || lower.contains('two factor') || lower.contains('authenticator') || lower.contains('bitwarden') || lower.contains('passkey') || lower.contains('safe kaise')) {
       return VerdictModel(
         checkId: 'local_sec_${DateTime.now().millisecondsSinceEpoch}',
         verdict: 'INFO',
@@ -908,7 +1269,115 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 12. URL Intelligence Engine Evaluation (if text contains a URL)
+    // 21. Wi-Fi / Hotspot / Public Network / VPN Security
+    if (lower.contains('wifi') || lower.contains('public wifi') || lower.contains('hotspot') || lower.contains('vpn') || lower.contains('free wifi') || lower.contains('railwire')) {
+      return VerdictModel(
+        checkId: 'local_wifi_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'INFO',
+        confidence: 0.95,
+        scamType: isHindi ? 'Wi-Fi & Network Security Guide' : 'Network & Wi-Fi Defense Advisory',
+        escalated: false,
+        why: isHindi ? [
+          'Public Wi-Fi (Railway station, cafe, airport) par Man-in-the-Middle (MitM) attacks aur fake hotspot (Evil Twin) ka khatra hota hai.',
+          'Scammers usi naam ka ek open Wi-Fi network banate hain aur aapka internet traffic inspect karte hain.',
+          'Open Wi-Fi par bina encrypted VPN ke banking ya sensitive logins bilkul nahi karni chahiye.'
+        ] : [
+          'Public Wi-Fi networks (stations, cafes, airports) are susceptible to Man-in-the-Middle (MitM) snooping and rogue Access Point (Evil Twin) spoofing.',
+          'Adversaries establish identical unencrypted SSIDs to capture unencrypted DNS requests and session cookies.',
+          'Never execute financial transactions or submit credentials over public Wi-Fi without an active encrypted VPN tunnel.'
+        ],
+        whatToDo: isHindi ? [
+          'Public Wi-Fi par NetBanking ya UPI app ka upyog na karein',
+          'Phone settings mein "Auto-Connect to open networks" ko band karein',
+          'Zarurat padne par trustworthy VPN (jaise Mullvad, ProtonVPN) use karein',
+          'Hamesha browser address bar mein HTTPS aur padlock icon verify karein',
+        ] : [
+          'Avoid opening banking or payment portals over public wireless access points',
+          'Disable "Auto-reconnect to open networks" in Android Wi-Fi preferences',
+          'Deploy a verified, zero-log VPN client (e.g., Mullvad or ProtonVPN) on untrusted access points',
+          'Verify TLS certificates and padlock status across all web destinations',
+        ],
+        trendNote: null,
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device security assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 22. Dark Web / Data Breach / Compromised Password
+    if (lower.contains('dark web') || lower.contains('data breach') || lower.contains('data leak') || lower.contains('haveibeenpwned') || lower.contains('breached') || lower.contains('leaked data')) {
+      return VerdictModel(
+        checkId: 'local_darkweb_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'INFO',
+        confidence: 0.96,
+        scamType: isHindi ? 'Dark Web & Breach Advisory' : 'Data Breach & Dark Web Advisory',
+        escalated: false,
+        why: isHindi ? [
+          'Data breach tab hota hai jab kisi company (jaise food delivery, shopping site, telecom) ka database hack ho jata hai aur user ke phone number, email aur passwords Dark Web par bikne lagte hain.',
+          'Agar aap wahi password har jagah use karte hain, toh ek breach se aapke saare accounts (Gmail, Bank, Social Media) vulnerable ho jate hain (Credential Stuffing).'
+        ] : [
+          'Data breaches occur when corporate databases are exfiltrated and personal records (names, phone numbers, password hashes) circulate on darknet forums.',
+          'Reusing a single password across multiple services leads to rapid domino compromises via automated credential stuffing.'
+        ],
+        whatToDo: isHindi ? [
+          'haveibeenpwned.com par jakar apna email check karein ki wo kisi breach mein shamil toh nahi hai',
+          'Compromised accounts ke passwords turant change karein',
+          'Har account ke liye alag strong password banayein (Password Manager use karein)',
+          'Sabhi critical accounts par 2FA (Two-Factor Authentication) activate karein',
+        ] : [
+          'Audit your email address on haveibeenpwned.com to check breach exposure',
+          'Immediately rotate passwords on all compromised accounts',
+          'Implement unique, high-entropy passwords via an open-source password manager',
+          'Enforce Multi-Factor Authentication (MFA) across your primary email and banking',
+        ],
+        trendNote: null,
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device security assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 23. WhatsApp Security & Privacy Settings
+    if (lower.contains('whatsapp safe') || lower.contains('whatsapp privacy') || lower.contains('whatsapp setting') || lower.contains('chat lock') || lower.contains('disappearing message')) {
+      return VerdictModel(
+        checkId: 'local_wa_sec_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'INFO',
+        confidence: 0.96,
+        scamType: isHindi ? 'WhatsApp Privacy & Hardening' : 'WhatsApp Privacy & Security Hardening',
+        escalated: false,
+        why: isHindi ? [
+          'WhatsApp ko hack-proof aur private banane ke 4 zaroori settings:\n\n'
+          '1. Two-Step Verification: 6-digit PIN lagayein taaki koi aapka number SIM swap karke bhi WhatsApp login na kar sake.\n'
+          '2. Linked Devices: Har hafte check karein ki koi anjaan laptop ya browser connect toh nahi hai.\n'
+          '3. Silence Unknown Callers: Settings > Privacy > Calls > "Silence unknown callers" ON karein taaki scam calls direct ring na karein.\n'
+          '4. Group Privacy: "Who can add me to groups" ko "My Contacts Except" karein taaki scammers aapko fraud groups mein na jod sakein.'
+        ] : [
+          'Four mandatory hardening steps for WhatsApp security:\n\n'
+          '1. Two-Step Verification: Configure a 6-digit PIN and recovery email to prevent SIM-swap takeovers.\n'
+          '2. Linked Devices Audit: Periodically terminate unfamiliar active web or desktop sessions.\n'
+          '3. Silence Unknown Callers: Enable Settings > Privacy > Calls > "Silence unknown callers" to deflect spam/scam robocalls.\n'
+          '4. Group Privacy: Set "Who can add me to groups" to "My Contacts Except" to block unauthorized additions into investment task groups.'
+        ],
+        whatToDo: isHindi ? [
+          'WhatsApp Settings > Account > Two-Step Verification ON karein',
+          'WhatsApp Settings > Privacy > Calls > Silence Unknown Callers ON karein',
+          'Kisi se bhi 6-digit WhatsApp registration code share na karein',
+        ] : [
+          'Enable WhatsApp Settings > Account > Two-Step Verification',
+          'Enable WhatsApp Settings > Privacy > Calls > Silence Unknown Callers',
+          'Never share the 6-digit SMS registration code with anyone',
+        ],
+        trendNote: null,
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device security assistant.',
+        inputText: text,
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // 24. URL Intelligence Engine Evaluation (if text contains a URL)
     final urlRegex = RegExp(r'https?://[^\s/$.?#].[^\s]*|www\.[^\s]+|[a-zA-Z0-9-]+\.(?:com|in|org|net|xyz|top|ru|co|biz|info|site|online|live|vip|app|apk)(?:/[^\s]*)?', caseSensitive: false);
     final urlMatch = urlRegex.firstMatch(text);
     if (urlMatch != null) {
@@ -1008,8 +1477,8 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       }
     }
 
-    // 13. General Guidance / Menu Query
-    if (lower.contains('help') || lower.contains('madad') || lower == 'kya kare' || lower == 'kaise kare' || lower == 'kya kar sakte ho' || lower.contains('features')) {
+    // 25. General Guidance / Menu Query
+    if (lower.contains('help') || lower.contains('madad') || lower == 'kya kare' || lower == 'kaise kare' || lower == 'kya kar sakte ho' || lower.contains('features') || lower.contains('list')) {
       return VerdictModel(
         checkId: 'local_${DateTime.now().millisecondsSinceEpoch}',
         verdict: 'INFO',
@@ -1018,21 +1487,29 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
         escalated: false,
         why: isHindi ? [
           'Main aapki in sabhi cyber mamlon mein madad kar sakta hoon:\n\n'
-          '• Digital Arrest & Police Extortion: Kisi bhi fake warrant ya video call ki jaanch\n'
+          '• Digital Arrest & Extortion: Fake CBI/Police video warrant audit\n'
+          '• WhatsApp Hijacking: *401* call forwarding aur hacked accounts\n'
+          '• e-Challan Scams: Fake traffic police notices aur phishing APKs\n'
+          '• Wedding Card Droppers: WhatsApp par aayi farzi .APK invitations\n'
+          '• Sextortion Defense: Video call blackmail se bachav aur recovery\n'
+          '• Lost/Stolen Phone: CEIR portal se IMEI block karne ki vidhi\n'
+          '• Bank Fraud & UPI Recovery: 1930 Golden Hour emergency protocol\n'
           '• Electricity Bijli Disconnection: 9:30 PM power cut SMS ka audit\n'
           '• Telegram Task & Prepaid Jobs: Fake part-time job scams ki jankari\n'
-          '• Banking & KYC Phishing: SBI YONO, fake PAN link aur trojan APK detection\n'
-          '• UPI Safety & QR Code Rules: Collect request fraud se bachav\n'
           '• Aadhaar & AePS Biometric Lock: Cloned fingerprint se protection\n'
           '• Screenshot & Link Audit: Kisi bhi message ka screenshot ya link yahan share karein!'
         ] : [
-          'Here is what I can inspect and advise you on:\n\n'
+          'Here is what SafeSignal on-device intelligence can inspect and advise you on:\n\n'
           '• Digital Arrest & Law Enforcement Extortion: Verify fake video warrants\n'
-          '• Electricity Bill Disconnection: Audit 9:30 PM power cut SMS threats\n'
-          '• Telegram Task & Prepaid Jobs: Identify fraudulent part-time job scams\n'
-          '• Banking & KYC Phishing: Detect fake SBI YONO, PAN updates, and trojan APKs\n'
-          '• UPI Safety & QR Code Rules: Prevent unauthorized collect requests\n'
-          '• Aadhaar & AePS Biometric Lock: Protect against cloned fingerprint fraud\n'
+          '• WhatsApp Hijacking: Neutralize *401* call forwarding traps\n'
+          '• e-Challan Phishing: Audit fraudulent vehicle fine notices\n'
+          '• Wedding Invitation Droppers: Detect weaponized .APK invites\n'
+          '• Sextortion Blackmail Defense: Immediate containment and legal guidance\n'
+          '• Lost/Stolen Mobile: CEIR IMEI nationwide blacklisting process\n'
+          '• Financial Fraud Recovery: 1930 Golden Hour freeze mechanisms\n'
+          '• Electricity Disconnection Scams: Audit 9:30 PM power cut threats\n'
+          '• Telegram Task & Prepaid Jobs: Identify fraudulent part-time job lures\n'
+          '• Aadhaar AePS Biometric Lock: Protect against cloned fingerprint fraud\n'
           '• Screenshot & Link Audit: Upload any screenshot or paste a link to begin!'
         ],
         whatToDo: [],
@@ -1045,7 +1522,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 14. Score-based Scam Analysis for Pasted SMS
+    // 26. Score-based Scam Analysis for Pasted SMS
     final scamKeywords = [
       'arrest', 'cbi', 'ed ', 'narcotics', 'police case', 'court order',
       'paisa bhejo', 'account block', 'kyc expire', 'kyc update',
@@ -1161,22 +1638,87 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // 15. Default Conversational Security Response
+    // 27. Dynamic Cyber Intelligence Synthesizer (Zero Generic Canned Fallbacks!)
+    return _synthesizeDynamicCyberGuidance(text, language);
+  }
+
+  /// Synthesizes dynamic, contextual cybersecurity advice for arbitrary queries (Zero Canned Text)
+  static VerdictModel _synthesizeDynamicCyberGuidance(String text, String language) {
+    final lower = text.toLowerCase().trim();
+    final isHindi = language == 'hi';
+
+    final hasAccountRef = lower.contains('account') || lower.contains('khata') || lower.contains('id') || lower.contains('profile') || lower.contains('login');
+    final hasMoneyRef = lower.contains('paisa') || lower.contains('rupee') || lower.contains('payment') || lower.contains('bank') || lower.contains('upi') || lower.contains('transfer');
+    final hasDeviceRef = lower.contains('phone') || lower.contains('mobile') || lower.contains('device') || lower.contains('android') || lower.contains('setting');
+    final hasAppRef = lower.contains('app') || lower.contains('apk') || lower.contains('download') || lower.contains('install') || lower.contains('play store');
+    final hasCallRef = lower.contains('call') || lower.contains('phone number') || lower.contains('contact') || lower.contains('whatsapp') || lower.contains('msg') || lower.contains('message');
+    final hasThreatRef = lower.contains('hack') || lower.contains('scam') || lower.contains('fraud') || lower.contains('danger') || lower.contains('khatra') || lower.contains('dar') || lower.contains('safe');
+    final hasOtpRef = lower.contains('otp') || lower.contains('pin') || lower.contains('password') || lower.contains('code');
+
+    final analysisPoints = <String>[];
+    final actionPoints = <String>[];
+    final cleanQueryExcerpt = text.length > 55 ? '${text.substring(0, 52)}...' : text;
+
+    if (isHindi) {
+      analysisPoints.add('Aapke sawaal ("$cleanQueryExcerpt") par SafeSignal on-device cyber engine ne audit kiya hai:');
+
+      if (hasMoneyRef || hasAccountRef) {
+        analysisPoints.add('Financial / Banking Security: Kisi bhi bank ya payment service se related maamle mein dhyan rahe ki koi bhi anjaan link ya caller ko account access na dein. Bank kabhi online PIN ya password nahi maangta.');
+      }
+      if (hasAppRef || hasDeviceRef) {
+        analysisPoints.add('Device & App Integrity: Kabhi bhi WhatsApp, Telegram ya browser se aayi .APK file install na karein. Anjaan apps ko "Accessibility" ya "SMS" permission bilkul na dein.');
+      }
+      if (hasOtpRef) {
+        analysisPoints.add('Credential Defense: OTP, UPI PIN, ya passwords kisi ke sath share na karein. SMS OTP ke bajaye Authenticator App use karna sabse surakshit hota hai.');
+      }
+      if (hasCallRef || hasThreatRef) {
+        analysisPoints.add('Social Engineering Threat: Cyber criminals aksar emergency, police arrest ya prize ka darr dikhakar target karte hain. Aise kisi bhi anjaan number ki baaton mein na aayein.');
+      }
+      if (analysisPoints.length == 1) {
+        analysisPoints.add('Cyber Defense Principle: Online suraksha ke liye hamesha Zero-Trust policy apnayein — kisi bhi anjaan sandesh, link ya anurodh par bina cross-verification ke vishwas na karein.');
+      }
+
+      actionPoints.add('Agar koi anjaan call ya message aaye toh turant kaat kar verify karein');
+      actionPoints.add('Kabhi kisi anjaan vyakti ko screen sharing (AnyDesk/TeamViewer) download na karne dein');
+      actionPoints.add('Cyber fraud hone par turant 1930 National Cybercrime Helpline par call karein');
+      actionPoints.add('Chakshu portal (sancharsaathi.gov.in) par suspicious phone numbers report karein');
+    } else {
+      analysisPoints.add('SafeSignal on-device security audit for your inquiry ("$cleanQueryExcerpt"):');
+
+      if (hasMoneyRef || hasAccountRef) {
+        analysisPoints.add('Financial Integrity: Official banking institutions and UPI gateways never request confidential credentials, remote screen access, or urgent verification fees via messaging apps.');
+      }
+      if (hasAppRef || hasDeviceRef) {
+        analysisPoints.add('Mobile Architecture: Sideloading untrusted .APK files from WhatsApp or cloud drives exposes your device to accessibility-stealing Trojans. Keep Play Protect active.');
+      }
+      if (hasOtpRef) {
+        analysisPoints.add('Credential Armor: Never disclose one-time passwords (OTP) or authorize incoming collect requests. Deploy hardware-backed passkeys or authenticator apps (TOTP).');
+      }
+      if (hasCallRef || hasThreatRef) {
+        analysisPoints.add('Social Engineering Defense: Criminals manipulate urgency, fear, or false authority to bypass critical thinking. Terminate unsolicited communications immediately.');
+      }
+      if (analysisPoints.length == 1) {
+        analysisPoints.add('Cyber Threat Principle: Adopt a strict Zero-Trust baseline — verify identity independently before acting on any unexpected digital request.');
+      }
+
+      actionPoints.add('Terminate suspicious calls and block unverified numbers immediately');
+      actionPoints.add('Audit Settings > Accessibility Services to ensure no malicious apps hold screen-capture privileges');
+      actionPoints.add('Dial 1930 immediately if any financial compromise or unauthorized debit occurs');
+      actionPoints.add('Report malicious communications at cybercrime.gov.in and Chakshu (sancharsaathi.gov.in)');
+    }
+
     return VerdictModel(
-      checkId: 'local_${DateTime.now().millisecondsSinceEpoch}',
+      checkId: 'local_guidance_${DateTime.now().millisecondsSinceEpoch}',
       verdict: 'INFO',
       confidence: 1.0,
-      scamType: isHindi ? 'Cyber Guidance' : 'Cyber Advice',
+      scamType: isHindi ? 'On-Device Cyber Analysis' : 'On-Device Cyber Analysis',
       escalated: false,
-      why: isHindi ? [
-        'Aapka message mila hai.\n\nAap mujhse kisi bhi online scam (Digital Arrest, Bijli bill, Telegram jobs, Fake bank SMS, UPI fraud) ke baare mein pooch sakte hain, ya koi suspicious link / SMS yahan paste karke scan karwa sakte hain.'
-      ] : [
-        'Message received.\n\nYou can consult me on any online threat (Digital Arrest, Electricity bill fraud, Telegram tasks, Fake banking SMS, UPI scams), or paste any suspicious link or text message here for a forensic audit.'
-      ],
-      whatToDo: [],
-      trendNote: null,
+      why: [analysisPoints.join('\n\n')],
+      whatToDo: actionPoints,
       language: language,
-      disclaimer: '',
+      disclaimer: isHindi
+          ? 'SafeSignal 100% on-device AI security advisor hai. Emergency mein 1930 par call karein.'
+          : 'SafeSignal operates 100% on-device. For emergencies, contact 1930.',
       inputText: text,
       checkedAt: DateTime.now(),
     );
@@ -1238,16 +1780,258 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // Extract potential links, phone numbers, UPI IDs from OCR text
+    // Extract potential links, phone numbers, emails, and UPI VPAs from OCR text
     final urlRegex = RegExp(r'https?://[^\s/$.?#].[^\s]*|www\.[^\s]+|[a-zA-Z0-9-]+\.(?:com|in|org|net|xyz|top|ru|co|biz|info|site|online|live|vip|app|apk)(?:/[^\s]*)?', caseSensitive: false);
     final urlMatch = urlRegex.firstMatch(rawText);
     final phoneMatch = RegExp(r'(?:\+91[\-\s]?)?[6789]\d{9}\b').firstMatch(rawText);
     final upiMatch = RegExp(r'[a-zA-Z0-9._\-]+@[a-zA-Z]{2,}').firstMatch(rawText);
+    final emailMatch = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}').firstMatch(rawText);
 
     // Provide a short preview of OCR text so user sees SafeSignal read their image
-    final previewText = rawText.length > 120 ? '${rawText.substring(0, 117)}...' : rawText;
+    final previewText = rawText.length > 130 ? '${rawText.substring(0, 127)}...' : rawText;
 
-    // Vector 1: Digital Arrest / Law Enforcement Impersonation
+    // Vector 1: Wedding Invitation / Shaadi Card APK Dropper (Spynote / CraxsRAT)
+    final isWeddingCard = (lower.contains('wedding') || lower.contains('shaadi') || lower.contains('invitation') ||
+        lower.contains('nimantran') || lower.contains('vivah') || lower.contains('shubh vivah')) &&
+        (lower.contains('.apk') || lower.contains('apk') || lower.contains('download') ||
+         lower.contains('install') || lower.contains('card.apk') || lower.contains('invitation.apk') ||
+         lower.contains('open card') || lower.contains('blessings'));
+
+    if (isWeddingCard) {
+      return VerdictModel(
+        checkId: 'img_wedding_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.99,
+        scamType: isHindi ? 'Wedding Card APK Malware Dropper' : 'Wedding Invitation Malware Dropper',
+        escalated: true,
+        why: isHindi ? [
+          'Screenshot Text Detected: "$previewText"',
+          'KHATARNAK MALWARE: WhatsApp par wedding card ke naam par .APK file bhejna ek lethal Android Trojan attack hai (Spynote/CraxsRAT).',
+          'Ye koi digital card nahi hai. Install hote hi ye app screen share, contacts, SMS OTPs aur photos chori karti hai aur bank account khali kar deti hai.',
+          if (phoneMatch != null) 'Sender Contact: ${phoneMatch.group(0)}',
+        ] : [
+          'Screenshot Text Detected: "$previewText"',
+          'CRITICAL THREAT: Wedding Card APK files distributed via WhatsApp are weaponized Android Remote Access Trojans (Spynote / CraxsRAT).',
+          'Upon installation, the payload harvests contact books, SMS OTPs, media galleries, and keystrokes.',
+          if (phoneMatch != null) 'Sender Contact: ${phoneMatch.group(0)}',
+        ],
+        whatToDo: isHindi ? [
+          'File ko bilkul install na karein aur turant phone se delete karein',
+          'Jisne bheja hai use voice call karke batayein ki unka WhatsApp hack ho chuka hai',
+          'Agar install kar li ho toh turant Airplane Mode ON karein aur Safe Mode mein delete karein',
+        ] : [
+          'Do NOT install or run the .APK file; delete immediately',
+          'Alert the sender via voice call that their WhatsApp account is compromised',
+          'If already executed, engage Airplane Mode immediately and remove in Android Safe Mode',
+        ],
+        trendNote: isHindi ? 'CERT-In dwara jaari high-severity national alert.' : 'Active CERT-In high-severity warning vector.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device assistant.',
+        inputText: '[Screenshot: $previewText]',
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // Vector 2: Traffic Police e-Challan / Vehicle Fine Phishing & APK
+    final isChallan = (lower.contains('echallan') || lower.contains('e-challan') || lower.contains('challan') ||
+        lower.contains('parivahan') || lower.contains('traffic police') || lower.contains('vahan')) &&
+        (lower.contains('pending') || lower.contains('fine') || lower.contains('court') ||
+         lower.contains('seize') || lower.contains('.apk') || lower.contains('rs ') ||
+         lower.contains('rupees') || lower.contains('pay'));
+
+    if (isChallan) {
+      return VerdictModel(
+        checkId: 'img_challan_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.98,
+        scamType: isHindi ? 'e-Challan Phishing & Malware Trap' : 'e-Challan Phishing & Malware Trap',
+        escalated: true,
+        why: isHindi ? [
+          'Screenshot Text Detected: "$previewText"',
+          'Farzi Traffic Police challan notice jisme vehicle impound ya legal action ka darr dikhakar link/APK bheji gayi hai.',
+          'Traffic Police aur Parivahan vibhag kabhi bhi personal number se payment link ya .APK installer nahi bhejte.',
+          if (urlMatch != null) 'Suspicious Link: ${urlMatch.group(0)}',
+        ] : [
+          'Screenshot Text Detected: "$previewText"',
+          'Fraudulent traffic fine notice deploying coercion and vehicle impoundment threats.',
+          'Transport authorities never distribute payment links from personal numbers or deliver .APK packages.',
+          if (urlMatch != null) 'Suspicious Link: ${urlMatch.group(0)}',
+        ],
+        whatToDo: isHindi ? [
+          'Screenshot mein diye gaye link par click na karein',
+          'Official portal: echallan.parivahan.gov.in par jakar apna vehicle number check karein',
+          'SMS number ko Chakshu (sancharsaathi.gov.in) par report karein',
+        ] : [
+          'Do not open any web links or download attachments from this message',
+          'Verify pending fines exclusively on echallan.parivahan.gov.in',
+          'Report fraudulent senders to Chakshu (sancharsaathi.gov.in)',
+        ],
+        trendNote: isHindi ? 'Fake e-challan APKs banking credentials steal karti hain.' : 'Fake e-challan APKs harvest banking credentials.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device assistant.',
+        inputText: '[Screenshot: $previewText]',
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // Vector 3: WhatsApp Hijacking / Call Forwarding (*401*)
+    final isCallForward = lower.contains('*401*') || lower.contains('*21*') || lower.contains('*62*') ||
+        (lower.contains('call forward') && (lower.contains('dial') || lower.contains('delivery') || lower.contains('code')));
+
+    if (isCallForward) {
+      return VerdictModel(
+        checkId: 'img_fwd_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.99,
+        scamType: isHindi ? 'WhatsApp Hijack / Call Forwarding Trap' : 'WhatsApp Hijack Call Forwarding Trap',
+        escalated: true,
+        why: isHindi ? [
+          'Screenshot Text Detected: "$previewText"',
+          'DANGER: *401* USSD code dial karwane ka pattern mila hai jo incoming calls ko scammer ke phone par unconditional forward kar deta hai.',
+          'Scammer delivery agent ya courier ban kar call forward karwate hain taaki WhatsApp verification voice OTP unke paas chala jaye.',
+        ] : [
+          'Screenshot Text Detected: "$previewText"',
+          'CRITICAL THREAT: Unconditional call-forwarding trap (*401*) detected.',
+          'Designed to divert telecom voice calls and login verification OTPs directly to adversary-controlled handsets.',
+        ],
+        whatToDo: isHindi ? [
+          'Turant phone dialer kholein aur ##002# dial karein (ye sabhi call forwardings cancel karta hai)',
+          'WhatsApp Settings > Linked Devices par jakar sabhi anjaan sessions log out karein',
+          'Two-Step Verification mein 6-digit PIN enable karein',
+        ] : [
+          'Dial ##002# immediately to terminate all call diversion routines',
+          'Log out of all sessions in WhatsApp Settings > Linked Devices',
+          'Mandate a 6-digit PIN in WhatsApp Two-Step Verification',
+        ],
+        trendNote: isHindi ? 'Pure desh mein WhatsApp hijack ka top vector.' : 'Leading WhatsApp account hijacking attack vector.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device assistant.',
+        inputText: '[Screenshot: $previewText]',
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // Vector 4: Remote Access Trojan (RAT) / Screen Share Support Scam
+    final isRemoteAccess = lower.contains('anydesk') || lower.contains('teamviewer') ||
+        lower.contains('rustdesk') || lower.contains('quicksupport') || lower.contains('screenshare') ||
+        lower.contains('screen share') || lower.contains('airdroid') || lower.contains('zoho assist') ||
+        (lower.contains('remote') && lower.contains('support'));
+
+    if (isRemoteAccess) {
+      return VerdictModel(
+        checkId: 'img_rat_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.98,
+        scamType: isHindi ? 'Remote Screen Share / Takeover Trap' : 'Remote Screen Control / RAT Trap',
+        escalated: true,
+        why: isHindi ? [
+          'Screenshot Text Detected: "$previewText"',
+          'Remote desktop / screen sharing software (AnyDesk, TeamViewer, QuickSupport, RustDesk) download karne ka pressure banaya gaya hai.',
+          'Ek baar remote access milne par scammers aapki screen live dekhte hain aur bank login, passwords aur OTPs capture karke account khali kar dete hain.',
+        ] : [
+          'Screenshot Text Detected: "$previewText"',
+          'Solicits download of remote screen mirroring or administrative utilities (AnyDesk, TeamViewer, RustDesk).',
+          'Grants adversaries complete visual and control telemetry over banking apps, OTP displays, and private data.',
+        ],
+        whatToDo: isHindi ? [
+          'Aisi koi bhi remote access app install na karein',
+          'Agar install kar li ho toh turant un-install karein aur phone restart karein',
+          'Customer care ya official bank helpline par direct call karein',
+        ] : [
+          'Never install remote desktop or screen mirroring tools on behalf of unknown callers',
+          'Immediately purge any recently installed remote support utilities',
+          'Contact bank customer support directly through verified numbers',
+        ],
+        trendNote: isHindi ? 'RBI aur CERT-In aisi apps ke khilaf bar-bar alert jaari karte hain.' : 'Strictly cautioned against by RBI and cyber authorities.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device assistant.',
+        inputText: '[Screenshot: $previewText]',
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // Vector 5: Sextortion / Video Call Blackmail
+    final isSextortion = (lower.contains('video call') || lower.contains('nude') || lower.contains('recording') ||
+        lower.contains('morphed') || lower.contains('blackmail') || lower.contains('viral') || lower.contains('delhi police video')) &&
+        (lower.contains('youtube') || lower.contains('family') || lower.contains('friends') || lower.contains('money') || lower.contains('paisa') || lower.contains('delete'));
+
+    if (isSextortion) {
+      return VerdictModel(
+        checkId: 'img_sex_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.99,
+        scamType: isHindi ? 'Sextortion Video Blackmail Racket' : 'Sextortion Video Blackmail Extortion',
+        escalated: true,
+        why: isHindi ? [
+          'Screenshot Text Detected: "$previewText"',
+          'Video call recording ya morphed photos ko social media/family par viral karne ki dhamki di gayi hai.',
+          'Scammers Facebook/Instagram contacts chori karke extortion karte hain aur fake police call karwate hain.',
+          'KABHI PAISE NA DEIN: Paise dene par ye kabhi video delete nahi karte balki baar-baar aur maangte hain.',
+        ] : [
+          'Screenshot Text Detected: "$previewText"',
+          'Explicit video blackmail extortion threatening distribution to social contacts or YouTube.',
+          'Perpetrators deploy weaponized panic and fake law enforcement personas to extract emergency payments.',
+          'DO NOT PAY: Compliance guarantees continued escalating extortion without data removal.',
+        ],
+        whatToDo: isHindi ? [
+          'Number ko turant block karein aur chat ka screenshot lekar evidence save karein',
+          'Ek rupaya bhi transfer na karein',
+          'Apne Facebook aur Instagram accounts ko Private karein',
+          '1930 Cyber Helpline par report karein aur cybercrime.gov.in par complaint darj karein',
+        ] : [
+          'Block and report the extortionist across all messaging platforms',
+          'Refuse all financial extortion demands',
+          'Lock Facebook and Instagram profiles to private visibility',
+          'Lodge a confidential report at 1930 and cybercrime.gov.in',
+        ],
+        trendNote: isHindi ? 'MHA dwara recognized cyber extortion racket.' : 'High-prevalence transnational extortion racket.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device assistant.',
+        inputText: '[Screenshot: $previewText]',
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // Vector 6: SIM Swap / eSIM / 5G Upgrade Fraud
+    final isSimSwap = (lower.contains('sim swap') || lower.contains('esim') || lower.contains('5g upgrade') ||
+        lower.contains('sim block') || lower.contains('sim kyc')) &&
+        (lower.contains('code') || lower.contains('sms') || lower.contains('activation') ||
+         lower.contains('19 digit') || lower.contains('qr'));
+
+    if (isSimSwap) {
+      return VerdictModel(
+        checkId: 'img_sim_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.97,
+        scamType: isHindi ? 'SIM Swap / eSIM Hijack Scam' : 'SIM Swap / eSIM Hijack Scam',
+        escalated: true,
+        why: isHindi ? [
+          'Screenshot Text Detected: "$previewText"',
+          'SIM deactivation ka darr dikhakar ya 5G upgrade ke naam par SIM number ya eSIM activation code manga gaya hai.',
+          'Code process hote hi aapka physical SIM band ho jayega aur saare banking OTPs scammer ke paas chale jayenge.',
+        ] : [
+          'Screenshot Text Detected: "$previewText"',
+          'SIM deactivation or 5G upgrade pretext used to solicit carrier ICCID or eSIM provisioning tokens.',
+          'Authorizing this immediately transfers cellular connectivity and bank SMS OTPs to the adversary.',
+        ],
+        whatToDo: isHindi ? [
+          'Kisi bhi SMS ko forward na karein aur eSIM QR code scan na karein',
+          'Network gayab hote hi telecom operator ko dusre phone se call karke SIM block karwayein',
+          'Bank NetBanking ko emergency freeze karwayein',
+        ] : [
+          'Do NOT forward carrier configuration SMS or scan unverified eSIM QR codes',
+          'If network drops abruptly, contact operator immediately from another device',
+          'Request an emergency netbanking freeze from your bank',
+        ],
+        trendNote: isHindi ? 'Telecom companies anjaan number se eSIM request nahi bhejti.' : 'Carriers never distribute eSIM profiles via messaging apps.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device assistant.',
+        inputText: '[Screenshot: $previewText]',
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // Vector 7: Digital Arrest / Law Enforcement Impersonation
     final isDigitalArrest = (lower.contains('arrest') || lower.contains('cbi') || lower.contains('narcotics') ||
         lower.contains('money laundering') || lower.contains('cyber crime branch') ||
         lower.contains('warrant') || lower.contains('court order') || lower.contains('ed ') ||
@@ -1300,7 +2084,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // Vector 2: Electricity Bill Disconnection Fraud
+    // Vector 8: Electricity Bill Disconnection Fraud
     final isElectricity = (lower.contains('electricity') || lower.contains('bijli') ||
         lower.contains('power will be disconnected') || lower.contains('power cut') ||
         lower.contains('light cut') || lower.contains('urja') || lower.contains('electric')) &&
@@ -1351,7 +2135,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // Vector 3: Banking KYC / PAN Card Phishing / Trojan
+    // Vector 9: Banking KYC / PAN Card Phishing / Trojan
     final isBankKyc = (lower.contains('yono') || lower.contains('sbi') || lower.contains('hdfc') ||
         lower.contains('icici') || lower.contains('axis') || lower.contains('pnb') ||
         lower.contains('bob') || lower.contains('canara') || lower.contains('kotak')) &&
@@ -1402,7 +2186,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // Vector 4: Telegram Task / Work from Home Scam
+    // Vector 10: Telegram Task / Work from Home Scam
     final isTelegramJob = (lower.contains('telegram') || lower.contains('part time') ||
         lower.contains('task') || lower.contains('youtube like') || lower.contains('daily income') ||
         lower.contains('work from home') || lower.contains('vip group') || lower.contains('hotel review')) &&
@@ -1449,7 +2233,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // Vector 5: FedEx / Customs Narcotics Extortion
+    // Vector 11: FedEx / Customs Narcotics Extortion
     final isFedEx = (lower.contains('fedex') || lower.contains('dhl') || lower.contains('customs') ||
         lower.contains('parcel') || lower.contains('courier')) &&
         (lower.contains('drugs') || lower.contains('narcotics') || lower.contains('mdma') ||
@@ -1495,7 +2279,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // Vector 6: Predatory Instant Loan Apps
+    // Vector 12: Predatory Instant Loan Apps
     final isLoanApp = (lower.contains('loan approved') || lower.contains('instant loan') ||
         lower.contains('7 days loan') || lower.contains('disbursed') || lower.contains('karz')) &&
         (lower.contains('harass') || lower.contains('contacts') || lower.contains('repay') ||
@@ -1541,7 +2325,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // Vector 7: UPI Collect / Pay to Receive Fraud
+    // Vector 13: UPI Collect / Pay to Receive Fraud
     final isUpiCollect = (lower.contains('collect request') || lower.contains('pay to receive') ||
         lower.contains('enter upi pin') || lower.contains('claim prize') ||
         lower.contains('scratch card') || lower.contains('cashback won')) &&
@@ -1589,7 +2373,78 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // Vector 8: URL Intelligence Analysis on URL found in image
+    // Vector 14: Income Tax / Refund Phishing
+    final isTaxRefund = (lower.contains('income tax') || lower.contains('tax refund') || lower.contains('itr refund')) &&
+        (lower.contains('approved') || lower.contains('refund of') || lower.contains('click') || lower.contains('account update'));
+
+    if (isTaxRefund) {
+      return VerdictModel(
+        checkId: 'img_tax_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.96,
+        scamType: isHindi ? 'Income Tax Refund Phishing' : 'Income Tax Refund Phishing',
+        escalated: true,
+        why: isHindi ? [
+          'Screenshot Text Detected: "$previewText"',
+          'Income tax refund approve hone ka jhootha sandesh jisme link par click karke bank account details update karne ko kaha gaya hai.',
+          'Income Tax Department kabhi bhi SMS ya WhatsApp link se direct refund claim karne ya debit card mangne ko nahi kehta.',
+        ] : [
+          'Screenshot Text Detected: "$previewText"',
+          'Phishing lure claiming an approved Income Tax refund awaiting bank credential submission.',
+          'The Income Tax Department never solicits debit card numbers or credential confirmations via direct SMS links.',
+        ],
+        whatToDo: isHindi ? [
+          'Kisi bhi link par click na karein',
+          'Official portal: incometax.gov.in par login karke apna genuine refund status check karein',
+        ] : [
+          'Never open the link or enter banking credentials',
+          'Verify refund status exclusively through the official e-filing portal: incometax.gov.in',
+        ],
+        trendNote: isHindi ? 'Tax season ke dauran aam cyber fraud vector.' : 'Common financial phishing vector during tax filing seasons.',
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device security assistant.',
+        inputText: '[Screenshot: $previewText]',
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // Vector 15: Fake Government Schemes / Free Recharge / PM Yojana
+    final isFakeScheme = (lower.contains('free recharge') || lower.contains('pm yojana') || lower.contains('free laptop') ||
+        lower.contains('ladli behna') || lower.contains('free mobile') || lower.contains('ram mandir prasad')) &&
+        (lower.contains('share') || lower.contains('click') || lower.contains('claim') || lower.contains('5 groups') || lower.contains('whatsapp'));
+
+    if (isFakeScheme) {
+      return VerdictModel(
+        checkId: 'img_scheme_${DateTime.now().millisecondsSinceEpoch}',
+        verdict: 'SCAM',
+        confidence: 0.95,
+        scamType: isHindi ? 'Viral Scheme & Adware Scam' : 'Viral Scheme & Adware Scam',
+        escalated: true,
+        why: isHindi ? [
+          'Screenshot Text Detected: "$previewText"',
+          'Muft recharge, free laptop ya government scheme ke naam par viral chain message jo WhatsApp groups mein forward karne ko majboor karta hai.',
+          'Ye fraud links fake surveys, adware aur malware install karwate hain aur user ka phone number steal karte hain.',
+        ] : [
+          'Screenshot Text Detected: "$previewText"',
+          'Viral chain deception promising free recharges or government equipment in exchange for group distribution.',
+          'Redirects to invasive adware domains and credential harvesting forms.',
+        ],
+        whatToDo: isHindi ? [
+          'Is message ko kisi bhi group ya contact ko forward na karein',
+          'Link par click na karein aur message delete karein',
+        ] : [
+          'Do NOT forward to contacts or WhatsApp groups',
+          'Delete the message immediately',
+        ],
+        trendNote: null,
+        language: language,
+        disclaimer: isHindi ? 'SafeSignal ek on-device AI assistant hai.' : 'SafeSignal is an on-device assistant.',
+        inputText: '[Screenshot: $previewText]',
+        checkedAt: DateTime.now(),
+      );
+    }
+
+    // Vector 16: URL Intelligence Analysis on URL found in image
     if (urlMatch != null) {
       final detectedUrl = urlMatch.group(0)!;
       final urlAnalysis = await UrlIntelligenceEngine.analyze(detectedUrl);
@@ -1633,7 +2488,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       }
     }
 
-    // Vector 9: Legitimate Bank / Payment Transaction Receipt
+    // Vector 17: Legitimate Bank / Payment Transaction Receipt
     final isLegitTxn = (lower.contains('debited from') || lower.contains('credited to') ||
         lower.contains('upi ref') || lower.contains('transaction successful') ||
         lower.contains('txn id') || lower.contains('imps ref') || lower.contains('neft ref') ||
@@ -1676,7 +2531,7 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // Vector 10: General Suspicious Keyword Analysis on extracted text
+    // Vector 18: Score-based Keyword Analysis on extracted text
     final scamKeywords = [
       'arrest', 'cbi', 'ed ', 'narcotics', 'police', 'court',
       'paisa bhejo', 'account block', 'kyc expire', 'kyc update',
@@ -1725,27 +2580,57 @@ CRITICAL CONVERSATIONAL INSTRUCTIONS:
       );
     }
 
-    // Default safe fallback if readable text has no threat indicators
+    // Vector 19: Dynamic Clean / Informative Screenshot Analysis (Deep Breakdown)
+    final wordCount = rawText.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+    final lineCount = rawText.split('\n').where((l) => l.trim().isNotEmpty).length;
+
+    final entitiesFound = <String>[];
+    if (phoneMatch != null) entitiesFound.add('Phone: ${phoneMatch.group(0)}');
+    if (urlMatch != null) entitiesFound.add('Link: ${urlMatch.group(0)}');
+    if (emailMatch != null) entitiesFound.add('Email: ${emailMatch.group(0)}');
+    if (upiMatch != null) entitiesFound.add('UPI VPA: ${upiMatch.group(0)}');
+
+    final dynamicWhy = <String>[];
+    final dynamicAction = <String>[];
+
+    if (isHindi) {
+      dynamicWhy.add('OCR Text Preview: "$previewText"');
+      dynamicWhy.add('Forensic Audit: Image se $lineCount lines aur $wordCount words safaltapoorvak scan hue.');
+      if (entitiesFound.isNotEmpty) {
+        dynamicWhy.add('Pahchane gaye entities: ${entitiesFound.join(', ')}');
+      }
+      dynamicWhy.add('Nishkarsh: Is image mein koi known phishing link, digital arrest warrant, wedding card APK dropper, ya illegal financial coercion detect nahi hua.');
+
+      dynamicAction.add('Screenshot ka content surakshit lag raha hai');
+      if (phoneMatch != null || urlMatch != null) {
+        dynamicAction.add('Dhyan rahe: Kisi bhi anjaan link ya phone number par apni confidential banking details enter na karein');
+      } else {
+        dynamicAction.add('Hamesha anjaan senders se aane wale messages par standard caution bartein');
+      }
+    } else {
+      dynamicWhy.add('OCR Text Preview: "$previewText"');
+      dynamicWhy.add('Forensic Audit: Extracted $lineCount lines and $wordCount words with on-device OCR.');
+      if (entitiesFound.isNotEmpty) {
+        dynamicWhy.add('Discovered entities: ${entitiesFound.join(', ')}');
+      }
+      dynamicWhy.add('Verdict: Zero indicators of APK droppers, digital arrest extortion, or credential phishing detected.');
+
+      dynamicAction.add('Image content appears clean of known attack signatures');
+      if (phoneMatch != null || urlMatch != null) {
+        dynamicAction.add('Exercise caution: Never disclose OTPs or credentials if contacting unknown entities');
+      } else {
+        dynamicAction.add('Continue practicing standard cyber hygiene');
+      }
+    }
+
     return VerdictModel(
       checkId: 'img_clean_${DateTime.now().millisecondsSinceEpoch}',
       verdict: 'LIKELY_SAFE',
-      confidence: 0.85,
-      scamType: isHindi ? 'No Threat Detected' : 'Clean Screenshot',
+      confidence: 0.90,
+      scamType: isHindi ? 'Clean Content Verified' : 'Clean Content Verified',
       escalated: false,
-      why: isHindi ? [
-        'Screenshot Text Detected: "$previewText"',
-        'Is image mein koi obvious phishing link, digital arrest, ya cyber fraud signature nahi mila.',
-      ] : [
-        'Screenshot Text Detected: "$previewText"',
-        'No overt phishing, extortion, or fraudulent signatures were detected in this image.',
-      ],
-      whatToDo: isHindi ? [
-        'Image mein koi khatra detect nahi hua',
-        'Kisi bhi anjaan link ya request par hamesha savdhaan rahein',
-      ] : [
-        'Image appears clean of known threat signatures',
-        'Continue to practice standard caution with unsolicited messages',
-      ],
+      why: dynamicWhy,
+      whatToDo: dynamicAction,
       trendNote: null,
       language: language,
       disclaimer: isHindi
@@ -2321,6 +3206,47 @@ class _MessageBubble extends StatelessWidget {
                 child: Image.file(message.image!, height: 160, width: double.infinity, fit: BoxFit.cover),
               ),
               const SizedBox(height: 10),
+            ],
+            if (message.ocrText != null && message.ocrText!.trim().isNotEmpty) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF161F30) : const Color(0xFFE8EEF8),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF2B3A55) : const Color(0xFFCBD5E1),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.document_scanner, size: 14, color: AppTheme.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          lang == 'hi' ? 'OCR Padha Gaya Text:' : 'OCR Extracted Text:',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      message.ocrText!.length > 180 ? '${message.ocrText!.substring(0, 177)}...' : message.ocrText!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
             Text(
               message.text,

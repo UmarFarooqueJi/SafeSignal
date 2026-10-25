@@ -133,10 +133,10 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- Google ML Kit On-Device Text Recognition (OCR) Engine -->
+        <!-- Google ML Kit On-Device Text Recognition (OCR) Engine (Latin + Devanagari / Hindi) -->
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"
-            android:value="ocr" />
+            android:value="ocr,ocr-devanagari" />
     </application>
 
     <queries>

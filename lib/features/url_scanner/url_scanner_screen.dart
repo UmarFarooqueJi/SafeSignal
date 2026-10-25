@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/url_intelligence_engine.dart';
+import '../../core/services/link_guard_service.dart';
 
 class UrlScannerScreen extends StatefulWidget {
   final String? initialUrl;
@@ -16,11 +17,12 @@ class UrlScannerScreen extends StatefulWidget {
 
 enum _ScanState { idle, scanning, done, error }
 
-class _UrlScannerScreenState extends State<UrlScannerScreen> {
+class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBindingObserver {
   final _controller = TextEditingController();
   _ScanState _state = _ScanState.idle;
   UrlResult? _result;
   String _statusMsg = '';
+  bool _isDefaultBrowser = false;
   final _dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 8),
     receiveTimeout: const Duration(seconds: 10),
@@ -29,6 +31,8 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkBrowserRole();
     if (widget.initialUrl != null && widget.initialUrl!.trim().isNotEmpty) {
       _controller.text = widget.initialUrl!.trim();
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -38,7 +42,20 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkBrowserRole();
+    }
+  }
+
+  Future<void> _checkBrowserRole() async {
+    final held = await LinkGuardService.isBrowserRoleHeld();
+    if (mounted) setState(() => _isDefaultBrowser = held);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     _dio.close();
     super.dispose();
@@ -282,6 +299,9 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
                   ),
                 ),
               ).animate().fadeIn(delay: 150.ms),
+
+              const SizedBox(height: 16),
+              _buildWhatsAppShieldBanner(isDark),
 
               if (_state == _ScanState.done && _result != null) ...[
                 const SizedBox(height: 24),
@@ -794,9 +814,12 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
               ),
               onPressed: () async {
                 if (result.url.isNotEmpty) {
-                  final uri = Uri.parse(result.url);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  final launched = await LinkGuardService.openUrlInSystemBrowser(result.url);
+                  if (!launched) {
+                    final uri = Uri.tryParse(result.url);
+                    if (uri != null && await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
                   }
                 }
               },
@@ -853,11 +876,109 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> {
     );
 
     if (proceed == true) {
-      final uri = Uri.tryParse(url);
-      if (uri != null && await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final launched = await LinkGuardService.openUrlInSystemBrowser(url);
+      if (!launched) {
+        final uri = Uri.tryParse(url);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
       }
     }
+  }
+
+  Widget _buildWhatsAppShieldBanner(bool isDark) {
+    const activeColor = Color(0xFF00E676);
+    const inactiveColor = Color(0xFF00B0FF);
+    final borderColor = _isDefaultBrowser
+        ? activeColor.withValues(alpha: 0.35)
+        : inactiveColor.withValues(alpha: 0.35);
+    final bgColor = isDark
+        ? (_isDefaultBrowser ? const Color(0xFF052012) : const Color(0xFF041B2D))
+        : (_isDefaultBrowser ? const Color(0xFFE8F5E9) : const Color(0xFFE1F5FE));
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: (_isDefaultBrowser ? activeColor : inactiveColor).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    _isDefaultBrowser ? Icons.verified_user_rounded : Icons.shield_outlined,
+                    color: _isDefaultBrowser ? activeColor : inactiveColor,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isDefaultBrowser ? 'WhatsApp Link Shield: ACTIVE' : 'Auto-Intercept WhatsApp Links',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _isDefaultBrowser
+                          ? 'All links clicked in WhatsApp & Telegram will automatically route and scan here first.'
+                          : 'Set SafeSignal as default link handler to auto-scan links from WhatsApp before opening in browser.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (!_isDefaultBrowser) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: inactiveColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                onPressed: () async {
+                  await LinkGuardService.requestBrowserRole();
+                  await _checkBrowserRole();
+                },
+                icon: const Icon(Icons.flash_on_rounded, size: 16),
+                label: const Text(
+                  'Enable WhatsApp Link Shield (1-Tap)',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _cardHeader(String title, bool isDark) {

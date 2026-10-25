@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/constants.dart';
 import '../../core/foundation/attribution.dart';
+import '../../core/services/link_guard_service.dart';
 
 // ─── Settings State ───────────────────────────────────────────────────────────
 class SettingsState {
@@ -192,6 +193,17 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   onTap: () =>
                       notifier.setNotifications(!settings.notificationsEnabled),
+                ),
+                _buildDivider(isDark),
+                _ClassicSettingsTile(
+                  icon: Icons.link_rounded,
+                  iconBg: const Color(0xFF00E676),
+                  title: 'WhatsApp Link Shield',
+                  subtitle: 'Auto-scan links clicked in WhatsApp & Telegram',
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+                  onTap: () async {
+                    await LinkGuardService.requestBrowserRole();
+                  },
                 ),
               ],
             ),

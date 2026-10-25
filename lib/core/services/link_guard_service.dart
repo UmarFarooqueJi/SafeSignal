@@ -36,6 +36,66 @@ class LinkGuardService {
     }
   }
 
+  /// Checks if SafeSignal is currently holding the Default Browser role on Android 10+
+  static Future<bool> isBrowserRoleHeld() async {
+    try {
+      final held = await _channel.invokeMethod<bool>('isBrowserRoleHeld');
+      return held ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Requests the Default Browser role from the Android OS (enables 100% WhatsApp interception)
+  static Future<bool> requestBrowserRole() async {
+    try {
+      final res = await _channel.invokeMethod<bool>('requestBrowserRole');
+      return res ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Opens Android Settings -> Default Apps so user can select SafeSignal
+  static Future<void> openDefaultAppsSettings() async {
+    try {
+      await _channel.invokeMethod('openDefaultAppsSettings');
+    } catch (_) {}
+  }
+
+  /// Opens a URL in an external system browser (Chrome/Firefox) without re-intercepting
+  static Future<bool> openUrlInSystemBrowser(String url) async {
+    try {
+      final res = await _channel.invokeMethod<bool>('openUrlInSystemBrowser', {'url': url});
+      return res ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static String? _lastCheckedClipboardUrl;
+
+  /// Inspects device clipboard for unverified URLs (e.g. copied from WhatsApp)
+  static Future<String?> checkClipboardUrl() async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim();
+      if (text == null || text.isEmpty) return null;
+
+      final url = extractUrl(text);
+      if (url != null && url != _lastCheckedClipboardUrl) {
+        _lastCheckedClipboardUrl = url;
+        return url;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Resets clipboard history tracker
+  static void resetClipboardTracker() {
+    _lastCheckedClipboardUrl = null;
+  }
+
   /// Extracts the primary URL from a plain text block or message
   static String? extractUrl(String text) {
     final trimmed = text.trim();

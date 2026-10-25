@@ -1,12 +1,10 @@
-import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
+import '../../core/constants.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -16,46 +14,34 @@ class ProfileSetupScreen extends StatefulWidget {
 }
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
-  final _nameCtrl = TextEditingController();
-  File? _imageFile;
   bool _isLoading = false;
+  late final String _nodeId;
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-    if (picked != null) {
-      setState(() {
-        _imageFile = File(picked.path);
-      });
-    }
+  @override
+  void initState() {
+    super.initState();
+    final randomHex = (DateTime.now().millisecondsSinceEpoch % 65535)
+        .toRadixString(16)
+        .toUpperCase()
+        .padLeft(4, '0');
+    _nodeId = 'NODE-SS-$randomHex';
   }
 
-  Future<void> _saveProfile() async {
-    if (_nameCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your name')),
-      );
-      return;
-    }
-
+  Future<void> _activateNode() async {
     setState(() => _isLoading = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userName', _nameCtrl.text.trim());
-      if (_imageFile != null) {
-        final appDir = await getApplicationDocumentsDirectory();
-        final fileName = _imageFile!.path.split(Platform.isWindows ? r'\' : '/').last;
-        final savedImage = await _imageFile!.copy('${appDir.path}/$fileName');
-        await prefs.setString('userProfileImage', savedImage.path);
-      }
+      await prefs.setString('userName', _nodeId);
       await prefs.setBool('isProfileSetupDone', true);
-      
+      await prefs.setBool(AppConstants.prefOnboardingDone, true);
+      await prefs.setBool('isLoggedIn', true);
+
       if (mounted) context.go('/home');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save profile: $e')),
+          SnackBar(content: Text('Initialization error: $e')),
         );
       }
     } finally {
@@ -66,11 +52,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF080710) : const Color(0xFFF4F6FA),
+        backgroundColor: isDark ? const Color(0xFF06090F) : const Color(0xFFF1F5F9),
         body: Stack(
           children: [
             // Breathing background glow
@@ -78,46 +64,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: isDark 
-                        ? [const Color(0xFF0F0C29), const Color(0xFF1D1B48), const Color(0xFF24243E)]
-                        : [const Color(0xFFFFF3E0), const Color(0xFFF3E5F5), const Color(0xFFE8EAF6)],
+                    colors: isDark
+                        ? [const Color(0xFF06090F), const Color(0xFF0F172A), const Color(0xFF0A192F)]
+                        : [const Color(0xFFE2E8F0), const Color(0xFFEDF2F7), const Color(0xFFF8FAFC)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                 ),
               ),
             ),
-            // Background ambient light blobs
-            if (isDark) ...[
-              Positioned(
-                top: -100,
-                left: -100,
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF6C63FF).withValues(alpha: 0.12),
-                  ),
-                ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-                 .scale(end: const Offset(1.2, 1.2), duration: 5.seconds, curve: Curves.easeInOut)
-                 .blur(end: const Offset(50, 50)),
-              ),
-              Positioned(
-                bottom: -80,
-                right: -80,
-                child: Container(
-                  width: 250,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF00F2FE).withValues(alpha: 0.08),
-                  ),
-                ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-                 .scale(end: const Offset(1.3, 1.3), duration: 6.seconds, curve: Curves.easeInOut)
-                 .blur(end: const Offset(40, 40)),
-              ),
-            ],
 
             SafeArea(
               child: Center(
@@ -128,243 +83,198 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const SizedBox(height: 20),
-                      // Top Page Header
+                      // Logo icon
+                      Center(
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF00E676).withValues(alpha: 0.12),
+                            border: Border.all(
+                              color: const Color(0xFF00E676).withValues(alpha: 0.35),
+                              width: 2,
+                            ),
+                          ),
+                          child: Image.asset(
+                            'assets/images/logo_transparent.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+
+                      const SizedBox(height: 24),
+
                       Text(
-                        'Setup Profile',
+                        'Air-Gapped Node Initializer',
                         style: TextStyle(
-                          fontSize: 32,
+                          fontSize: 26,
                           fontWeight: FontWeight.w900,
-                          color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-                          letterSpacing: -1.5,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          letterSpacing: -0.5,
                         ),
                         textAlign: TextAlign.center,
                       ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
+
                       const SizedBox(height: 8),
+
                       Text(
-                        'Let\'s personalize your SafeSignal experience.',
+                        '100% Open-Source & Private — Zero Personal Data Required',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: isDark ? Colors.white60 : Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                          color: isDark ? const Color(0xFF00E676) : const Color(0xFF059669),
+                          fontWeight: FontWeight.w600,
                         ),
                         textAlign: TextAlign.center,
-                      ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-                      
-                      const SizedBox(height: 36),
+                      ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1),
 
-                      // Glassmorphic Card
+                      const SizedBox(height: 32),
+
+                      // Card
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(28),
+                        borderRadius: BorderRadius.circular(24),
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+                            padding: const EdgeInsets.all(24),
                             decoration: BoxDecoration(
-                              color: isDark 
-                                  ? Colors.white.withValues(alpha: 0.04) 
-                                  : Colors.white.withValues(alpha: 0.7),
-                              borderRadius: BorderRadius.circular(28),
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.04)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(24),
                               border: Border.all(
-                                color: isDark 
-                                    ? Colors.white.withValues(alpha: 0.08) 
-                                    : Colors.white.withValues(alpha: 0.3),
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : const Color(0xFFE2E8F0),
                                 width: 1.5,
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-                                  blurRadius: 30,
-                                  offset: const Offset(0, 15),
-                                ),
-                              ],
                             ),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Glowing Image Picker
-                                Center(
-                                  child: GestureDetector(
-                                    onTap: _pickImage,
-                                    child: Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        Container(
-                                          width: 116,
-                                          height: 116,
-                                          padding: const EdgeInsets.all(3),
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            gradient: const LinearGradient(
-                                              colors: [Color(0xFF6C63FF), Color(0xFF00F2FE)],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: const Color(0xFF6C63FF).withValues(alpha: 0.25),
-                                                blurRadius: 20,
-                                                offset: const Offset(0, 8),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: isDark ? const Color(0xFF0F0C29) : Colors.white,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: ClipOval(
-                                              child: _imageFile != null
-                                                  ? Image.file(_imageFile!, fit: BoxFit.cover)
-                                                  : Padding(
-                                                      padding: const EdgeInsets.all(16.0),
-                                                      child: Image.asset(
-                                                        'assets/images/logo_transparent.png',
-                                                        fit: BoxFit.contain,
-                                                      ),
-                                                    ),
-                                            ),
-                                          ),
-                                        ).animate().scale(begin: const Offset(0.9, 0.9), curve: Curves.easeOutBack, duration: 600.ms),
-                                        Positioned(
-                                          bottom: 0,
-                                          right: 0,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              gradient: const LinearGradient(
-                                                colors: [Color(0xFF6C63FF), Color(0xFF8A84FF)],
-                                              ),
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: isDark ? const Color(0xFF0F0C29) : Colors.white,
-                                                width: 2,
-                                              ),
-                                            ),
-                                            child: const Icon(
-                                              Icons.camera_alt_rounded, 
-                                              color: Colors.white, 
-                                              size: 18,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 36),
-
-                                // Name Input Field
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                Row(
                                   children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 4, bottom: 8),
-                                      child: Text(
-                                        'Full Name',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: isDark ? Colors.white70 : const Color(0xFF1A1A2E),
-                                        ),
-                                      ),
-                                    ),
-                                    TextField(
-                                      controller: _nameCtrl,
+                                    const Icon(Icons.shield_outlined, color: Color(0xFF00E676), size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Assigned Cryptographic Node',
                                       style: TextStyle(
-                                        color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      decoration: InputDecoration(
-                                        hintText: 'Enter your full name',
-                                        hintStyle: TextStyle(
-                                          color: isDark ? Colors.white30 : Colors.grey.shade400,
-                                          fontSize: 14,
-                                        ),
-                                        filled: true,
-                                        fillColor: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
-                                        prefixIcon: Icon(
-                                          Icons.badge_rounded, 
-                                          color: const Color(0xFF6C63FF).withValues(alpha: 0.8),
-                                          size: 20,
-                                        ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(14),
-                                          borderSide: BorderSide(
-                                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
-                                          ),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(14),
-                                          borderSide: BorderSide(
-                                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
-                                          ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(14),
-                                          borderSide: const BorderSide(
-                                            color: Color(0xFF6C63FF),
-                                            width: 2,
-                                          ),
-                                        ),
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? Colors.white70 : Colors.black87,
                                       ),
                                     ),
                                   ],
-                                ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.05),
-
-                                const SizedBox(height: 32),
-
-                                // Save / Continue Button
-                                GestureDetector(
-                                  onTap: _isLoading ? null : _saveProfile,
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [Color(0xFF6C63FF), Color(0xFF8A84FF)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFF6C63FF).withValues(alpha: 0.35),
-                                          blurRadius: 16,
-                                          offset: const Offset(0, 6),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Center(
-                                      child: _isLoading
-                                          ? const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white, 
-                                                strokeWidth: 2.5,
-                                              ),
-                                            )
-                                          : const Text(
-                                              'Continue',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w900,
-                                                letterSpacing: 0.5,
-                                              ),
-                                            ),
+                                ),
+                                const SizedBox(height: 10),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0xFF0B132B) : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: const Color(0xFF00E676).withValues(alpha: 0.3),
                                     ),
                                   ),
-                                ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.05),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        _nodeId,
+                                        style: const TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF00E676),
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Text(
+                                          'ANONYMOUS',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF00E676),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const SizedBox(height: 20),
+
+                                // Privacy guarantees list
+                                _buildBulletPoint(
+                                  icon: Icons.check_circle_outline,
+                                  title: 'Zero Name or Identity Tracking',
+                                  subtitle: 'SafeSignal never asks for or stores your real name, username, or phone number.',
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildBulletPoint(
+                                  icon: Icons.lock_outline,
+                                  title: '100% On-Device Threat Intelligence',
+                                  subtitle: 'All scans, forensic audits, and vault encryptions run locally on this hardware.',
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildBulletPoint(
+                                  icon: Icons.cloud_off_outlined,
+                                  title: 'Zero Cloud Telemetry',
+                                  subtitle: 'No analytics, no behavioral trackers, and no external log servers.',
+                                  isDark: isDark,
+                                ),
+
+                                const SizedBox(height: 28),
+
+                                // Activate Button
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 52,
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isLoading ? null : _activateNode,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF00E676),
+                                      foregroundColor: const Color(0xFF06090F),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    icon: _isLoading
+                                        ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.black,
+                                            ),
+                                          )
+                                        : const Icon(Icons.bolt, size: 20, color: Colors.black),
+                                    label: Text(
+                                      _isLoading ? 'Initializing...' : 'Launch Defense Suite',
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                         ),
-                      ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.05),
+                      ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05),
                     ],
                   ),
                 ),
@@ -373,6 +283,45 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBulletPoint({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isDark,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: const Color(0xFF00E676), size: 18),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  height: 1.35,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -28,13 +28,10 @@ class _SignInScreenState extends State<SignInScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(AppConstants.prefOnboardingDone, true);
     await prefs.setBool('isLoggedIn', true);
-    final isProfileSetupDone = prefs.getBool('isProfileSetupDone') ?? false;
+    await prefs.setBool('isProfileSetupDone', true);
+    await prefs.setString('userName', 'Air-Gapped Node');
     if (mounted) {
-      if (isProfileSetupDone) {
-        context.go('/home');
-      } else {
-        context.go('/profile-setup');
-      }
+      context.go('/home');
     }
   }
 
@@ -92,14 +89,11 @@ class _SignInScreenState extends State<SignInScreen> {
       await prefs.setBool(AppConstants.prefOnboardingDone, true);
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('userEmail', email);
-      final isProfileSetupDone = prefs.getBool('isProfileSetupDone') ?? false;
+      await prefs.setBool('isProfileSetupDone', true);
+      await prefs.setString('userName', 'Air-Gapped Node');
 
       if (mounted) {
-        if (isProfileSetupDone) {
-          context.go('/home');
-        } else {
-          context.go('/profile-setup');
-        }
+        context.go('/home');
       }
     } catch (e) {
       if (mounted) {
