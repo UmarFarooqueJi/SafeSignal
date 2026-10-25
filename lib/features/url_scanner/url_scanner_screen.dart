@@ -28,12 +28,31 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
     receiveTimeout: const Duration(seconds: 10),
   ));
 
+  StreamSubscription<String>? _urlSub;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkBrowserRole();
+    _urlSub = LinkGuardService.onUrlReceived.listen((url) {
+      if (mounted && url.trim().isNotEmpty) {
+        _controller.text = url.trim();
+        _scan();
+      }
+    });
     if (widget.initialUrl != null && widget.initialUrl!.trim().isNotEmpty) {
+      _controller.text = widget.initialUrl!.trim();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scan();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant UrlScannerScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialUrl != null && widget.initialUrl != oldWidget.initialUrl && widget.initialUrl!.trim().isNotEmpty) {
       _controller.text = widget.initialUrl!.trim();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scan();
@@ -55,6 +74,7 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
 
   @override
   void dispose() {
+    _urlSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     _dio.close();
@@ -788,19 +808,20 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
             ),
           ),
         ] else ...[
+          // Option 1: Open Inside SafeSignal (In-App Sandbox)
           Container(
             width: double.infinity,
-            height: 56,
+            height: 54,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF059669), Color(0xFF047857)],
+                colors: [Color(0xFF00E676), Color(0xFF00B0FF)],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF059669).withValues(alpha: 0.25),
+                  color: const Color(0xFF00E676).withValues(alpha: 0.28),
                   blurRadius: 14,
                   offset: const Offset(0, 4),
                 ),
@@ -810,6 +831,44 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () async {
+                final uri = Uri.tryParse(result.url);
+                if (uri != null) {
+                  try {
+                    final launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+                    if (!launched) {
+                      await launchUrl(uri, mode: LaunchMode.inAppWebView);
+                    }
+                  } catch (_) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                }
+              },
+              icon: const Icon(Icons.shield_outlined, color: Colors.black, size: 22),
+              label: const Text(
+                'Open Inside SafeSignal (Sandbox)',
+                style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Option 2: Open in External Browser (Chrome / System)
+          Container(
+            width: double.infinity,
+            height: 50,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                width: 1.2,
+              ),
+            ),
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: BorderSide.none,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
               onPressed: () async {
@@ -823,10 +882,10 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                   }
                 }
               },
-              icon: const Icon(Icons.open_in_browser_rounded, color: Colors.white, size: 22),
-              label: const Text(
-                'Open in Browser ↗',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              icon: Icon(Icons.open_in_browser_rounded, color: isDark ? Colors.white70 : const Color(0xFF334155), size: 20),
+              label: Text(
+                'Open in Chrome / External Browser ↗',
+                style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.bold),
               ),
             ),
           ),

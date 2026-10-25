@@ -23,12 +23,15 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image_picker/image_picker.dart';
 import 'vault_crypto_service.dart';
 import 'vault_document_viewer_screen.dart';
+import 'vault_templates.dart';
 
 class VaultItem {
   final String id;
   final String title;
   final String category; // 'Aadhaar / ID', 'PAN Card', 'Passport', 'Banking & UPI', 'Crypto / Seed Phrase', 'Secret Note'
+  final String templateType; // 'gmail', 'bank', 'card', 'upi', 'social', 'id', 'wifi', 'crypto', 'note', 'document'
   final String secretValue;
+  final Map<String, String> fields;
   final String notes;
   final int createdAt;
   final String type; // 'text' or 'document'
@@ -44,7 +47,9 @@ class VaultItem {
     required this.id,
     required this.title,
     required this.category,
+    this.templateType = 'note',
     required this.secretValue,
+    this.fields = const {},
     this.notes = '',
     required this.createdAt,
     this.type = 'text',
@@ -59,7 +64,9 @@ class VaultItem {
         'id': id,
         'title': title,
         'category': category,
+        'templateType': templateType,
         'secretValue': secretValue,
+        'fields': fields,
         'notes': notes,
         'createdAt': createdAt,
         'type': type,
@@ -70,21 +77,57 @@ class VaultItem {
         'cipherMode': cipherMode,
       };
 
-  factory VaultItem.fromJson(Map<String, dynamic> json) => VaultItem(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        category: json['category'] as String? ?? 'Secret Note',
-        secretValue: json['secretValue'] as String? ?? '',
-        notes: json['notes'] as String? ?? '',
-        createdAt: json['createdAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
-        type: json['type'] as String? ?? 'text',
-        documentFileName: json['documentFileName'] as String?,
-        documentIv: json['documentIv'] as String?,
-        documentChecksum: json['documentChecksum'] as String?,
-        fileSizeBytes: json['fileSizeBytes'] as int?,
-        cipherMode: json['cipherMode'] as String? ??
-            ((json['documentFileName'] as String?)?.contains('_gcm_') == true ? 'gcm' : 'cbc'),
-      );
+  factory VaultItem.fromJson(Map<String, dynamic> json) {
+    final rawFields = json['fields'] as Map<String, dynamic>?;
+    final Map<String, String> parsedFields = {};
+    if (rawFields != null) {
+      rawFields.forEach((k, v) => parsedFields[k] = v.toString());
+    }
+
+    String detectedTemplate = json['templateType'] as String? ?? '';
+    if (detectedTemplate.isEmpty) {
+      if (json['type'] == 'document') {
+        detectedTemplate = 'document';
+      } else {
+        final cat = (json['category'] as String? ?? '').toLowerCase();
+        if (cat.contains('gmail') || cat.contains('google')) {
+          detectedTemplate = 'gmail';
+        } else if (cat.contains('bank')) {
+          detectedTemplate = 'bank';
+        } else if (cat.contains('card')) {
+          detectedTemplate = 'card';
+        } else if (cat.contains('upi')) {
+          detectedTemplate = 'upi';
+        } else if (cat.contains('crypto') || cat.contains('seed')) {
+          detectedTemplate = 'crypto';
+        } else if (cat.contains('wifi')) {
+          detectedTemplate = 'wifi';
+        } else if (cat.contains('aadhaar') || cat.contains('pan') || cat.contains('passport') || cat.contains('license')) {
+          detectedTemplate = 'id';
+        } else {
+          detectedTemplate = 'note';
+        }
+      }
+    }
+
+    return VaultItem(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      category: json['category'] as String? ?? 'Secret Note',
+      templateType: detectedTemplate,
+      secretValue: json['secretValue'] as String? ?? '',
+      fields: parsedFields,
+      notes: json['notes'] as String? ?? '',
+      createdAt: json['createdAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
+      type: json['type'] as String? ?? 'text',
+      documentFileName: json['documentFileName'] as String?,
+      documentIv: json['documentIv'] as String?,
+      documentChecksum: json['documentChecksum'] as String?,
+      fileSizeBytes: json['fileSizeBytes'] as int?,
+      cipherMode: json['cipherMode'] as String? ??
+          ((json['documentFileName'] as String?)?.contains('_gcm_') == true ? 'gcm' : 'cbc'),
+    );
+  }
 }
 
 class VaultScreen extends ConsumerStatefulWidget {
@@ -862,122 +905,886 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
   }
 
   void _showAddSecretDialog() {
-    final titleCtrl = TextEditingController();
-    final secretCtrl = TextEditingController();
-    final notesCtrl = TextEditingController();
-    String category = 'Banking & UPI';
+    _showTemplatePickerSheet();
+  }
 
+  // ─── Forensic Template Picker ───────────────────────────────────────────────
+  void _showTemplatePickerSheet() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final sheetBg = isDark ? const Color(0xFF111827) : Colors.white;
+        final sheetBg = isDark ? const Color(0xFF0F172A) : Colors.white;
         final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+        final textSub = isDark ? Colors.white60 : const Color(0xFF64748B);
 
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+          ),
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 16),
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border.all(color: const Color(0xFF1E293B)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Select Credential Template',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: textMain),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Zero-cloud, KeyStore AES-256-GCM hardware protection for every record.',
+                style: TextStyle(fontSize: 12, color: textSub),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.separated(
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: VaultTemplates.all.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (context, idx) {
+                    final t = VaultTemplates.all[idx];
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _showTemplateEditorDialog(template: t);
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: t.color.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(t.icon, color: t.color, size: 24),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    t.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14.5,
+                                      color: textMain,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    t.description,
+                                    style: TextStyle(fontSize: 11.5, color: textSub, height: 1.3),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(Icons.chevron_right_rounded, color: t.color, size: 22),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ─── Template Editor & Credential Builder ──────────────────────────────────
+  void _showTemplateEditorDialog({required VaultTemplateDef template, VaultItem? existingItem}) {
+    final titleCtrl = TextEditingController(text: existingItem?.title ?? template.name);
+    final notesCtrl = TextEditingController(text: existingItem?.notes ?? '');
+    final Map<String, TextEditingController> fieldControllers = {};
+    final Set<String> visibleSecretKeys = {};
+
+    for (var f in template.fields) {
+      final initialVal = existingItem?.fields[f.key] ?? (existingItem != null && f.key == template.secretFieldKey ? existingItem.secretValue : '');
+      fieldControllers[f.key] = TextEditingController(text: initialVal);
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final sheetBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+            final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+            final textSub = isDark ? Colors.white60 : const Color(0xFF64748B);
+
             return Padding(
               padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
               child: Container(
-                padding: const EdgeInsets.all(24),
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.90,
+                ),
+                padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   color: sheetBg,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  border: Border.all(color: const Color(0xFF1E293B)),
                 ),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: template.color.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(template.icon, color: template.color, size: 22),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                existingItem != null ? 'Edit ${template.name}' : 'Lock ${template.name}',
+                                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: textMain),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Item Title / Label
+                      TextField(
+                        controller: titleCtrl,
+                        style: TextStyle(color: textMain, fontWeight: FontWeight.bold),
+                        decoration: InputDecoration(
+                          labelText: 'Title / Label',
+                          labelStyle: TextStyle(color: textSub),
+                          prefixIcon: Icon(Icons.label_outline_rounded, color: template.color, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          filled: true,
+                          fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Dynamic Template Fields
+                      ...template.fields.map((field) {
+                        final ctrl = fieldControllers[field.key]!;
+                        final isRevealed = visibleSecretKeys.contains(field.key);
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              TextField(
+                                controller: ctrl,
+                                obscureText: field.isSecret && !isRevealed,
+                                maxLines: field.isMultiline ? 3 : 1,
+                                keyboardType: field.keyboardType,
+                                style: TextStyle(
+                                  color: textMain,
+                                  fontFamily: field.isSecret && isRevealed ? 'monospace' : null,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: field.label,
+                                  hintText: field.hint,
+                                  labelStyle: TextStyle(color: textSub),
+                                  hintStyle: TextStyle(color: textSub.withValues(alpha: 0.5), fontSize: 12),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                                  filled: true,
+                                  fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                                  suffixIcon: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (field.canGeneratePassword)
+                                        IconButton(
+                                          icon: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF00E5FF), size: 20),
+                                          tooltip: 'Generate Strong Password',
+                                          onPressed: () {
+                                            _showPasswordGeneratorDialog(onInsert: (generated) {
+                                              ctrl.text = generated;
+                                              setModalState(() {
+                                                visibleSecretKeys.add(field.key);
+                                              });
+                                            });
+                                          },
+                                        ),
+                                      if (field.isSecret)
+                                        IconButton(
+                                          icon: Icon(
+                                            isRevealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                            size: 20,
+                                            color: textSub,
+                                          ),
+                                          onPressed: () {
+                                            setModalState(() {
+                                              if (isRevealed) {
+                                                visibleSecretKeys.remove(field.key);
+                                              } else {
+                                                visibleSecretKeys.add(field.key);
+                                              }
+                                            });
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+
+                      // Additional Notes
+                      TextField(
+                        controller: notesCtrl,
+                        maxLines: 2,
+                        style: TextStyle(color: textMain),
+                        decoration: InputDecoration(
+                          labelText: 'Confidential Notes (Optional)',
+                          labelStyle: TextStyle(color: textSub),
+                          prefixIcon: Icon(Icons.note_alt_outlined, color: template.color, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          filled: true,
+                          fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Save Button
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          if (titleCtrl.text.trim().isEmpty) return;
+
+                          final Map<String, String> fieldsMap = {};
+                          for (var f in template.fields) {
+                            fieldsMap[f.key] = fieldControllers[f.key]!.text.trim();
+                          }
+
+                          final primarySecret = fieldControllers[template.secretFieldKey]?.text.trim() ??
+                              fieldControllers.values.first.text.trim();
+
+                          final newItem = VaultItem(
+                            id: existingItem?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+                            title: titleCtrl.text.trim(),
+                            category: template.category,
+                            templateType: template.id,
+                            secretValue: primarySecret,
+                            fields: fieldsMap,
+                            notes: notesCtrl.text.trim(),
+                            createdAt: existingItem?.createdAt ?? DateTime.now().millisecondsSinceEpoch,
+                            type: 'text',
+                          );
+
+                          setState(() {
+                            if (existingItem != null) {
+                              final idx = _items.indexWhere((i) => i.id == existingItem.id);
+                              if (idx != -1) _items[idx] = newItem;
+                            } else {
+                              _items.insert(0, newItem);
+                            }
+                          });
+
+                          _saveItems();
+                          Navigator.pop(context);
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 18),
+                                  const SizedBox(width: 8),
+                                  Text('${template.name} encrypted & stored in Hardware Vault!'),
+                                ],
+                              ),
+                              backgroundColor: const Color(0xFF0F172A),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.lock_rounded, size: 18),
+                        label: Text(existingItem != null ? 'UPDATE ENCRYPTED RECORD' : 'ENCRYPT & LOCK IN HARDWARE VAULT'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ─── High-Entropy Password & PIN Generator Modal ───────────────────────────
+  void _showPasswordGeneratorDialog({Function(String)? onInsert}) {
+    int length = 16;
+    bool upper = true;
+    bool lower = true;
+    bool digits = true;
+    bool symbols = true;
+    bool isPinMode = false;
+    int pinLength = 6;
+    String currentPassword = VaultPasswordGenerator.generate(
+      length: length,
+      upper: upper,
+      lower: lower,
+      digits: digits,
+      symbols: symbols,
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final bg = isDark ? const Color(0xFF0F172A) : Colors.white;
+            final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+
+            final entropy = isPinMode
+                ? double.parse((pinLength * 3.32).toStringAsFixed(1))
+                : VaultPasswordGenerator.calculateEntropy(currentPassword);
+            final entropyRating = VaultPasswordGenerator.getEntropyRating(entropy);
+            final entropyColor = VaultPasswordGenerator.getEntropyColor(entropy);
+
+            return AlertDialog(
+              backgroundColor: bg,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+                side: const BorderSide(color: Color(0xFF1E293B)),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF00E5FF), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    isPinMode ? 'Secure PIN Generator' : 'Password Generator',
+                    style: TextStyle(color: textMain, fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Password Preview Box
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF06090F) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: entropyColor.withValues(alpha: 0.5), width: 1.2),
+                      ),
+                      child: Column(
+                        children: [
+                          SelectableText(
+                            currentPassword,
+                            style: TextStyle(
+                              color: textMain,
+                              fontSize: isPinMode ? 26 : 17,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'monospace',
+                              letterSpacing: isPinMode ? 4 : 1,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: entropyColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '$entropy bits • $entropyRating',
+                                  style: TextStyle(color: entropyColor, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.refresh_rounded, color: Color(0xFF38BDF8), size: 20),
+                                tooltip: 'Regenerate',
+                                onPressed: () {
+                                  setDialogState(() {
+                                    currentPassword = isPinMode
+                                        ? VaultPasswordGenerator.generatePin(length: pinLength)
+                                        : VaultPasswordGenerator.generate(
+                                            length: length,
+                                            upper: upper,
+                                            lower: lower,
+                                            digits: digits,
+                                            symbols: symbols,
+                                          );
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Mode Toggle (Password vs PIN)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Password (Alphanumeric)'),
+                          selected: !isPinMode,
+                          onSelected: (val) {
+                            setDialogState(() {
+                              isPinMode = false;
+                              currentPassword = VaultPasswordGenerator.generate(
+                                length: length,
+                                upper: upper,
+                                lower: lower,
+                                digits: digits,
+                                symbols: symbols,
+                              );
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: const Text('Numeric PIN'),
+                          selected: isPinMode,
+                          onSelected: (val) {
+                            setDialogState(() {
+                              isPinMode = true;
+                              currentPassword = VaultPasswordGenerator.generatePin(length: pinLength);
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (!isPinMode) ...[
+                      // Length Slider
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Length: $length characters', style: TextStyle(color: textMain, fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text(length >= 20 ? 'Max Armor' : (length >= 14 ? 'Recommended' : 'Minimum'),
+                              style: TextStyle(color: entropyColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      Slider(
+                        value: length.toDouble(),
+                        min: 8,
+                        max: 32,
+                        divisions: 24,
+                        activeColor: const Color(0xFF00E676),
+                        onChanged: (val) {
+                          setDialogState(() {
+                            length = val.round();
+                            currentPassword = VaultPasswordGenerator.generate(
+                              length: length,
+                              upper: upper,
+                              lower: lower,
+                              digits: digits,
+                              symbols: symbols,
+                            );
+                          });
+                        },
+                      ),
+                      // Toggles
+                      CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('Uppercase Letters (A-Z)', style: TextStyle(color: textMain, fontSize: 13)),
+                        value: upper,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            upper = val ?? true;
+                            currentPassword = VaultPasswordGenerator.generate(
+                              length: length,
+                              upper: upper,
+                              lower: lower,
+                              digits: digits,
+                              symbols: symbols,
+                            );
+                          });
+                        },
+                      ),
+                      CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('Lowercase Letters (a-z)', style: TextStyle(color: textMain, fontSize: 13)),
+                        value: lower,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            lower = val ?? true;
+                            currentPassword = VaultPasswordGenerator.generate(
+                              length: length,
+                              upper: upper,
+                              lower: lower,
+                              digits: digits,
+                              symbols: symbols,
+                            );
+                          });
+                        },
+                      ),
+                      CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('Digits (0-9)', style: TextStyle(color: textMain, fontSize: 13)),
+                        value: digits,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            digits = val ?? true;
+                            currentPassword = VaultPasswordGenerator.generate(
+                              length: length,
+                              upper: upper,
+                              lower: lower,
+                              digits: digits,
+                              symbols: symbols,
+                            );
+                          });
+                        },
+                      ),
+                      CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('Special Symbols (!@#\$%)', style: TextStyle(color: textMain, fontSize: 13)),
+                        value: symbols,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            symbols = val ?? true;
+                            currentPassword = VaultPasswordGenerator.generate(
+                              length: length,
+                              upper: upper,
+                              lower: lower,
+                              digits: digits,
+                              symbols: symbols,
+                            );
+                          });
+                        },
+                      ),
+                    ] else ...[
+                      // PIN Length Selector
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [4, 6, 8].map((l) {
+                          return ChoiceChip(
+                            label: Text('$l Digits'),
+                            selected: pinLength == l,
+                            onSelected: (val) {
+                              setDialogState(() {
+                                pinLength = l;
+                                currentPassword = VaultPasswordGenerator.generatePin(length: pinLength);
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton.icon(
+                  onPressed: () {
+                    VaultClipboardGuard.copyWithAutoWipe(context, currentPassword, isPinMode ? 'PIN' : 'Password');
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: const Text('Copy to RAM'),
+                ),
+                if (onInsert != null)
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00E676), foregroundColor: Colors.black),
+                    onPressed: () {
+                      onInsert(currentPassword);
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text('Insert & Use', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ─── Decrypted Record Details Sheet ─────────────────────────────────────────
+  void _showItemDetailsSheet(VaultItem item) {
+    final template = VaultTemplates.findById(item.templateType);
+    final Set<String> revealedKeys = {};
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final sheetBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+            final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+            final textSub = isDark ? Colors.white60 : const Color(0xFF64748B);
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: sheetBg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(color: const Color(0xFF1E293B)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Store Encrypted Secret Key / PIN',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: textMain),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: template.color.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(template.icon, color: template.color, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.title,
+                                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: textMain),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${template.name} • AES-256 KeyStore',
+                                  style: TextStyle(fontSize: 11, color: template.color, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                         IconButton(
                           icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () => Navigator.pop(ctx),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      initialValue: category,
-                      decoration: InputDecoration(
-                        labelText: 'Category',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'Banking & UPI', child: Text('Bank Account / UPI PIN')),
-                        DropdownMenuItem(value: 'Crypto / Seed Phrase', child: Text('Wallet Seed Phrase / Private Key')),
-                        DropdownMenuItem(value: 'Secret Note', child: Text('Password / Confidential Note')),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) setModalState(() => category = val);
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: titleCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Title / Label (e.g. HDFC UPI, Ledger Seed)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: secretCtrl,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: 'Secret Value (Encrypted with AES-256)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: notesCtrl,
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        labelText: 'Additional Notes (Optional)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                    ),
                     const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        if (titleCtrl.text.trim().isEmpty || secretCtrl.text.trim().isEmpty) return;
-                        final newItem = VaultItem(
-                          id: DateTime.now().millisecondsSinceEpoch.toString(),
-                          title: titleCtrl.text.trim(),
-                          category: category,
-                          secretValue: secretCtrl.text.trim(),
-                          notes: notesCtrl.text.trim(),
-                          createdAt: DateTime.now().millisecondsSinceEpoch,
-                          type: 'text',
-                        );
-                        setState(() => _items.insert(0, newItem));
-                        _saveItems();
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.lock_rounded, size: 18),
-                      label: const Text('ENCRYPT & SAVE TO VAULT'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        textStyle: const TextStyle(fontWeight: FontWeight.w800),
+
+                    // Structured Field Cards
+                    ...template.fields.map((field) {
+                      final val = item.fields[field.key] ?? (field.key == template.secretFieldKey ? item.secretValue : '');
+                      if (val.isEmpty) return const SizedBox.shrink();
+
+                      final isRevealed = revealedKeys.contains(field.key);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              field.label.toUpperCase(),
+                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: textSub, letterSpacing: 0.5),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    field.isSecret && !isRevealed ? '•••• •••• •••• ••••' : val,
+                                    style: TextStyle(
+                                      color: textMain,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      fontFamily: (field.isSecret && isRevealed) || field.key.contains('number') || field.key.contains('pin')
+                                          ? 'monospace'
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                                if (field.isSecret)
+                                  IconButton(
+                                    icon: Icon(
+                                      isRevealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                      size: 18,
+                                      color: textSub,
+                                    ),
+                                    onPressed: () {
+                                      setSheetState(() {
+                                        if (isRevealed) {
+                                          revealedKeys.remove(field.key);
+                                        } else {
+                                          revealedKeys.add(field.key);
+                                        }
+                                      });
+                                    },
+                                  ),
+                                IconButton(
+                                  icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF2563EB)),
+                                  tooltip: 'Copy',
+                                  onPressed: () {
+                                    VaultClipboardGuard.copyWithAutoWipe(context, val, field.label);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+
+                    if (item.notes.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('CONFIDENTIAL NOTES', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: textSub)),
+                            const SizedBox(height: 6),
+                            Text(item.notes, style: TextStyle(color: textMain, fontSize: 13, height: 1.35)),
+                          ],
+                        ),
                       ),
+                    ],
+
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFF38BDF8)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF38BDF8)),
+                            label: const Text('Edit Fields', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _showTemplateEditorDialog(template: template, existingItem: item);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFEF4444),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                            label: const Text('Shred Record', style: TextStyle(fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _deleteItem(item.id);
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ),
-          );
+            );
           },
         );
       },
@@ -1010,6 +1817,42 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: textMain),
                 ),
                 const SizedBox(height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.security_rounded, color: Color(0xFF00E676), size: 24),
+                  ),
+                  title: Text('Add Credential (9 Templates)', style: TextStyle(fontWeight: FontWeight.bold, color: textMain)),
+                  subtitle: const Text('Gmail, Netbanking, Cards, UPI, Social Media, Wi-Fi & Crypto Seeds', style: TextStyle(fontSize: 12)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showTemplatePickerSheet();
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF00E5FF), size: 24),
+                  ),
+                  title: Text('Password & PIN Generator', style: TextStyle(fontWeight: FontWeight.bold, color: textMain)),
+                  subtitle: const Text('Military-grade 128-bit entropy passwords & numeric PINs', style: TextStyle(fontSize: 12)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showPasswordGeneratorDialog();
+                  },
+                ),
+                const Divider(height: 1),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Container(
@@ -1063,24 +1906,6 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                     _pickDocumentFromGallery();
                   },
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.password_rounded, color: Color(0xFF8B5CF6), size: 24),
-                  ),
-                  title: Text('Store Secret PIN / Key / Note', style: TextStyle(fontWeight: FontWeight.bold, color: textMain)),
-                  subtitle: const Text('Bank UPI PIN, recovery seeds, credentials in KeyStore', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _showAddSecretDialog();
-                  },
-                ),
               ],
             ),
           ),
@@ -1125,6 +1950,12 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
   List<VaultItem> get _filteredItems {
     if (_activeFilter == 'docs') {
       return _items.where((i) => i.isDocument).toList();
+    } else if (_activeFilter == 'gmail') {
+      return _items.where((i) => i.templateType == 'gmail').toList();
+    } else if (_activeFilter == 'bank') {
+      return _items.where((i) => i.templateType == 'bank' || i.templateType == 'card').toList();
+    } else if (_activeFilter == 'upi') {
+      return _items.where((i) => i.templateType == 'upi').toList();
     } else if (_activeFilter == 'secrets') {
       return _items.where((i) => !i.isDocument).toList();
     }
@@ -1141,6 +1972,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     final borderCol = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
 
     final docsCount = _items.where((i) => i.isDocument).length;
+    final gmailCount = _items.where((i) => i.templateType == 'gmail').length;
+    final bankCount = _items.where((i) => i.templateType == 'bank' || i.templateType == 'card').length;
+    final upiCount = _items.where((i) => i.templateType == 'upi').length;
     final secretsCount = _items.where((i) => !i.isDocument).length;
 
     return Scaffold(
@@ -1238,62 +2072,99 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
 
                   // ── Quick Action Scan & Add Bar ──
                   if (_isUnlocked)
-                    Row(
+                    Column(
                       children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: _startDocumentScan,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: GestureDetector(
+                                onTap: _showTemplatePickerSheet,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF00E676), Color(0xFF00B0FF)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF00E676).withValues(alpha: 0.25),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.security_rounded, color: Colors.black, size: 18),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Add Credential (Templates)',
+                                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 12.5),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.document_scanner_rounded, color: Colors.white, size: 18),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Scan Document',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
-                                ],
                               ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: _showAddSecretDialog,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: borderCol),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.password_rounded, color: Color(0xFF2563EB), size: 18),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Add Secret Key',
-                                    style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 13),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 2,
+                              child: GestureDetector(
+                                onTap: _startDocumentScan,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.document_scanner_rounded, color: Colors.white, size: 18),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Scan Doc',
+                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        GestureDetector(
+                          onTap: () => _showPasswordGeneratorDialog(),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: borderCol),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.auto_awesome_rounded, color: Color(0xFF00E5FF), size: 16),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Generate Military-Grade Password / PIN',
+                                  style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -1365,7 +2236,19 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                           const SizedBox(width: 8),
                           _buildFilterChip('Scanned Documents ($docsCount)', 'docs'),
                           const SizedBox(width: 8),
-                          _buildFilterChip('Keys & PINs ($secretsCount)', 'secrets'),
+                          if (gmailCount > 0) ...[
+                            _buildFilterChip('Google / Gmail ($gmailCount)', 'gmail'),
+                            const SizedBox(width: 8),
+                          ],
+                          if (bankCount > 0) ...[
+                            _buildFilterChip('Banking & Cards ($bankCount)', 'bank'),
+                            const SizedBox(width: 8),
+                          ],
+                          if (upiCount > 0) ...[
+                            _buildFilterChip('UPI & Wallets ($upiCount)', 'upi'),
+                            const SizedBox(width: 8),
+                          ],
+                          _buildFilterChip('All Keys & PINs ($secretsCount)', 'secrets'),
                         ],
                       ),
                     ),
@@ -1634,7 +2517,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     );
   }
 
-  // ─── Secret Key / PIN Item Card ─────────────────────────────────────────────
+  // ─── Forensic Structured Credential Card ────────────────────────────────────
   Widget _buildSecretCard(VaultItem item) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? const Color(0xFF111827) : Colors.white;
@@ -1642,107 +2525,172 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     final textSub = isDark ? Colors.white60 : const Color(0xFF64748B);
     final borderCol = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
     final isRevealed = _revealedItemIds.contains(item.id);
+    final template = VaultTemplates.findById(item.templateType);
+
+    // Primary field preview (e.g. email, username, cardholder)
+    String primaryFieldValue = item.fields[template.primaryFieldKey] ?? '';
+    if (primaryFieldValue.isEmpty && item.fields.isNotEmpty) {
+      primaryFieldValue = item.fields.values.first;
+    }
 
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderCol),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  item.category.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF8B5CF6),
-                  ),
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
-                tooltip: 'Delete',
-                onPressed: () => _deleteItem(item.id),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            item.title,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: textMain),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: borderCol),
-            ),
-            child: Row(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    isRevealed ? item.secretValue : '•••• •••• •••• ••••',
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: template.color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(template.icon, color: template.color, size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: template.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        template.name.toUpperCase(),
+                        style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: template.color),
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF38BDF8)),
+                      tooltip: 'Edit',
+                      onPressed: () => _showTemplateEditorDialog(template: template, existingItem: item),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
+                      tooltip: 'Shred',
+                      onPressed: () => _deleteItem(item.id),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  item.title,
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: textMain),
+                ),
+                if (primaryFieldValue.isNotEmpty && primaryFieldValue != item.title) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    primaryFieldValue,
                     style: TextStyle(
-                      fontSize: 13,
-                      fontFamily: isRevealed ? 'monospace' : null,
-                      fontWeight: FontWeight.w700,
-                      color: textMain,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
                     ),
                   ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    isRevealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    size: 18,
-                    color: textSub,
+                ],
+                const SizedBox(height: 10),
+                // Masked / Revealed Secret Row
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderCol),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      if (isRevealed) {
-                        _revealedItemIds.remove(item.id);
-                      } else {
-                        _revealedItemIds.add(item.id);
-                      }
-                    });
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF2563EB)),
-                  tooltip: 'Copy',
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: item.secretValue));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Copied to clipboard'),
-                        duration: Duration(seconds: 2),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          isRevealed ? item.secretValue : '•••• •••• •••• ••••',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontFamily: isRevealed ? 'monospace' : null,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: isRevealed ? 0.5 : 2,
+                            color: textMain,
+                          ),
+                        ),
                       ),
-                    );
-                  },
+                      IconButton(
+                        icon: Icon(
+                          isRevealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          size: 18,
+                          color: textSub,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            if (isRevealed) {
+                              _revealedItemIds.remove(item.id);
+                            } else {
+                              _revealedItemIds.add(item.id);
+                            }
+                          });
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF2563EB)),
+                        tooltip: 'Copy',
+                        onPressed: () {
+                          VaultClipboardGuard.copyWithAutoWipe(context, item.secretValue, 'Password / Secret');
+                        },
+                      ),
+                    ],
+                  ),
                 ),
+                if (item.notes.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    item.notes,
+                    style: TextStyle(fontSize: 11.5, color: textSub, fontStyle: FontStyle.italic),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ],
             ),
           ),
-          if (item.notes.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              item.notes,
-              style: TextStyle(fontSize: 12, color: textSub, fontStyle: FontStyle.italic),
+          const Divider(height: 1, color: Color(0xFF1E293B)),
+          // Action Bar to View All Decrypted Fields
+          InkWell(
+            onTap: () => _showItemDetailsSheet(item),
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : const Color(0xFFF8FAFC),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.shield_outlined, size: 15, color: template.color),
+                  const SizedBox(width: 8),
+                  Text(
+                    'VIEW ALL DECRYPTED FIELDS (${item.fields.length} ITEMS)',
+                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: template.color, letterSpacing: 0.3),
+                  ),
+                  const Spacer(),
+                  Icon(Icons.arrow_forward_ios_rounded, size: 12, color: template.color),
+                ],
+              ),
             ),
-          ],
+          ),
         ],
       ),
     );

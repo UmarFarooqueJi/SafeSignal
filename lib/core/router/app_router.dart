@@ -47,6 +47,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
+    redirect: (context, state) {
+      final loc = state.uri.toString();
+      final scheme = state.uri.scheme.toLowerCase();
+      if (scheme == 'http' || scheme == 'https' || loc.startsWith('http://') || loc.startsWith('https://')) {
+        return '/url-scanner?url=${Uri.encodeComponent(loc)}';
+      }
+      return null;
+    },
+    errorBuilder: (context, state) {
+      final loc = state.uri.toString();
+      if (loc.startsWith('http://') || loc.startsWith('https://') || state.uri.hasScheme) {
+        return UrlScannerScreen(initialUrl: loc);
+      }
+      return const HomeScreen();
+    },
     routes: [
       GoRoute(
         path: '/',
