@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
@@ -233,77 +232,48 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
               
               const SizedBox(height: 32),
 
-              // Clean Cyber-Industrial URL Input Field with 1-Tap Paste
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
-                    width: 1.4,
+              TextField(
+                controller: _controller,
+                enabled: _state != _ScanState.scanning,
+                style: TextStyle(color: textColor, fontSize: 16),
+                decoration: InputDecoration(
+                  labelText: 'Link',
+                  labelStyle: TextStyle(
+                    color: isDark ? Colors.white70 : Colors.black54,
+                    fontSize: 13,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  suffixIcon: Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: IconButton(
+                      icon: Icon(Icons.search, color: isDark ? Colors.white70 : Colors.black54, size: 24),
+                      onPressed: _scan,
                     ),
-                  ],
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(
+                      color: isDark ? Colors.white30 : Colors.black26,
+                      width: 1.2,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(
+                      color: isDark ? Colors.white30 : Colors.black26,
+                      width: 1.2,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(
+                      color: isDark ? Colors.white70 : Colors.black87,
+                      width: 1.4,
+                    ),
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                child: Row(
-                  children: [
-                    const Icon(Icons.link_rounded, color: Color(0xFF00E676), size: 22),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        enabled: _state != _ScanState.scanning,
-                        style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w600),
-                        decoration: InputDecoration(
-                          hintText: 'Paste suspicious URL or link...',
-                          hintStyle: TextStyle(
-                            color: isDark ? Colors.white38 : Colors.black38,
-                            fontSize: 14,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onSubmitted: (_) => _scan(),
-                      ),
-                    ),
-                    if (_controller.text.isNotEmpty)
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
-                        tooltip: 'Clear',
-                        onPressed: () {
-                          setState(() {
-                            _controller.clear();
-                          });
-                        },
-                      ),
-                    TextButton.icon(
-                      onPressed: () async {
-                        final data = await Clipboard.getData(Clipboard.kTextPlain);
-                        if (data?.text != null && data!.text!.trim().isNotEmpty) {
-                          setState(() {
-                            _controller.text = data.text!.trim();
-                          });
-                          HapticFeedback.lightImpact();
-                        }
-                      },
-                      style: TextButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.15),
-                        foregroundColor: const Color(0xFF38BDF8),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      icon: const Icon(Icons.content_paste_rounded, size: 14),
-                      label: const Text('Paste', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
+                onSubmitted: (_) => _scan(),
               ),
               
               const SizedBox(height: 20),

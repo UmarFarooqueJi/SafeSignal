@@ -222,8 +222,8 @@ class SettingsScreen extends ConsumerWidget {
 
             const SizedBox(height: 24),
 
-            // ── Section 3: System & About ──────────────────────────────────────
-            _buildSectionHeader('SYSTEM & ABOUT', sectionTitleColor),
+            // ── Section 3: System & Diagnostics ─────────────────────────────────
+            _buildSectionHeader('SYSTEM & DIAGNOSTICS', sectionTitleColor),
             const SizedBox(height: 8),
             _ClassicSettingsGroup(
               children: [
@@ -258,13 +258,115 @@ class SettingsScreen extends ConsumerWidget {
                   icon: Icons.info_outline_rounded,
                   iconBg: const Color(0xFF64748B),
                   title: 'App Version',
-                  subtitle: '1.4.2 (Production Android Build)',
-                  trailing: Text(
-                    'Build 142',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: sectionTitleColor,
+                  subtitle: 'v${SafeSignalAttribution.kVersion} (Build ${SafeSignalAttribution.kBuildNumber})',
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06)),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'RELEASE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white70 : Colors.black54,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                  onTap: () {},
+                ),
+                _buildDivider(isDark),
+                _ClassicSettingsTile(
+                  icon: Icons.sync_rounded,
+                  iconBg: const Color(0xFF3B82F6),
+                  title: 'Flush Threat Cache & Resync',
+                  subtitle: 'Reset local signature cache and refresh feeds',
+                  trailing: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF3B82F6)),
+                  onTap: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.remove('cached_threat_feed');
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Threat feed cache refreshed. Ready for live sync.'),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Section 4: About & Open Repository ──────────────────────────────
+            _buildSectionHeader('ABOUT & OPEN SOURCE', sectionTitleColor),
+            const SizedBox(height: 8),
+            _ClassicSettingsGroup(
+              children: [
+                _buildAboutHeaderTile(isDark),
+                _buildDivider(isDark),
+                _ClassicSettingsTile(
+                  icon: Icons.language_rounded,
+                  iconBg: const Color(0xFF0284C7),
+                  title: 'Official Website',
+                  subtitle: 'safesignal-dx8.pages.dev',
+                  trailing: const Icon(Icons.open_in_new_rounded, size: 16, color: Colors.grey),
+                  onTap: () async {
+                    final uri = Uri.parse('https://safesignal-dx8.pages.dev');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                ),
+                _buildDivider(isDark),
+                _ClassicSettingsTile(
+                  icon: Icons.code_rounded,
+                  iconBg: const Color(0xFF8B5CF6),
+                  title: 'Source Code (GitHub)',
+                  subtitle: 'github.com/UmarFarooqueJi/SafeSignal',
+                  trailing: const Icon(Icons.open_in_new_rounded, size: 16, color: Colors.grey),
+                  onTap: () async {
+                    final uri = Uri.parse(SafeSignalAttribution.kRepositoryUrl);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                ),
+                _buildDivider(isDark),
+                _ClassicSettingsTile(
+                  icon: Icons.gavel_rounded,
+                  iconBg: const Color(0xFF10B981),
+                  title: 'License & Security Model',
+                  subtitle: 'Source-Available v1.0 • 100% Air-Gapped',
+                  trailing: const Icon(Icons.verified_user_rounded, size: 18, color: Color(0xFF10B981)),
+                  onTap: () {},
+                ),
+                _buildDivider(isDark),
+                _ClassicSettingsTile(
+                  icon: Icons.verified_rounded,
+                  iconBg: const Color(0xFF2563EB),
+                  title: 'Architect & Research',
+                  subtitle: '${SafeSignalAttribution.kDeveloper} • ${SafeSignalAttribution.kOrganization}',
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'VERIFIED',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2563EB),
+                        letterSpacing: 0.4,
+                      ),
                     ),
                   ),
                   onTap: () {},
@@ -272,21 +374,46 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
 
-            // ── About SafeSignal (Attribution-Locked) ─────────────────────────
-            _buildSectionHeader('ABOUT', sectionTitleColor),
-            const SizedBox(height: 10),
-            _ClassicSettingsGroup(
-              children: [_AboutSafeSignalPanel(isDark: isDark)],
+            // ── Attribution & Integrity Seal Footer ──────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: Column(
+                  children: [
+                    Text(
+                      SafeSignalAttribution.copyrightLine,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: sectionTitleColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '100% On-Device Air-Gapped • Zero Cloud Egress • Zero PII Required',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: sectionTitleColor.withValues(alpha: 0.75),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    // Attribution integrity seal — machine-readable, required by license
+                    Opacity(
+                      opacity: 0,
+                      child: Text(
+                        'ss::umarfarooque::2026::${SafeSignalAttribution.kDeveloper}::${SafeSignalAttribution.kOrganization}',
+                        style: const TextStyle(fontSize: 1),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
 
             const SizedBox(height: 32),
-
-            // ── Cache & Resync ───────────────────────────────────────────────
-            _buildCacheResetButton(context, isDark),
-
-            const SizedBox(height: 48),
           ],
         ),
       ),
@@ -318,6 +445,88 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildAboutHeaderTile(bool isDark) {
+    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1D4ED8), Color(0xFF0EA5E9)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.shield_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'SafeSignal Mobile Defense',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: textMain,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Built entirely from scratch • Zero telemetry',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: textSub,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                width: 1,
+              ),
+            ),
+            child: const Text(
+              'PROD',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF10B981),
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPrivacyNodeCard(BuildContext context, bool isDark) {
     final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
     final borderColor = isDark
@@ -327,7 +536,7 @@ class SettingsScreen extends ConsumerWidget {
     final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(18),
@@ -339,11 +548,11 @@ class SettingsScreen extends ConsumerWidget {
           Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: const Color(0xFF00E676).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: const Color(0xFF00E676).withValues(alpha: 0.25),
                   ),
@@ -351,12 +560,12 @@ class SettingsScreen extends ConsumerWidget {
                 child: const Center(
                   child: Icon(
                     Icons.security_rounded,
-                    size: 26,
+                    size: 24,
                     color: Color(0xFF00E676),
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,7 +576,7 @@ class SettingsScreen extends ConsumerWidget {
                           child: Text(
                             'Air-Gapped Defense Node',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: textMain,
                               letterSpacing: -0.2,
@@ -389,7 +598,7 @@ class SettingsScreen extends ConsumerWidget {
                           child: const Text(
                             'ANONYMOUS',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 9,
                               fontWeight: FontWeight.w800,
                               color: Color(0xFF00E676),
                               letterSpacing: 0.4,
@@ -412,18 +621,25 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Divider(
             height: 1,
             color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildNodeBadge(Icons.cloud_off_rounded, '0 Cloud Egress', const Color(0xFF38BDF8), isDark),
-              _buildNodeBadge(Icons.no_accounts_rounded, 'Zero PII Tracked', const Color(0xFFA78BFA), isDark),
-              _buildNodeBadge(Icons.lock_outline_rounded, 'AES-256 Vault', const Color(0xFF00E676), isDark),
+              Expanded(
+                child: _buildNodeBadge(Icons.cloud_off_rounded, '0 Cloud Egress', const Color(0xFF38BDF8), isDark),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _buildNodeBadge(Icons.no_accounts_rounded, 'Zero PII Tracked', const Color(0xFFA78BFA), isDark),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _buildNodeBadge(Icons.lock_outline_rounded, 'AES-256 Vault', const Color(0xFF00E676), isDark),
+              ),
             ],
           ),
         ],
@@ -433,79 +649,29 @@ class SettingsScreen extends ConsumerWidget {
 
   Widget _buildNodeBadge(IconData icon, String text, Color accent, bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 12, color: accent),
+          Icon(icon, size: 11, color: accent),
           const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: accent,
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: accent,
+              ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCacheResetButton(BuildContext context, bool isDark) {
-    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () async {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('cached_threat_feed');
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Threat feed cache refreshed. Ready for live sync.'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF0F172A) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark
-                  ? const Color(0xFF1E293B)
-                  : const Color(0xFFE2E8F0),
-              width: 1,
-            ),
-          ),
-          child: Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.refresh_rounded, size: 16, color: textSub),
-                const SizedBox(width: 8),
-                Text(
-                  'Flush Threat Cache & Resync',
-                  style: TextStyle(
-                    color: textSub,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -782,18 +948,18 @@ class _ProtectionPermissionsWidgetState
               else
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                    horizontal: 14,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2563EB),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Text(
                     'Grant',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -881,369 +1047,5 @@ class _ProtectionPermissionsWidgetState
         ),
       ),
     );
-  }
-}
-
-// ─── About SafeSignal Attribution-Locked Panel ────────────────────────────────
-// Content sourced from lib/core/foundation/attribution.dart constants.
-// Any modification to developer name or copyright requires updating attribution.dart
-// which constitutes a license violation under SafeSignal Source-Available License v1.0.
-// See NOTICE and LICENSE files at project root.
-class _AboutSafeSignalPanel extends StatelessWidget {
-  final bool isDark;
-
-  const _AboutSafeSignalPanel({required this.isDark});
-
-  // ── Attribution constants (referenced from SafeSignalAttribution) ──────────
-  static const String _developer = SafeSignalAttribution.kDeveloper;
-  static const String _org = SafeSignalAttribution.kOrganization;
-  static const String _version = SafeSignalAttribution.kVersion;
-  static const int _build = SafeSignalAttribution.kBuildNumber;
-  static const String _tagline = SafeSignalAttribution.kTagline;
-  static const String _github = 'github.com/UmarFarooqueJi/SafeSignal';
-  static const String _website = 'safesignal-dx8.pages.dev';
-
-  @override
-  Widget build(BuildContext context) {
-    final borderColor = isDark
-        ? const Color(0xFF1E3A5F)
-        : const Color(0xFFBFDBFE);
-    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
-    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
-    final accent = const Color(0xFF2563EB);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Logo + App name ─────────────────────────────────────────────
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1D4ED8), Color(0xFF0EA5E9)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2563EB).withValues(alpha: 0.30),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.shield_rounded,
-                  color: Colors.white,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'SafeSignal',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: textMain,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    Text(
-                      'v$_version (Build $_build)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: textSub,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.4),
-                    width: 1,
-                  ),
-                ),
-                child: const Text(
-                  'PROD',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF10B981),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-          Text(
-            _tagline,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: textSub,
-              height: 1.5,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-          Divider(height: 1, color: borderColor),
-          const SizedBox(height: 16),
-
-          // ── Developer attribution block (ATTRIBUTION LOCK) ────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: isDark ? 0.10 : 0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: accent.withValues(alpha: 0.22),
-                width: 1,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.person_pin_rounded, color: accent, size: 15),
-                    const SizedBox(width: 6),
-                    Text(
-                      'DEVELOPED BY',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: accent,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _developer,
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w900,
-                    color: textMain,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _org,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: textSub,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Website + Source + License rows ──────────────────────────────
-          Row(
-            children: [
-              Expanded(
-                child: _InfoChip(
-                  icon: Icons.language_rounded,
-                  label: 'WEBSITE',
-                  value: _website,
-                  isDark: isDark,
-                  onTap: () async {
-                    final uri = Uri.parse('https://$_website');
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _InfoChip(
-                  icon: Icons.code_rounded,
-                  label: 'SOURCE',
-                  value: _github,
-                  isDark: isDark,
-                  onTap: () async {
-                    final uri = Uri.parse('https://$_github');
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _InfoChip(
-                  icon: Icons.gavel_rounded,
-                  label: 'LICENSE',
-                  value: 'SAL v1.0 • 100% On-Device Air-Gapped',
-                  isDark: isDark,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Built-from-scratch claim ──────────────────────────────────────
-          Row(
-            children: [
-              const Icon(
-                Icons.construction_rounded,
-                size: 13,
-                color: Color(0xFFF59E0B),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Built entirely from scratch — no cloned repo, no starter kit.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark
-                        ? const Color(0xFFF59E0B)
-                        : const Color(0xFFB45309),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 6),
-
-          Text(
-            'Copyright © 2026 $_org. All rights reserved.',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
-              color: textSub,
-            ),
-          ),
-
-          // Attribution integrity seal — machine-readable, required by license
-          Opacity(
-            opacity: 0,
-            child: Text(
-              'ss::umarfarooque::2026::$_developer::$_org',
-              style: const TextStyle(fontSize: 1),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Generic Info Chip ─────────────────────────────────────────────────────────
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final bool isDark;
-  final VoidCallback? onTap;
-
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.isDark,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-    final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
-
-    Widget content = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-          width: 0.8,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 12, color: textSub),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  color: textSub,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              if (onTap != null) ...[
-                const Spacer(),
-                Icon(
-                  Icons.open_in_new_rounded,
-                  size: 10,
-                  color: textSub.withValues(alpha: 0.8),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: textMain,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-
-    if (onTap != null) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: content,
-        ),
-      );
-    }
-    return content;
   }
 }
