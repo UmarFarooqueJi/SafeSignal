@@ -139,7 +139,12 @@ class VaultScreen extends ConsumerStatefulWidget {
 
 class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingObserver {
   final LocalAuthentication auth = LocalAuthentication();
-  static const _storage = FlutterSecureStorage();
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      keyCipherAlgorithm: KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
+      storageCipherAlgorithm: StorageCipherAlgorithm.AES_GCM_NoPadding,
+    ),
+  );
 
   bool _isVaultEnabled = false;
   bool _hasBiometrics = false;
@@ -163,16 +168,18 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     WidgetsBinding.instance.removeObserver(this);
     _documentThumbCache.clear();
     _revealedItemIds.clear();
+    _items.clear();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
       VaultCryptoService().lockVault();
       if (mounted) {
         setState(() {
           _isUnlocked = false;
+          _items = [];
           _revealedItemIds.clear();
           _documentThumbCache.clear();
         });
@@ -884,11 +891,17 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         icon: isEncrypting
                             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                             : const Icon(Icons.lock_rounded, size: 18),
-                        label: Text(isEncrypting ? 'ENCRYPTING PAYLOAD...' : 'ENCRYPT & LOCK IN HARDWARE VAULT'),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            isEncrypting ? 'ENCRYPTING PAYLOAD...' : 'ENCRYPT & STORE IN VAULT',
+                            maxLines: 1,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2563EB),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                         ),
@@ -1259,11 +1272,17 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                           );
                         },
                         icon: const Icon(Icons.lock_rounded, size: 18),
-                        label: Text(existingItem != null ? 'UPDATE ENCRYPTED RECORD' : 'ENCRYPT & LOCK IN HARDWARE VAULT'),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            existingItem != null ? 'UPDATE ENCRYPTED RECORD' : 'ENCRYPT & STORE IN VAULT',
+                            maxLines: 1,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2563EB),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                         ),
@@ -1401,11 +1420,13 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                     const SizedBox(height: 16),
 
                     // Mode Toggle (Password vs PIN)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
                         ChoiceChip(
-                          label: const Text('Password (Alphanumeric)'),
+                          label: const Text('Password'),
                           selected: !isPinMode,
                           onSelected: (val) {
                             setDialogState(() {
@@ -1420,7 +1441,6 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                             });
                           },
                         ),
-                        const SizedBox(width: 8),
                         ChoiceChip(
                           label: const Text('Numeric PIN'),
                           selected: isPinMode,
@@ -1751,28 +1771,34 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                           child: OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: Color(0xFF38BDF8)),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
-                            icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF38BDF8)),
-                            label: const Text('Edit Fields', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                            icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF38BDF8)),
+                            label: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('Edit Fields', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13)),
+                            ),
                             onPressed: () {
                               Navigator.pop(ctx);
                               _showTemplateEditorDialog(template: template, existingItem: item);
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFEF4444),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
-                            icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                            label: const Text('Shred Record', style: TextStyle(fontWeight: FontWeight.bold)),
+                            icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                            label: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('Shred Record', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            ),
                             onPressed: () {
                               Navigator.pop(ctx);
                               _deleteItem(item.id);
@@ -2077,7 +2103,6 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         Row(
                           children: [
                             Expanded(
-                              flex: 3,
                               child: GestureDetector(
                                 onTap: _showTemplatePickerSheet,
                                 child: Container(
@@ -2098,11 +2123,15 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                   child: const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.security_rounded, color: Colors.black, size: 18),
+                                      Icon(Icons.add_moderator_rounded, color: Colors.black, size: 18),
                                       SizedBox(width: 6),
-                                      Text(
-                                        'Add Credential (Templates)',
-                                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 12.5),
+                                      Flexible(
+                                        child: Text(
+                                          'Add Credential',
+                                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 13),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -2111,11 +2140,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              flex: 2,
                               child: GestureDetector(
                                 onTap: _startDocumentScan,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
                                       colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
@@ -2134,9 +2162,13 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                     children: [
                                       Icon(Icons.document_scanner_rounded, color: Colors.white, size: 18),
                                       SizedBox(width: 6),
-                                      Text(
-                                        'Scan Doc',
-                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                      Flexible(
+                                        child: Text(
+                                          'Scan Document',
+                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -2160,9 +2192,13 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                               children: [
                                 const Icon(Icons.auto_awesome_rounded, color: Color(0xFF00E5FF), size: 16),
                                 const SizedBox(width: 8),
-                                Text(
-                                  'Generate Military-Grade Password / PIN',
-                                  style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 12),
+                                Flexible(
+                                  child: Text(
+                                    'Generate Strong Password / PIN',
+                                    style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 12),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               ],
                             ),
@@ -2282,10 +2318,14 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                             ElevatedButton.icon(
                               onPressed: _activeFilter == 'secrets' ? _showAddSecretDialog : _startDocumentScan,
                               icon: Icon(_activeFilter == 'secrets' ? Icons.add_rounded : Icons.document_scanner_rounded, size: 16),
-                              label: Text(_activeFilter == 'secrets' ? 'Add Secret Key' : 'Scan First Document'),
+                              label: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(_activeFilter == 'secrets' ? 'Add Secret Key' : 'Scan First Document', maxLines: 1),
+                              ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF2563EB),
                                 foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
@@ -2502,11 +2542,15 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                 children: [
                   const Icon(Icons.lock_open_rounded, size: 16, color: Color(0xFF2563EB)),
                   const SizedBox(width: 8),
-                  const Text(
-                    'DECRYPT & VIEW IN SECURE RAM',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF2563EB), letterSpacing: 0.3),
+                  const Expanded(
+                    child: Text(
+                      'DECRYPT & VIEW IN SECURE RAM',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF2563EB), letterSpacing: 0.3),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 4),
                   const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Color(0xFF2563EB)),
                 ],
               ),
@@ -2681,11 +2725,15 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                 children: [
                   Icon(Icons.shield_outlined, size: 15, color: template.color),
                   const SizedBox(width: 8),
-                  Text(
-                    'VIEW ALL DECRYPTED FIELDS (${item.fields.length} ITEMS)',
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: template.color, letterSpacing: 0.3),
+                  Expanded(
+                    child: Text(
+                      'VIEW ALL DECRYPTED FIELDS (${item.fields.length} ITEMS)',
+                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: template.color, letterSpacing: 0.3),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 4),
                   Icon(Icons.arrow_forward_ios_rounded, size: 12, color: template.color),
                 ],
               ),

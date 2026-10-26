@@ -3151,7 +3151,10 @@ class _MessageBubble extends StatelessWidget {
                               );
                             },
                             icon: const Icon(Icons.picture_as_pdf, size: 18, color: Colors.white),
-                            label: const Text('Export Police Report (1930)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            label: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('Export Police Report (1930)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: verdictColor,
                               foregroundColor: Colors.white,

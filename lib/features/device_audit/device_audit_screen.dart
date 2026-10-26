@@ -2030,9 +2030,12 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               ),
               onPressed: _openSystemUpdateSettings,
               icon: const Icon(Icons.system_update_rounded, color: Color(0xFF2563EB), size: 18),
-              label: const Text(
-                'Check For Phone System Updates',
-                style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 13),
+              label: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Check For Phone System Updates',
+                  style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 13),
+                ),
               ),
             ),
           ),

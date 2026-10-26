@@ -291,9 +291,12 @@ class _OtpGuardScreenState extends State<OtpGuardScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   icon: const Icon(Icons.phone_forwarded_rounded, size: 18),
-                  label: const Text(
-                    'Dial ##002# (Purge All)',
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Dial ##002# (Purge All)',
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                    ),
                   ),
                 ),
               ),
@@ -715,9 +718,13 @@ class _OtpGuardScreenState extends State<OtpGuardScreen> {
                 children: [
                   Icon(Icons.sim_card_rounded, color: Color(0xFF2563EB), size: 20),
                   SizedBox(width: 10),
-                  Text(
-                    'DoT Sanchar Saathi (TAFCOP)',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  Expanded(
+                    child: Text(
+                      'DoT Sanchar Saathi (TAFCOP)',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -757,9 +764,13 @@ class _OtpGuardScreenState extends State<OtpGuardScreen> {
                 children: [
                   Icon(Icons.support_agent_rounded, color: Color(0xFFDC2626), size: 20),
                   SizedBox(width: 10),
-                  Text(
-                    'National Cyber Crime Helpline: 1930',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  Expanded(
+                    child: Text(
+                      'National Cyber Crime Helpline: 1930',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),

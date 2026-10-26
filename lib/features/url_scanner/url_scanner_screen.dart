@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
@@ -232,46 +233,74 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
               
               const SizedBox(height: 32),
 
-              // TextField mimicking the screenshot
+              // Clean Cyber-Industrial URL Input Field with 1-Tap Paste
               Container(
                 decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(
-                    color: isDark ? Colors.white30 : Colors.black26,
-                    width: 1.2,
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+                    width: 1.4,
                   ),
-                ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    TextField(
-                      controller: _controller,
-                      enabled: _state != _ScanState.scanning,
-                      style: TextStyle(color: textColor, fontSize: 16),
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                        suffixIcon: Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: Icon(Icons.search, color: isDark ? Colors.white70 : Colors.black54, size: 24),
-                        ),
-                      ),
-                      onSubmitted: (_) => _scan(),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
-                    Positioned(
-                      left: 24,
-                      top: -10,
-                      child: Container(
-                        color: bg,
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: Text(
-                          'Link',
-                          style: TextStyle(
-                            color: isDark ? Colors.white70 : Colors.black54,
-                            fontSize: 12,
+                  ],
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                child: Row(
+                  children: [
+                    const Icon(Icons.link_rounded, color: Color(0xFF00E676), size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        enabled: _state != _ScanState.scanning,
+                        style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w600),
+                        decoration: InputDecoration(
+                          hintText: 'Paste suspicious URL or link...',
+                          hintStyle: TextStyle(
+                            color: isDark ? Colors.white38 : Colors.black38,
+                            fontSize: 14,
                           ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
                         ),
+                        onSubmitted: (_) => _scan(),
                       ),
+                    ),
+                    if (_controller.text.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
+                        tooltip: 'Clear',
+                        onPressed: () {
+                          setState(() {
+                            _controller.clear();
+                          });
+                        },
+                      ),
+                    TextButton.icon(
+                      onPressed: () async {
+                        final data = await Clipboard.getData(Clipboard.kTextPlain);
+                        if (data?.text != null && data!.text!.trim().isNotEmpty) {
+                          setState(() {
+                            _controller.text = data.text!.trim();
+                          });
+                          HapticFeedback.lightImpact();
+                        }
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                        foregroundColor: const Color(0xFF38BDF8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      icon: const Icon(Icons.content_paste_rounded, size: 14),
+                      label: const Text('Paste', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -844,9 +873,12 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                 }
               },
               icon: const Icon(Icons.shield_outlined, color: Colors.black, size: 22),
-              label: const Text(
-                'Open Inside SafeSignal (Sandbox)',
-                style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w900),
+              label: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Open Inside SafeSignal (Sandbox)',
+                  style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w900),
+                ),
               ),
             ),
           ),
@@ -880,9 +912,12 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                 }
               },
               icon: Icon(Icons.open_in_browser_rounded, color: isDark ? Colors.white70 : const Color(0xFF334155), size: 20),
-              label: Text(
-                'Open in Chrome / External Browser ↗',
-                style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.bold),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Open in Chrome / External Browser ↗',
+                  style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ),
@@ -1025,9 +1060,12 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                   await _checkBrowserRole();
                 },
                 icon: const Icon(Icons.flash_on_rounded, size: 16),
-                label: const Text(
-                  'Enable WhatsApp Link Shield (1-Tap)',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                label: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Enable WhatsApp Link Shield (1-Tap)',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ),

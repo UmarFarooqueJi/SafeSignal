@@ -251,11 +251,14 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                               child: ElevatedButton.icon(
                                 onPressed: _requestScreeningRole,
                                 icon: const Icon(Icons.verified_user_rounded, size: 18),
-                                label: const Text('ACTIVATE NATIVE CALL SHIELD'),
+                                label: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text('ACTIVATE NATIVE CALL SHIELD'),
+                                ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF2563EB),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                   textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                                 ),

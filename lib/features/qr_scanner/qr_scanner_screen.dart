@@ -350,9 +350,12 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                             ),
                             icon: const Icon(Icons.photo_library_rounded, size: 18, color: Color(0xFF2563EB)),
-                            label: const Text(
-                              'Scan from Gallery / Screenshot',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                            label: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Scan from Gallery / Screenshot',
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                              ),
                             ),
                           ),
                         ],

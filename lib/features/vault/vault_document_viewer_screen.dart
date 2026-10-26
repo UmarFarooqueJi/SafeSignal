@@ -310,11 +310,17 @@ class _VaultDocumentViewerScreenState extends State<VaultDocumentViewerScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              TextButton.icon(
-                                onPressed: _showDocumentDetails,
-                                icon: const Icon(Icons.shield_outlined, size: 16, color: Color(0xFF38BDF8)),
-                                label: const Text('Verify Integrity', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 12, fontWeight: FontWeight.bold)),
+                              Flexible(
+                                child: TextButton.icon(
+                                  onPressed: _showDocumentDetails,
+                                  icon: const Icon(Icons.shield_outlined, size: 16, color: Color(0xFF38BDF8)),
+                                  label: const FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text('Verify Integrity', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 12, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
                               ),
+                              const SizedBox(width: 8),
                               ElevatedButton.icon(
                                 onPressed: () {
                                   showDialog(
