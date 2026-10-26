@@ -393,4 +393,34 @@ void main() {
       await sub.cancel();
     });
   });
+
+  group('UrlIntelligenceEngine - C2 Threat Intelligence, Shortener Unraveller & Homographs', () {
+    test('Flags known Command & Control (C2) botnet domains from Maltrail/URLhaus', () async {
+      final c2Res = await UrlIntelligenceEngine.analyze('https://anatsa-c2.top/gate');
+      expect(c2Res.verdict, UrlVerdict.dangerous);
+      expect(c2Res.riskScore, greaterThanOrEqualTo(90));
+      expect(c2Res.riskLevel, UrlRiskLevel.knownMalicious);
+      expect(c2Res.threatCategoryBadge, contains('C2'));
+      expect(c2Res.threatCategoryBadge, contains('INFRASTRUCTURE'));
+      expect(c2Res.domainChecks.any((c) => c.name.contains('C2 Threat Intelligence')), isTrue);
+    });
+
+    test('Flags dynamic DNS abuse hosting executable payloads as Dynamic DNS C2', () async {
+      final ddnsRes = await UrlIntelligenceEngine.analyze('https://trojan-node.ngrok-free.app/payload.apk');
+      expect(ddnsRes.verdict, UrlVerdict.dangerous);
+      expect(ddnsRes.threatCategoryBadge, contains('DYNAMIC DNS C2 ENDPOINT'));
+    });
+
+    test('Flags whole-script homograph Cyrillic imitations of standard domains', () {
+      // Entire host is Cyrillic lookalikes mimicking Latin domain
+      final isHomograph = UrlIntelligenceEngine.detectHomographAttack('сби.com');
+      expect(isHomograph, isTrue);
+
+      final mixedHomograph = UrlIntelligenceEngine.detectHomographAttack('pаypal.com'); // 'а' is Cyrillic
+      expect(mixedHomograph, isTrue);
+
+      final legitDomain = UrlIntelligenceEngine.detectHomographAttack('paypal.com'); // standard ascii
+      expect(legitDomain, isFalse);
+    });
+  });
 }

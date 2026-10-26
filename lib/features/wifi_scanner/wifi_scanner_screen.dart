@@ -148,6 +148,27 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
             icon: Icons.dns,
           ));
         }
+
+        final rogueDnsDetected = telemetry['rogueDnsDetected'] as bool? ?? false;
+        final dnsServers = (telemetry['dnsServers'] as List<dynamic>?)?.cast<String>() ?? [];
+        final gatewayIp = telemetry['gatewayIp'] as String? ?? gateway;
+
+        if (rogueDnsDetected) {
+          score -= 45;
+          checks.add(_Check(
+            label: 'Rogue DHCP / DNS Server',
+            detail: 'CRITICAL: DHCP assigned a rogue DNS server (${dnsServers.join(", ")}) differing from the gateway ($gatewayIp). High probability of active DNS Spoofing / MITM trap.',
+            level: _Level.critical,
+            icon: Icons.alt_route_rounded,
+          ));
+        } else if (dnsServers.isNotEmpty) {
+          checks.add(_Check(
+            label: 'DHCP DNS Configuration',
+            detail: 'Active DNS servers (${dnsServers.take(2).join(", ")}) align with verified gateway ($gatewayIp).',
+            level: _Level.safe,
+            icon: Icons.lan_outlined,
+          ));
+        }
       }
     } catch (_) {
       // Fallback if platform method unavailable

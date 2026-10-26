@@ -4,7 +4,9 @@
 // Description: Multi-factor risk assessment for installed Android packages
 //              with signature verification, dangerous permission combinations,
 //              and zero package-name prefix immunity.
-// -----------------------------------------------------------------------------
+import 'stalkerware_ioc_service.dart';
+export 'stalkerware_ioc_service.dart';
+
 enum RiskLevel { safe, low, medium, high, critical }
 
 class AppInfo {
@@ -23,6 +25,7 @@ class AppInfo {
   final List<String> riskReasons;
   final String? signingCertificateSha256;
   final bool isSideloaded;
+  final StalkerwareIoCResult? stalkerwareIoC;
 
   const AppInfo({
     required this.name,
@@ -40,6 +43,7 @@ class AppInfo {
     required this.riskReasons,
     this.signingCertificateSha256,
     this.isSideloaded = false,
+    this.stalkerwareIoC,
   });
 
   /// Maps 0-100 risk score to 1.0-5.0 stars for the top gauge
@@ -133,6 +137,7 @@ class AppRiskEngine {
     final reasons = <String>[];
     String? foundSpyware;
     bool hasTrojanPattern = false;
+    StalkerwareIoCResult iocResult = StalkerwareIoCResult.clean;
 
     // A package is known store installed if installer matches verified distribution stores.
     // Package name strings (e.g. com.google.*, com.sbi.*) NEVER grant immunity!
@@ -142,20 +147,46 @@ class AppRiskEngine {
     if (isSystem) {
       score = 0;
     } else {
-      // 1. STALKERWARE SIGNATURE CHECK (Immediate Critical)
-      final pkgLower = pkg.toLowerCase();
-      for (final entry in _knownSpywareSignatures.entries) {
-        if (pkgLower.contains(entry.key)) {
-          foundSpyware = entry.value;
-          break;
-        }
-      }
-      if (foundSpyware != null) {
-        score += 90;
+      // 1. FORENSIC STALKERWARE & SPYWARE IOC ENGINE (Immediate Critical)
+      iocResult = StalkerwareIoCService.evaluate(
+        package: pkg,
+        name: name,
+        certSha256: certSha256,
+        permissions: perms,
+        isSystem: isSystem,
+        installer: installer,
+        hasLauncher: hasLauncher,
+        hasAccessibility: hasAccessibility,
+        hasDeviceAdmin: hasDeviceAdmin,
+      );
+
+      if (iocResult.isMatch) {
+        foundSpyware = iocResult.threatFamily;
+        score += 95;
         reasons.insert(
           0,
-          '🚨 CRITICAL STALKERWARE: Matches signature for $foundSpyware. Known to covertly exfiltrate calls, chats, photos, and live location.',
+          '🚨 CRITICAL STALKERWARE [${iocResult.threatType}]: ${iocResult.matchedIndicator}. Known to covertly exfiltrate calls, chats, photos, and live location.',
         );
+        for (final detail in iocResult.technicalDetails) {
+          reasons.add('Forensic Detail: $detail');
+        }
+        reasons.add('Remediation: ${iocResult.remediation}');
+      } else {
+        // Legacy fallback check
+        final pkgLower = pkg.toLowerCase();
+        for (final entry in _knownSpywareSignatures.entries) {
+          if (pkgLower.contains(entry.key)) {
+            foundSpyware = entry.value;
+            break;
+          }
+        }
+        if (foundSpyware != null) {
+          score += 90;
+          reasons.insert(
+            0,
+            '🚨 CRITICAL STALKERWARE: Matches signature for $foundSpyware. Known to covertly exfiltrate calls, chats, photos, and live location.',
+          );
+        }
       }
 
       // 2. Dangerous Trojan Combinations
@@ -278,6 +309,7 @@ class AppRiskEngine {
       riskReasons: reasons,
       signingCertificateSha256: certSha256,
       isSideloaded: isSideloaded,
+      stalkerwareIoC: iocResult.isMatch ? iocResult : null,
     );
   }
 }

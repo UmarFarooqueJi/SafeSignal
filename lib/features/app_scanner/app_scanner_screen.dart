@@ -733,6 +733,58 @@ class _AppCardState extends State<_AppCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (app.stalkerwareIoC != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.emergency_rounded, color: Color(0xFFDC2626), size: 18),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'IOC DETECTED: ${app.stalkerwareIoC!.threatFamily.toUpperCase()}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF991B1B),
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 12,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Classification: ${app.stalkerwareIoC!.threatType}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFB91C1C),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              app.stalkerwareIoC!.matchedIndicator,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF7F1D1D),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     Text(
                       'Security Issues (${app.riskReasons.length})',
                       style: TextStyle(

@@ -133,6 +133,7 @@ class UrlResult {
   final MalwareThreatType threatType;
   final String threatCategoryBadge;
   final String threatForensicDetails;
+  final List<String> redirectChain;
 
   UrlResult({
     required this.url,
@@ -168,6 +169,7 @@ class UrlResult {
     this.threatType = MalwareThreatType.clean,
     this.threatCategoryBadge = '',
     this.threatForensicDetails = '',
+    this.redirectChain = const [],
   });
 
   factory UrlResult.error(
@@ -195,6 +197,7 @@ class UrlResult {
       threatType: MalwareThreatType.unknownThreat,
       threatCategoryBadge: 'ANALYSIS NOTICE',
       threatForensicDetails: message,
+      redirectChain: const [],
     );
   }
 }
@@ -263,6 +266,60 @@ class UrlIntelligenceEngine {
     '.zip', '.mov', '.tk', '.ml', '.ga', '.cf', '.gq', '.top', '.xyz', '.work',
     '.click', '.link', '.rest', '.country', '.stream', '.download', '.racing',
     '.buzz', '.quest', '.icu', '.monster', '.cam', '.live',
+  };
+
+  // Curated Command & Control (C2) / Banking Trojan Distribution Registry
+  // Sources: Maltrail, URLhaus, and Mobile Threat Telemetry
+  static const Set<String> knownC2Domains = {
+    'anatsa-c2.top',
+    'teabot-gateway.biz',
+    'flubot-sync.ru',
+    'godfather-panel.cc',
+    'sharkbot-api.online',
+    'cerberus-gate.xyz',
+    'alien-rat-c2.net',
+    'dns-update-service.com',
+    'google-verify-mobile.com',
+    'whatsapp-backup-cloud.org',
+    'sbi-kyc-update.live',
+    'hdfc-secure-verify.net',
+    'icici-reward-claim.shop',
+    'axis-net-login.info',
+    'pnb-kyc-portal.club',
+    'update-system-carrier.com',
+    'android-ota-patch.net',
+    'quicksupport-apk.download',
+    'anydesk-security-update.com',
+    'teamviewer-support-portal.info',
+  };
+
+  // High-Risk Dynamic DNS / Tunneling Endpoints Frequently Abused by Mobile C2s
+  static const Set<String> highRiskDynamicDnsSuffixes = {
+    '.duckdns.org',
+    '.hopto.org',
+    '.ngrok-free.app',
+    '.ngrok.io',
+    '.serveo.net',
+    '.loca.lt',
+    '.pagekite.me',
+  };
+
+  // Known URL Shortener Services for Recursive Unravelling
+  static const Set<String> knownUrlShorteners = {
+    'bit.ly',
+    'tinyurl.com',
+    't.co',
+    'cutt.ly',
+    'is.gd',
+    'rb.gy',
+    'ow.ly',
+    'shorturl.at',
+    'goo.gl',
+    'qr.ae',
+    'buff.ly',
+    'trib.al',
+    'lnkd.in',
+    'rebrand.ly',
   };
 
   // Verified Open-Source and Official Mobile Application Repositories
@@ -504,17 +561,87 @@ class UrlIntelligenceEngine {
     return null;
   }
 
-  /// Detects homograph punycode spoofing (mixed Cyrillic / Greek characters)
+  /// Detects homograph punycode spoofing (mixed Cyrillic / Greek characters or whole-script imitation)
   static bool detectHomographAttack(String domain) {
     final lower = domain.toLowerCase();
     if (lower.startsWith('xn--')) return true;
 
-    // Common Cyrillic lookalikes: а, с, е, о, р, х, у (U+0430, U+0441, U+0435, U+043E, U+0440, U+0445, U+0443)
-    final cyrillicLookalikes = RegExp(r'[\u0430\u0441\u0435\u043E\u0440\u0445\u0443\u0400-\u04FF]');
-    if (cyrillicLookalikes.hasMatch(lower) && RegExp(r'[a-z0-9]').hasMatch(lower)) {
+    final hasCyrillic = RegExp(r'[\u0400-\u04FF]').hasMatch(lower);
+    final hasGreek = RegExp(r'[\u0370-\u03FF]').hasMatch(lower);
+    final hasAscii = RegExp(r'[a-z0-9]').hasMatch(lower);
+
+    // Mixed script lookalikes (e.g. pаypal where 'а' is Cyrillic)
+    if ((hasCyrillic || hasGreek) && hasAscii) {
       return true;
     }
+
+    // Whole script imitation in standard Latin context (e.g. entire domain host in Cyrillic like "сби.com")
+    if ((hasCyrillic || hasGreek) &&
+        (lower.endsWith('.com') || lower.endsWith('.in') || lower.endsWith('.org') || lower.endsWith('.net') || lower.endsWith('.co.in'))) {
+      return true;
+    }
+
     return false;
+  }
+
+  /// Safely traces recursive redirect hops (e.g. URL shorteners) via zero-browser HEAD requests.
+  /// Enforces SSRF guard on intermediate hops, prevents redirect loops, and never executes JavaScript.
+  static Future<List<String>> traceRedirectChain(
+    String initialUrl, {
+    int maxHops = 5,
+    Duration timeout = const Duration(seconds: 3),
+    Dio? customDio,
+  }) async {
+    final chain = <String>[initialUrl];
+    var currentUrl = initialUrl;
+    final client = customDio ?? _dio;
+
+    for (int i = 0; i < maxHops; i++) {
+      try {
+        final parsed = Uri.tryParse(currentUrl);
+        if (parsed == null || !parsed.hasScheme || (parsed.scheme != 'http' && parsed.scheme != 'https')) {
+          break;
+        }
+
+        // SSRF Guard on intermediate hop
+        if (isPrivateOrReservedHost(parsed.host)) {
+          break;
+        }
+
+        final response = await client.head(
+          currentUrl,
+          options: Options(
+            followRedirects: false,
+            validateStatus: (status) => status != null && status < 500,
+            sendTimeout: timeout,
+            receiveTimeout: timeout,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko)',
+            },
+          ),
+        );
+
+        final statusCode = response.statusCode ?? 0;
+        if (statusCode >= 300 && statusCode < 400) {
+          final location = response.headers.value('location');
+          if (location != null && location.isNotEmpty) {
+            final nextUri = Uri.parse(currentUrl).resolve(location);
+            final nextUrl = nextUri.toString();
+            if (chain.contains(nextUrl)) {
+              // Loop detected
+              break;
+            }
+            chain.add(nextUrl);
+            currentUrl = nextUrl;
+            continue;
+          }
+        }
+        break;
+      } catch (_) {
+        break;
+      }
+    }
+    return chain;
   }
 
   /// Safely extracts and analyzes redirection query parameters and target destinations
@@ -671,7 +798,11 @@ class UrlIntelligenceEngine {
   }
 
   /// Performs deep multi-factor URL analysis
-  static Future<UrlResult> analyze(String rawUrl) async {
+  static Future<UrlResult> analyze(
+    String rawUrl, {
+    bool traceShorteners = false,
+    Dio? customDio,
+  }) async {
     final validation = validateAndParse(rawUrl);
     if (!validation.isValid) {
       final status = validation.status;
@@ -754,6 +885,62 @@ class UrlIntelligenceEngine {
         null,
         'Not in local allowlist of verified institutional domains (Neutral).',
       ));
+    }
+
+    // ─── 2.1 COMMAND & CONTROL (C2) / THREAT INTEL CHECK ────────────────────
+    final isKnownC2 = knownC2Domains.contains(domain) || knownC2Domains.contains(baseDomain);
+    bool isDynamicDnsC2 = false;
+    for (final suffix in highRiskDynamicDnsSuffixes) {
+      if (domain.endsWith(suffix) &&
+          (urlPath.contains('.apk') || urlPath.contains('payload') || urlPath.contains('c2') || urlPath.contains('bot'))) {
+        isDynamicDnsC2 = true;
+        break;
+      }
+    }
+
+    if (isKnownC2 || isDynamicDnsC2) {
+      riskScore += 90;
+      domainChecks.insert(
+        0,
+        DomainCheckItem(
+          'C2 Threat Intelligence',
+          false,
+          'CRITICAL: Host is indexed in active Command & Control (C2) or mobile malware infrastructure ($domain).',
+        ),
+      );
+    }
+
+    // ─── 2.2 RECURSIVE SHORTENER UNRAVELLER ──────────────────────────────────
+    List<String> unraveledChain = const [];
+    if (traceShorteners || knownUrlShorteners.contains(domain)) {
+      unraveledChain = await traceRedirectChain(rawUrl, customDio: customDio);
+      if (unraveledChain.length > 1) {
+        final destinationUrl = unraveledChain.last;
+        final destUri = Uri.tryParse(destinationUrl);
+        final destHost = destUri?.host.toLowerCase().replaceAll(RegExp(r'^www\.'), '') ?? '';
+        final destPath = destUri?.path.toLowerCase() ?? '';
+
+        final destIsC2 = knownC2Domains.contains(destHost);
+        final destIsApk = destPath.endsWith('.apk') || destinationUrl.contains('.apk?');
+
+        if (destIsC2 || destIsApk) {
+          riskScore += 75;
+          domainChecks.insert(
+            0,
+            DomainCheckItem(
+              'Cloaked Payload Unraveller',
+              false,
+              'Shortener disguised active threat: ${destIsC2 ? "C2 Node" : "APK Dropper"} at $destinationUrl (${unraveledChain.length - 1} hops).',
+            ),
+          );
+        } else {
+          domainChecks.add(DomainCheckItem(
+            'Shortened URL Resolution',
+            true,
+            'Safely unraveled ${unraveledChain.length - 1} redirect hop(s) to destination: $destinationUrl.',
+          ));
+        }
+      }
     }
 
     // ─── 3. BRAND IMPERSONATION & TYPOSQUATTING ──────────────────────────────
@@ -1054,7 +1241,7 @@ class UrlIntelligenceEngine {
 
     final UrlRiskLevel riskLevel;
     if (riskScore >= 75) {
-      riskLevel = (isRatDropper || isMaliciousDropper || isDesktopExecutable || brandSpoof != null || isHomograph || redirectAnalysis.isTargetDropper)
+      riskLevel = (isKnownC2 || isDynamicDnsC2 || isRatDropper || isMaliciousDropper || isDesktopExecutable || brandSpoof != null || isHomograph || redirectAnalysis.isTargetDropper)
           ? UrlRiskLevel.knownMalicious
           : UrlRiskLevel.highRisk;
     } else if (riskScore >= 21) {
@@ -1066,7 +1253,11 @@ class UrlIntelligenceEngine {
     }
 
     String riskExplanation;
-    if (isRatDropper) {
+    if (isKnownC2 || isDynamicDnsC2) {
+      riskExplanation = isKnownC2
+          ? 'Active Command & Control (C2) threat intelligence match.'
+          : 'Dynamic DNS C2 tunnel endpoint detected.';
+    } else if (isRatDropper) {
       riskExplanation = 'Remote Access Trojan (RAT) / C2 surveillance payload dropper detected.';
     } else if (redirectAnalysis.hasRedirect && redirectAnalysis.isExternal) {
       riskExplanation = 'Potential unverified external redirect to ${redirectAnalysis.targetHost}.';
@@ -1092,7 +1283,13 @@ class UrlIntelligenceEngine {
     final String threatCategoryBadge;
     final String threatForensicDetails;
 
-    if (isRatDropper || (hasRatKeyword && (isMaliciousDropper || hasHighRiskTld))) {
+    if (isKnownC2 || isDynamicDnsC2) {
+      threatType = MalwareThreatType.bankingTrojan;
+      threatCategoryBadge = isKnownC2 ? 'COMMAND & CONTROL (C2) INFRASTRUCTURE' : 'DYNAMIC DNS C2 ENDPOINT';
+      threatForensicDetails = isKnownC2
+          ? 'Domain matches active Command & Control (C2) botnet or banking trojan distribution node.'
+          : 'Dynamic DNS tunnel endpoint hosting unauthorized executable payload.';
+    } else if (isRatDropper || (hasRatKeyword && (isMaliciousDropper || hasHighRiskTld))) {
       threatType = MalwareThreatType.ratDropper;
       threatCategoryBadge = 'REMOTE ACCESS TROJAN (RAT) DROPPER';
       threatForensicDetails = 'This link directly distributes a remote surveillance or Remote Access Trojan (RAT) payload designed to seize administrative device control, record screen activity, and intercept OTPs/banking credentials.';
@@ -1171,6 +1368,7 @@ class UrlIntelligenceEngine {
       threatType: threatType,
       threatCategoryBadge: threatCategoryBadge,
       threatForensicDetails: threatForensicDetails,
+      redirectChain: unraveledChain,
     );
   }
 

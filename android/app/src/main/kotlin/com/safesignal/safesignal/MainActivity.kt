@@ -476,6 +476,23 @@ class MainActivity : FlutterFragmentActivity() {
             val hasAccessibility = pkg.services?.any { it.permission == android.Manifest.permission.BIND_ACCESSIBILITY_SERVICE } == true
             val hasDeviceAdmin = pkg.receivers?.any { it.permission == android.Manifest.permission.BIND_DEVICE_ADMIN } == true
 
+            val certSha256 = try {
+                val certBytes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val pInfo = pm.getPackageInfo(pkg.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+                    pInfo.signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()
+                } else {
+                    @Suppress("DEPRECATION")
+                    val pInfo = pm.getPackageInfo(pkg.packageName, PackageManager.GET_SIGNATURES)
+                    pInfo.signatures?.firstOrNull()?.toByteArray()
+                }
+                if (certBytes != null) {
+                    val md = java.security.MessageDigest.getInstance("SHA-256")
+                    md.digest(certBytes).joinToString("") { "%02x".format(it) }
+                } else null
+            } catch (e: Exception) {
+                null
+            }
+
             apps.add(
                 mapOf(
                     "name" to appName,
@@ -487,7 +504,8 @@ class MainActivity : FlutterFragmentActivity() {
                     "targetSdk" to appInfo.targetSdkVersion,
                     "hasLauncher" to hasLauncher,
                     "hasAccessibility" to hasAccessibility,
-                    "hasDeviceAdmin" to hasDeviceAdmin
+                    "hasDeviceAdmin" to hasDeviceAdmin,
+                    "signingCertificateSha256" to (certSha256 ?: "")
                 )
             )
         }
@@ -831,6 +849,35 @@ class MainActivity : FlutterFragmentActivity() {
             // ignore
         }
         out["isCaptivePortal"] = isCaptivePortal
+
+        // 4. DHCP & Rogue DNS Hijacking Check
+        var rogueDnsDetected = false
+        val dnsList = mutableListOf<String>()
+        var gatewayIp = "N/A"
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val activeNetwork = cm?.activeNetwork
+                val linkProps = cm?.getLinkProperties(activeNetwork)
+                if (linkProps != null) {
+                    val defaultRoute = linkProps.routes.firstOrNull { it.isDefaultRoute }
+                    gatewayIp = defaultRoute?.gateway?.hostAddress ?: "N/A"
+                    for (dns in linkProps.dnsServers) {
+                        val dnsIp = dns.hostAddress ?: continue
+                        dnsList.add(dnsIp)
+                        val isPrivateDns = dnsIp.startsWith("192.168.") || dnsIp.startsWith("10.") || dnsIp.startsWith("172.")
+                        if (isPrivateDns && gatewayIp != "N/A" && dnsIp != gatewayIp) {
+                            rogueDnsDetected = true
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // ignore
+        }
+        out["gatewayIp"] = gatewayIp
+        out["dnsServers"] = dnsList
+        out["rogueDnsDetected"] = rogueDnsDetected
 
         return out
     }

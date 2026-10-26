@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/services/llm_orchestrator.dart';
+import '../../core/services/upi_intent_guard_service.dart';
 
 class QrScannerScreen extends StatefulWidget {
   const QrScannerScreen({super.key});
@@ -103,42 +104,34 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
     final lower = data.toLowerCase().trim();
 
-    // 1. Offline Deep Dissection: UPI Payment Intent
-    if (lower.startsWith('upi://pay')) {
-      _dataType = 'UPI Payment Intent';
-      final uri = Uri.tryParse(data);
-      if (uri != null) {
-        final pa = uri.queryParameters['pa'] ?? 'Not specified';
-        final pn = uri.queryParameters['pn'] ?? 'Unknown Payee';
-        final am = uri.queryParameters['am'];
-        final cu = uri.queryParameters['cu'] ?? 'INR';
-        final tn = uri.queryParameters['tn'] ?? '';
-        final mc = uri.queryParameters['mc'] ?? '';
+    // 1. Offline Deep Dissection: UPI Payment Intent & Mandates
+    if (lower.startsWith('upi://')) {
+      _dataType = lower.contains('mandate') ? 'UPI Auto-Debit Mandate' : 'UPI Payment Intent';
+      final analysis = UpiIntentGuardService.analyze(data);
+      if (analysis.payeeAddress.isNotEmpty) _dissectedFields['Payee VPA'] = analysis.payeeAddress;
+      if (analysis.payeeName.isNotEmpty) _dissectedFields['Payee Name'] = analysis.payeeName;
+      if (analysis.amount != null && analysis.amount!.isNotEmpty) {
+        _dissectedFields['Pre-filled Amount'] = '₹${analysis.amount} INR';
+      }
+      if (analysis.transactionNote != null && analysis.transactionNote!.isNotEmpty) {
+        _dissectedFields['Note'] = analysis.transactionNote!;
+      }
+      if (analysis.merchantCode != null && analysis.merchantCode!.isNotEmpty) {
+        _dissectedFields['Merchant Code'] = analysis.merchantCode!;
+      }
 
-        _dissectedFields['Payee VPA'] = pa;
-        _dissectedFields['Payee Name'] = pn;
-        if (am != null && am.isNotEmpty) {
-          _dissectedFields['Pre-filled Amount'] = '₹$am $cu';
-        }
-        if (tn.isNotEmpty) _dissectedFields['Note'] = tn;
-        if (mc.isNotEmpty) _dissectedFields['Merchant Code'] = mc;
-
-        if (am != null && double.tryParse(am) != null && double.parse(am) > 0) {
-          _isUpiCollectScam = true;
-          _riskScore = 85;
-          _grade = 'E';
-          _threatAlerts.add(
-            '🚨 REVERSE PAYMENT FRAUD WARNING: This QR code executes a DEBIT of ₹$am from your account! '
-            'Scammers on OLX, WhatsApp, and Facebook send this pretending to "send" money. '
-            'In UPI, you NEVER need to scan a QR or enter your PIN to receive funds!',
-          );
-        } else {
-          _riskScore = 20;
-          _grade = 'A';
-          _threatAlerts.add(
-            'ℹ️ Standard UPI QR: Will initiate a payment to $pn ($pa). Confirm payee identity before approving in your bank app.',
-          );
-        }
+      if (analysis.isFraud) {
+        _isUpiCollectScam = true;
+        _riskScore = analysis.severity == UpiRiskSeverity.critical ? 95 : 75;
+        _grade = 'E';
+        _threatAlerts.addAll(analysis.warnings);
+      } else {
+        _isUpiCollectScam = false;
+        _riskScore = analysis.severity == UpiRiskSeverity.caution ? 35 : 15;
+        _grade = analysis.severity == UpiRiskSeverity.caution ? 'C' : 'A';
+        _threatAlerts.add(
+          'ℹ️ Standard UPI QR: Will initiate a payment to ${analysis.payeeName} (${analysis.payeeAddress}). ${analysis.actionGuidance}',
+        );
       }
     } 
     // 2. Offline Deep Dissection: Web URL
