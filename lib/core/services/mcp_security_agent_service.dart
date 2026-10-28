@@ -10,6 +10,7 @@ import 'stalkerware_ioc_service.dart';
 import 'url_intelligence_engine.dart';
 import 'upi_intent_guard_service.dart';
 import 'local_rule_engine.dart';
+import 'phone_breach_service.dart';
 
 /// Standard Model Context Protocol (MCP) Tool definition
 class McpToolDefinition {
@@ -137,6 +138,21 @@ class McpSecurityAgentService {
           'required': ['messageText']
         },
       ),
+      McpToolDefinition(
+        name: 'check_phone_breach_osint',
+        description:
+            'Audits a mobile number for dark-web PII exposures, telecom CAF dumps (Father\'s name, residential address, alternate numbers exploited by lookup portals like stacademy.in), SIM-swap risk vectors, and DoT circle/carrier telemetry.',
+        inputSchema: {
+          'type': 'object',
+          'properties': {
+            'phoneNumber': {
+              'type': 'string',
+              'description': '10-digit Indian mobile number or international format (e.g. 9876543210 or +919876543210)'
+            }
+          },
+          'required': ['phoneNumber']
+        },
+      ),
     ];
   }
 
@@ -155,6 +171,9 @@ class McpSecurityAgentService {
 
         case 'verify_sms_trai_header':
           return _handleVerifySmsTraiHeader(arguments);
+
+        case 'check_phone_breach_osint':
+          return await _handleCheckPhoneBreachOsint(arguments);
 
         default:
           return McpToolResult.error('Unknown tool: $name');
@@ -266,6 +285,49 @@ class McpSecurityAgentService {
       'riskScore': verdict.riskScore,
       'reasons': verdict.reasons,
       'whatToDo': verdict.whatToDo,
+    });
+  }
+
+  Future<McpToolResult> _handleCheckPhoneBreachOsint(Map<String, dynamic> args) async {
+    final rawNumber = args['phoneNumber'] as String? ?? '';
+    if (rawNumber.trim().isEmpty) {
+      return McpToolResult.error('phoneNumber argument is required');
+    }
+
+    final service = PhoneBreachService();
+    final result = await service.scanPhoneNumber(rawNumber);
+
+    final summary = 'Mobile: ${result.formattedNumber}\n'
+        'Carrier: ${result.carrier} | Circle: ${result.circle}\n'
+        'Threat Grade: ${result.securityGrade} (Score: ${result.riskScore}/100)\n'
+        'SIM-Swap Vulnerability: ${result.simSwapVulnerable ? "CRITICAL (CAF KYC / Address Leaked)" : "Low / Not Detected"}\n'
+        'Breaches Matched: ${result.breaches.length} databases\n'
+        'Exposed PII: ${result.topLeakedData.isEmpty ? "None" : result.topLeakedData.join(", ")}\n'
+        'Remediation: ${result.actionableSteps.join(" | ")}';
+
+    return McpToolResult.text(summary, data: {
+      'rawNumber': result.rawNumber,
+      'formattedNumber': result.formattedNumber,
+      'carrier': result.carrier,
+      'circle': result.circle,
+      'lineType': result.lineType,
+      'isValid': result.isValid,
+      'riskScore': result.riskScore,
+      'securityGrade': result.securityGrade,
+      'simSwapVulnerable': result.simSwapVulnerable,
+      'breachCount': result.breaches.length,
+      'topLeakedData': result.topLeakedData,
+      'actionableSteps': result.actionableSteps,
+      'breaches': result.breaches
+          .map((b) => {
+                'title': b.title,
+                'domain': b.domain,
+                'breachDate': b.breachDate,
+                'severity': b.severity,
+                'dataClasses': b.dataClasses,
+                'description': b.description,
+              })
+          .toList(),
     });
   }
 }

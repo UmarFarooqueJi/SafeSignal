@@ -302,7 +302,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
       _CardData(
         title: 'Data Breach Check',
-        subtitle: 'Email Exposure Scan',
+        subtitle: 'Email & Mobile Breach Scan',
         icon: Icons.lock_open_rounded,
         gradient: const LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,
