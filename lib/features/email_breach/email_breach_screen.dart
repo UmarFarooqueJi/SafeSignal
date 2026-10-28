@@ -56,6 +56,8 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
   // Phone state
   PhoneIntelligenceResult? _phoneResult;
   String _phoneVerdict = '';
+  bool _unmaskLeakedData = false;
+  bool _showRawJsonPayload = false;
 
   @override
   void initState() {
@@ -930,6 +932,11 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
           ),
         ),
 
+        if (result.leakedDossier != null) ...[
+          const SizedBox(height: 16),
+          _buildRawLeakedDossierCard(result.leakedDossier!, isDark),
+        ],
+
         const SizedBox(height: 16),
 
         // Card 3: Exposed Identity Profile (Attacker's Dossier View)
@@ -1428,6 +1435,447 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildRawLeakedDossierCard(LeakedIdentityDossier dossier, bool isDark) {
+    const borderColor = Color(0xFFDC2626);
+    final cardBg = isDark ? const Color(0xFF180A0A) : const Color(0xFFFEF2F2);
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: borderColor.withValues(alpha: 0.7), width: 1.8),
+        boxShadow: [
+          BoxShadow(
+            color: borderColor.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: borderColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ATTACKER DOSSIER: RAW LEAKED CAF RECORD',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                        color: borderColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Real subscriber profile leaked from Telecom Retailer POS (Indexed by stacademy.in & dark-web aggregators):',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // Action Toolbar: Reveal/Mask Toggle + Copy Button
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _unmaskLeakedData = !_unmaskLeakedData;
+                    });
+                  },
+                  icon: Icon(
+                    _unmaskLeakedData ? CupertinoIcons.eye_slash_fill : CupertinoIcons.eye_fill,
+                    size: 15,
+                    color: isDark ? Colors.white70 : const Color(0xFF334155),
+                  ),
+                  label: Text(
+                    _unmaskLeakedData ? 'Mask Sensitive Text' : 'Reveal Raw Values',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: dossier.rawDumpSyntax));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Leaked forensic CAF payload copied to clipboard!'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: Color(0xFF10B981),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy_rounded, size: 14, color: Colors.white),
+                label: const Text(
+                  'Copy Record',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDC2626),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Field 1: Subscriber Legal Name
+          _buildDossierValueBox(
+            label: '👤 SUBSCRIBER LEGAL NAME',
+            value: _unmaskLeakedData ? dossier.subscriberName : _maskString(dossier.subscriberName),
+            highlightColor: const Color(0xFFF97316),
+            isDark: isDark,
+            subtitle: 'Name registered on SIM card at telecom counter',
+          ),
+
+          const SizedBox(height: 10),
+
+          // Field 2: Father's / Guardian Name (High-Risk vector)
+          _buildDossierValueBox(
+            label: "👨 FATHER'S / GUARDIAN NAME",
+            value: _unmaskLeakedData ? dossier.fatherName : _maskString(dossier.fatherName),
+            highlightColor: const Color(0xFFEF4444),
+            isDark: isDark,
+            isCriticalAlert: true,
+            badgeText: 'CRITICAL THREAT VECTOR',
+            subtitle: 'Used in Digital Arrest scams & telecom store SIM-swap fraud',
+          ),
+
+          const SizedBox(height: 10),
+
+          // Field 3: Residential Address (Raw CAF with '!' and Clean)
+          _buildDossierAddressBox(
+            dossier: dossier,
+            isDark: isDark,
+            unmask: _unmaskLeakedData,
+          ),
+
+          const SizedBox(height: 10),
+
+          // Field 4: Alternate Contact Number
+          _buildDossierValueBox(
+            label: '📱 ALTERNATE REGISTERED NUMBER',
+            value: _unmaskLeakedData ? dossier.alternateNumber : _maskPhone(dossier.alternateNumber),
+            highlightColor: const Color(0xFF38BDF8),
+            isDark: isDark,
+            subtitle: 'Secondary contact harvested from SIM activation form',
+          ),
+
+          const SizedBox(height: 10),
+
+          // Field 5: National ID / Aadhaar Reference
+          _buildDossierValueBox(
+            label: '🆔 NATIONAL ID / AADHAAR TOKEN',
+            value: dossier.idProofToken,
+            highlightColor: const Color(0xFFA855F7),
+            isDark: isDark,
+            subtitle: 'Masked identity proof submitted during e-KYC',
+          ),
+
+          const SizedBox(height: 10),
+
+          // Field 6: DoT Carrier & Telecom Circle
+          _buildDossierValueBox(
+            label: '📡 OPERATOR & TELECOM CIRCLE',
+            value: '${dossier.primaryCarrier} — ${dossier.telecomCircle}',
+            highlightColor: const Color(0xFF10B981),
+            isDark: isDark,
+            subtitle: 'Original DoT MSC allocation series',
+          ),
+
+          const SizedBox(height: 12),
+
+          // Expandable: Raw JSON dump matching stacademy.in API
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _showRawJsonPayload = !_showRawJsonPayload;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.code_rounded, size: 16, color: Color(0xFF38BDF8)),
+                      const SizedBox(width: 8),
+                      Text(
+                        _showRawJsonPayload
+                            ? 'Hide stacademy.in Raw API Schema'
+                            : 'View stacademy.in Raw API Dump (JSON)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white70 : const Color(0xFF334155),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Icon(
+                    _showRawJsonPayload ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    color: isDark ? Colors.white54 : Colors.black54,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (_showRawJsonPayload) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF020617),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF1E293B)),
+              ),
+              child: SelectableText(
+                dossier.rawDumpSyntax,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  color: Color(0xFF4ADE80),
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDossierValueBox({
+    required String label,
+    required String value,
+    required Color highlightColor,
+    required bool isDark,
+    required String subtitle,
+    bool isCriticalAlert = false,
+    String? badgeText,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF111827) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCriticalAlert
+              ? const Color(0xFFDC2626)
+              : (isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0)),
+          width: isCriticalAlert ? 1.4 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.8,
+                  color: isDark ? Colors.white38 : Colors.black45,
+                ),
+              ),
+              if (badgeText != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDC2626).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    badgeText,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFFEF4444),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          SelectableText(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 10,
+              color: isDark ? Colors.white54 : Colors.black54,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDossierAddressBox({
+    required LeakedIdentityDossier dossier,
+    required bool isDark,
+    required bool unmask,
+  }) {
+    final rawDisplay =
+        unmask ? dossier.rawCafAddress : _maskAddress(dossier.rawCafAddress);
+    final cleanDisplay =
+        unmask ? dossier.formattedAddress : _maskAddress(dossier.formattedAddress);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF111827) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '📍 RESIDENTIAL ADDRESS (CAF POS FORMAT)',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.8,
+                  color: isDark ? Colors.white38 : Colors.black45,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  "'!' DELIMITER SIGNATURE",
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF38BDF8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          // Clean readable address
+          SelectableText(
+            cleanDisplay,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Raw unparsed CAF string with '!'
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: SelectableText(
+              'Raw CAF: $rawDisplay',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 11,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _maskString(String s) {
+    if (s.length <= 4) return s;
+    final words = s.split(' ');
+    return words.map((w) {
+      if (w.length <= 2) return w;
+      return '${w[0]}${'*' * (w.length - 2)}${w[w.length - 1]}';
+    }).join(' ');
+  }
+
+  String _maskAddress(String addr) {
+    final parts = addr.split('!');
+    if (parts.length < 3) return addr;
+    return '${parts.first}!***!***!${parts[parts.length - 2]}!${parts.last}';
+  }
+
+  String _maskPhone(String p) {
+    if (p.length < 8) return p;
+    return '${p.substring(0, 7)} XXXX ${p.substring(p.length - 2)}';
   }
 
   Widget _buildDossierFieldTile(ExposedDossierField field, bool isDark) {

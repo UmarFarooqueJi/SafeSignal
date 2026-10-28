@@ -18,18 +18,27 @@ void main() {
       final res = await service.scanPhoneNumber('9810123456');
 
       expect(res.isValid, isTrue);
-      expect(res.circle, contains('Delhi'));
-      expect(res.carrier, contains('Airtel'));
+      expect(res.circle, equals('Delhi NCR Circle'));
+      expect(res.carrier, equals('Bharti Airtel'));
+      expect(res.carrier.contains('/'), isFalse);
       expect(res.formattedNumber, equals('+91 98101 23456'));
       expect(res.breaches, isNotEmpty);
       expect(res.riskScore, greaterThan(0));
+      expect(res.leakedDossier, isNotNull);
+      expect(res.leakedDossier!.subscriberName, isNotEmpty);
+      expect(res.leakedDossier!.fatherName.startsWith('S/O'), isTrue);
+      expect(res.leakedDossier!.rawCafAddress, contains('!'));
+      expect(res.leakedDossier!.formattedAddress, isNotEmpty);
+      expect(res.leakedDossier!.rawDumpSyntax, contains('"mobile": "9810123456"'));
     });
 
     test('normalizes international format +91 98201 23456 to Mumbai Circle', () async {
       final res = await service.scanPhoneNumber('+91 98201 23456');
 
       expect(res.isValid, isTrue);
-      expect(res.circle, contains('Mumbai'));
+      expect(res.circle, equals('Mumbai Metro Circle'));
+      expect(res.carrier, equals('Vodafone Idea (Vi)'));
+      expect(res.carrier.contains('/'), isFalse);
       expect(res.formattedNumber, equals('+91 98201 23456'));
       expect(res.lineType, contains('Mobile'));
     });
@@ -38,7 +47,9 @@ void main() {
       final res = await service.scanPhoneNumber('09845123456');
 
       expect(res.isValid, isTrue);
-      expect(res.circle, contains('Karnataka'));
+      expect(res.circle, equals('Karnataka Circle'));
+      expect(res.carrier, equals('Bharti Airtel'));
+      expect(res.carrier.contains('/'), isFalse);
       expect(res.formattedNumber, equals('+91 98451 23456'));
     });
 
@@ -46,7 +57,8 @@ void main() {
       final res = await service.scanPhoneNumber('9412012345');
 
       expect(res.isValid, isTrue);
-      expect(res.carrier, contains('BSNL'));
+      expect(res.carrier, equals('BSNL Mobile (Bharat Sanchar Nigam Ltd)'));
+      expect(res.carrier.contains('/'), isFalse);
       expect(res.breaches.any((b) => b.title.contains('BSNL')), isTrue);
     });
 
@@ -78,6 +90,7 @@ void main() {
       expect(res.riskScore, equals(0));
       expect(res.securityGrade, equals('A'));
       expect(res.breaches, isEmpty);
+      expect(res.leakedDossier, isNull);
       expect(res.actionableSteps.first, contains('valid 10-digit'));
     });
   });
@@ -103,11 +116,14 @@ void main() {
       expect(res.content.first['text'], contains('Carrier: Bharti Airtel'));
       expect(res.content.first['text'], contains('Delhi NCR Circle'));
       expect(res.structuredData?['isValid'], isTrue);
-      expect(res.structuredData?['carrier'], contains('Bharti Airtel'));
-      expect(res.structuredData?['circle'], contains('Delhi'));
+      expect(res.structuredData?['carrier'], equals('Bharti Airtel'));
+      expect(res.structuredData?['circle'], equals('Delhi NCR Circle'));
       expect(res.structuredData?['breachCount'], greaterThan(0));
       expect(res.structuredData?['breaches'], isNotEmpty);
       expect(res.structuredData?['exposedProfile'], isNotEmpty);
+      expect(res.structuredData?['leakedDossier'], isNotNull);
+      expect(res.structuredData?['leakedDossier']['subscriberName'], isNotEmpty);
+      expect(res.structuredData?['leakedDossier']['rawCafAddress'], contains('!'));
     });
 
     test('callTool returns error when phoneNumber argument is missing', () async {
