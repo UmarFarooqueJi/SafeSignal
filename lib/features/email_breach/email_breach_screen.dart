@@ -932,7 +932,84 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
         const SizedBox(height: 16),
 
-        // Card 3: SIM Swap Risk Alert
+        // Card 3: Exposed Identity Profile (Attacker's Dossier View)
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF111827) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: result.simSwapVulnerable
+                  ? Colors.redAccent.withValues(alpha: 0.5)
+                  : (isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0)),
+              width: result.simSwapVulnerable ? 1.5 : 1,
+            ),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('🔍', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'EXPOSED IDENTITY DOSSIER (OSINT LEAK PROFILE)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1,
+                        color: isDark ? Colors.white70 : const Color(0xFF334155),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'This is the personal identity data that dark-web aggregators & commercial search portals (e.g. stacademy.in) sell for ₹10 per search:',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? Colors.white54 : Colors.black54,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...result.exposedProfile.map((field) => _buildDossierFieldTile(field, isDark)),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1B4B),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF4338CA)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('ℹ️', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Commercial lookup sites charge ₹10 via UPI to query scraped telecom activation forms (CAF). SafeSignal is 100% on-device and never exposes or uploads your data.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.indigo.shade200,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Card 4: SIM Swap Risk Alert
         if (result.simSwapVulnerable)
           Container(
             width: double.infinity,
@@ -1342,6 +1419,114 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
           const SizedBox(height: 10),
           Text(
             b.description,
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white70 : const Color(0xFF475569),
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDossierFieldTile(ExposedDossierField field, bool isDark) {
+    Color badgeColor;
+    Color badgeBg;
+    if (field.severity == 'Critical') {
+      badgeColor = const Color(0xFFEF4444);
+      badgeBg = const Color(0xFFEF4444).withValues(alpha: 0.12);
+    } else if (field.severity == 'High') {
+      badgeColor = const Color(0xFFF97316);
+      badgeBg = const Color(0xFFF97316).withValues(alpha: 0.12);
+    } else if (field.severity == 'Medium') {
+      badgeColor = const Color(0xFF38BDF8);
+      badgeBg = const Color(0xFF38BDF8).withValues(alpha: 0.12);
+    } else {
+      badgeColor = const Color(0xFF22C55E);
+      badgeBg = const Color(0xFF22C55E).withValues(alpha: 0.12);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(field.icon, style: const TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      field.fieldName,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      field.category,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white38 : Colors.black38,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  field.isCompromised ? 'LEAKED' : 'SECURE',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: badgeColor,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: badgeColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              field.exposureStatus,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: badgeColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            field.threatDescription,
             style: TextStyle(
               fontSize: 12,
               color: isDark ? Colors.white70 : const Color(0xFF475569),

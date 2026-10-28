@@ -30,6 +30,36 @@ class PhoneBreachInfo {
   });
 }
 
+class ExposedDossierField {
+  final String fieldName;
+  final String icon;
+  final String category;
+  final String exposureStatus;
+  final String threatDescription;
+  final bool isCompromised;
+  final String severity; // Critical, High, Medium, Safe
+
+  const ExposedDossierField({
+    required this.fieldName,
+    required this.icon,
+    required this.category,
+    required this.exposureStatus,
+    required this.threatDescription,
+    required this.isCompromised,
+    required this.severity,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'fieldName': fieldName,
+        'icon': icon,
+        'category': category,
+        'exposureStatus': exposureStatus,
+        'threatDescription': threatDescription,
+        'isCompromised': isCompromised,
+        'severity': severity,
+      };
+}
+
 class PhoneIntelligenceResult {
   final String rawNumber;
   final String formattedNumber;
@@ -43,6 +73,7 @@ class PhoneIntelligenceResult {
   final bool simSwapVulnerable;
   final List<String> topLeakedData;
   final List<String> actionableSteps;
+  final List<ExposedDossierField> exposedProfile;
 
   const PhoneIntelligenceResult({
     required this.rawNumber,
@@ -57,6 +88,7 @@ class PhoneIntelligenceResult {
     required this.simSwapVulnerable,
     required this.topLeakedData,
     required this.actionableSteps,
+    required this.exposedProfile,
   });
 }
 
@@ -112,6 +144,7 @@ class PhoneBreachService {
         actionableSteps: const [
           'Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.',
         ],
+        exposedProfile: const [],
       );
     }
 
@@ -162,7 +195,103 @@ class PhoneBreachService {
       grade = 'B';
     }
 
-    // 4. Construct Actionable Defense Steps
+    // 4. Synthesize Granular Leaked Identity Dossier (What attackers/lookup sites like stacademy.in expose)
+    final hasCaf = breaches.any((b) => b.title.contains('CAF') || b.title.contains('Telecom KYC'));
+    final hasOrder = breaches.any((b) => b.title.contains('Domino') || b.title.contains('BigBasket'));
+    final hasIspOrBsnl = breaches.any((b) => b.title.contains('BSNL') || b.title.contains('AirJaldi'));
+    final hasCallerId = breaches.any((b) => b.title.contains('Caller ID') || b.title.contains('Truecaller'));
+
+    final profile = <ExposedDossierField>[
+      ExposedDossierField(
+        fieldName: 'Subscriber Legal Name',
+        icon: '👤',
+        category: 'Identity Record',
+        exposureStatus: (hasCaf || hasOrder || hasIspOrBsnl)
+            ? 'Exposed in Public & CAF Dumps'
+            : 'Not Detected in Indexed Dumps',
+        threatDescription: (hasCaf || hasOrder || hasIspOrBsnl)
+            ? 'Real legal name tied directly to SIM; enables spear-phishing and KYC impersonation.'
+            : 'No direct public link found between legal name and this number.',
+        isCompromised: hasCaf || hasOrder || hasIspOrBsnl,
+        severity: (hasCaf || hasOrder || hasIspOrBsnl) ? 'High' : 'Safe',
+      ),
+      ExposedDossierField(
+        fieldName: "Father's / Guardian Name",
+        icon: '👨',
+        category: 'Telecom CAF (KYC)',
+        exposureStatus: hasCaf
+            ? 'Leaked via Telecom Retailer CAF Scraping'
+            : 'Protected / Not Exposed',
+        threatDescription: hasCaf
+            ? 'CBI/Police impersonators cite Father\'s Name in Digital Arrest scams to fake official authority; also used for SIM-swap authorization at telecom stores.'
+            : 'Father\'s name not detected in dark-web CAF catalogs.',
+        isCompromised: hasCaf,
+        severity: hasCaf ? 'Critical' : 'Safe',
+      ),
+      ExposedDossierField(
+        fieldName: 'Residential Physical Address',
+        icon: '📍',
+        category: 'Geolocation & Delivery',
+        exposureStatus: (hasCaf || hasOrder)
+            ? 'Exposed in Telecom CAF & Food Delivery Orders'
+            : 'Protected / Not Exposed',
+        threatDescription: (hasCaf || hasOrder)
+            ? 'Full residential address (flat/house number, street, city & PIN code) accessible to commercial OSINT lookup tools for ₹10.'
+            : 'No physical delivery or residential addresses leaked.',
+        isCompromised: hasCaf || hasOrder,
+        severity: (hasCaf || hasOrder) ? 'Critical' : 'Safe',
+      ),
+      ExposedDossierField(
+        fieldName: 'Alternate Contact Number',
+        icon: '📱',
+        category: 'Linked Contacts',
+        exposureStatus: (hasCaf || hasIspOrBsnl)
+            ? 'Exposed in SIM Activation Form (CAF)'
+            : 'Protected / Not Exposed',
+        threatDescription: (hasCaf || hasIspOrBsnl)
+            ? 'Emergency/family numbers harvested from activation records; extortionists call relatives if your primary number is unreachable.'
+            : 'Alternate emergency contacts remain secure.',
+        isCompromised: hasCaf || hasIspOrBsnl,
+        severity: (hasCaf || hasIspOrBsnl) ? 'High' : 'Safe',
+      ),
+      ExposedDossierField(
+        fieldName: 'Govt ID / Aadhaar Reference',
+        icon: '🆔',
+        category: 'National Identity Proof',
+        exposureStatus: hasIspOrBsnl
+            ? 'Masked ID Token Exposed (XXXX-XXXX-1234)'
+            : 'No ID Linkage Found',
+        threatDescription: hasIspOrBsnl
+            ? 'Masked government identity proof reference leaked; used to convince victims that scammers possess legitimate government records.'
+            : 'Aadhaar and voter ID linkages are protected.',
+        isCompromised: hasIspOrBsnl,
+        severity: hasIspOrBsnl ? 'Critical' : 'Safe',
+      ),
+      ExposedDossierField(
+        fieldName: 'Carrier & Telecom Circle',
+        icon: '📡',
+        category: 'DoT Network Telemetry',
+        exposureStatus: 'Resolved: ${telecom['circle']} (${telecom['carrier']})',
+        threatDescription: 'Network operator and circle used to target regional language scripts and carrier-specific customer care loopholes.',
+        isCompromised: true,
+        severity: 'Medium',
+      ),
+      ExposedDossierField(
+        fieldName: 'Linked Service Accounts',
+        icon: '🌐',
+        category: 'Online Platforms',
+        exposureStatus: (hasOrder || hasCallerId)
+            ? 'Indexed on Delivery & Caller-ID Platforms'
+            : 'Clean / Unindexed',
+        threatDescription: (hasOrder || hasCallerId)
+            ? 'Aggregated across food delivery, crowdsourced caller-ID tags, and online platforms.'
+            : 'No third-party online accounts identified.',
+        isCompromised: hasOrder || hasCallerId,
+        severity: (hasOrder || hasCallerId) ? 'Medium' : 'Safe',
+      ),
+    ];
+
+    // 5. Construct Actionable Defense Steps
     final steps = <String>[];
     if (simSwapRisk) {
       steps.add('Enable Carrier SIM Lock PIN with ${telecom['carrier']} to block unauthorized SIM card swaps.');
@@ -194,6 +323,7 @@ class PhoneBreachService {
       simSwapVulnerable: simSwapRisk,
       topLeakedData: leakedClasses.toList(),
       actionableSteps: steps,
+      exposedProfile: profile,
     );
   }
 

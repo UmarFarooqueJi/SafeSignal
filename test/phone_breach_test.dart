@@ -60,6 +60,15 @@ void main() {
       expect(cafLeak.dataClasses, contains('Physical Residential Address'));
       expect(res.simSwapVulnerable, isTrue);
       expect(res.actionableSteps.any((s) => s.contains('SIM Lock PIN') || s.contains('Aadhaar')), isTrue);
+
+      expect(res.exposedProfile, isNotEmpty);
+      final fatherField = res.exposedProfile.firstWhere((p) => p.fieldName.contains("Father"));
+      expect(fatherField.isCompromised, isTrue);
+      expect(fatherField.severity, equals('Critical'));
+
+      final addressField = res.exposedProfile.firstWhere((p) => p.fieldName.contains("Address"));
+      expect(addressField.isCompromised, isTrue);
+      expect(addressField.severity, equals('Critical'));
     });
 
     test('gracefully rejects invalid numbers without crashing', () async {
@@ -98,6 +107,7 @@ void main() {
       expect(res.structuredData?['circle'], contains('Delhi'));
       expect(res.structuredData?['breachCount'], greaterThan(0));
       expect(res.structuredData?['breaches'], isNotEmpty);
+      expect(res.structuredData?['exposedProfile'], isNotEmpty);
     });
 
     test('callTool returns error when phoneNumber argument is missing', () async {

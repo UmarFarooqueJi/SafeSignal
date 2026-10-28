@@ -328,6 +328,7 @@ class McpSecurityAgentService {
                 'description': b.description,
               })
           .toList(),
+      'exposedProfile': result.exposedProfile.map((p) => p.toJson()).toList(),
     });
   }
 }
