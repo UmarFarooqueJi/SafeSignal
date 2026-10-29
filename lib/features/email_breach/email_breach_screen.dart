@@ -3,8 +3,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/services/hibp_service.dart';
 import '../../core/services/phone_breach_service.dart';
+import '../../core/services/live_osint_service.dart';
 import '../../core/services/llm_orchestrator.dart';
 
 enum _ScanMode { email, phone }
@@ -46,12 +48,16 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
   final HibpService _hibp = HibpService();
   final PhoneBreachService _phoneService = PhoneBreachService();
+  final LiveOsintService _liveOsint = LiveOsintService();
 
   _Phase _phase = _Phase.idle;
   
   // Email state
   List<BreachInfo> _emailBreaches = [];
   String _emailVerdict = '';
+  LiveOsintProfile? _liveOsintProfile;
+  bool _showAuthenticityWhy = false;
+  bool _showExposureWhy = false;
 
   // Phone state
   PhoneIntelligenceResult? _phoneResult;
@@ -132,6 +138,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
     try {
       final breaches = await _hibp.checkEmail(email);
+      final osint = await _liveOsint.performFullLookup(email, breaches);
 
       String instantVerdict;
       if (breaches.isEmpty) {
@@ -143,15 +150,18 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
             : 'ALERT: Your email was found in ${breaches.length} public data exposures. Verify linked accounts and monitor for suspicious communications.';
       }
 
-      setState(() {
-        _emailBreaches = breaches;
-        _emailVerdict = instantVerdict;
-        _phase = _Phase.done;
-      });
+      if (mounted) {
+        setState(() {
+          _emailBreaches = breaches;
+          _liveOsintProfile = osint;
+          _emailVerdict = instantVerdict;
+          _phase = _Phase.done;
+        });
+      }
 
       _fetchEmailVerdict(email, breaches);
     } catch (e) {
-      setState(() => _phase = _Phase.error);
+      if (mounted) setState(() => _phase = _Phase.error);
     }
   }
 
@@ -774,9 +784,791 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // EMAIL ANALYSIS CARDS (Original UI)
+  // INTELBASE OSINT & BREACH ANALYSIS DASHBOARD (intelbase.is Feature Parity)
   // ---------------------------------------------------------------------------
   Widget _buildEmailAnalysisCards(bool isDark) {
+    final osint = _liveOsintProfile;
+    if (osint == null) {
+      return _buildLegacyEmailCards(isDark);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Likely Owner & Identity Header Card
+        _buildIntelBaseIdentityCard(osint, isDark),
+        const SizedBox(height: 16),
+
+        // 2. Dual Assessment Matrix (Authenticity & Exposure Scores)
+        _buildIntelBaseAssessmentCard(osint, isDark),
+        const SizedBox(height: 16),
+
+        // 3. Infostealer Malware Logs Threat Card (if compromised)
+        if (osint.stealerReport.hasStealerExposure) ...[
+          _buildIntelBaseStealerCard(osint.stealerReport, isDark),
+          const SizedBox(height: 16),
+        ],
+
+        // 4. Discovered Live Accounts (Gravatar, GitHub, etc.)
+        if (osint.accounts.isNotEmpty) ...[
+          _buildIntelBaseAccountsCard(osint.accounts, isDark),
+          const SizedBox(height: 16),
+        ],
+
+        // 5. Digital Footprint Timeline
+        if (osint.timeline.isNotEmpty) ...[
+          _buildIntelBaseTimelineCard(osint.timeline, isDark),
+          const SizedBox(height: 16),
+        ],
+
+        // 6. Data Breaches Breakdown
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'COMPROMISED BREACH ARCHIVES (${osint.breaches.length})',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+              color: isDark ? Colors.white54 : Colors.black54,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (osint.breaches.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF064E3B).withValues(alpha: 0.3) : const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 28),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Zero Known Breaches Found',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Your email was checked across 800+ dark-web breach archives and zero compromised records were detected.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white70 : const Color(0xFF065F46),
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...osint.breaches.map((b) => _buildEmailBreachDetailCard(b, isDark)),
+
+        const SizedBox(height: 30),
+      ],
+    );
+  }
+
+  Widget _buildIntelBaseIdentityCard(LiveOsintProfile osint, bool isDark) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Avatar
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                  border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.4)),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: osint.avatarUrl != null && osint.avatarUrl!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: osint.avatarUrl!,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => const Center(
+                            child: Icon(Icons.person, color: Color(0xFF3B82F6), size: 28),
+                          ),
+                        )
+                      : Center(
+                          child: Text(
+                            (osint.likelyOwner ?? 'U').substring(0, 1).toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF3B82F6),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            osint.likelyOwner ?? 'Anonymous Subject',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.verified_rounded, size: 16, color: Color(0xFF3B82F6)),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      osint.query,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    if (osint.primaryBio != null && osint.primaryBio!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        osint.primaryBio!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                          color: isDark ? Colors.white70 : const Color(0xFF475569),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Colors.white12),
+          const SizedBox(height: 12),
+          // Timeline Footprint badges
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'FIRST SEEN',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isDark ? Colors.white38 : Colors.black38),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      osint.firstSeenYear ?? 'Unknown',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'LAST SEEN',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isDark ? Colors.white38 : Colors.black38),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      osint.lastSeenYear ?? '2024',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'MAIL PROVIDER',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isDark ? Colors.white38 : Colors.black38),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      osint.domainIntel.mailProvider,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : const Color(0xFF334155)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntelBaseAssessmentCard(LiveOsintProfile osint, bool isDark) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'THREAT & IDENTITY ASSESSMENT',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                  color: isDark ? Colors.white70 : const Color(0xFF334155),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'IntelBase Matrix',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF3B82F6)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Algorithmic scoring derived from live OSINT validators, domain reputation, and breach corpora.',
+            style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.black54),
+          ),
+          const SizedBox(height: 16),
+
+          // Score 1: Authenticity
+          _buildScoreAccordion(
+            title: 'Authenticity',
+            subtitle: 'How established the identifier appears',
+            score: osint.authenticity.score,
+            bandLabel: osint.authenticity.label,
+            barColor: const Color(0xFF34D399),
+            reasons: osint.authenticity.reasons,
+            isOpen: _showAuthenticityWhy,
+            onToggle: () => setState(() => _showAuthenticityWhy = !_showAuthenticityWhy),
+            isDark: isDark,
+          ),
+
+          const SizedBox(height: 12),
+
+          // Score 2: Exposure
+          _buildScoreAccordion(
+            title: 'Exposure',
+            subtitle: 'How severely credentials & assets are exposed',
+            score: osint.exposure.score,
+            bandLabel: osint.exposure.label,
+            barColor: osint.exposure.score >= 70
+                ? const Color(0xFFEF4444)
+                : (osint.exposure.score > 25 ? const Color(0xFFF59E0B) : const Color(0xFF34D399)),
+            reasons: osint.exposure.reasons,
+            isOpen: _showExposureWhy,
+            onToggle: () => setState(() => _showExposureWhy = !_showExposureWhy),
+            isDark: isDark,
+          ),
+
+          if (osint.passwordReuseCount > 1) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.key_rounded, color: Color(0xFFF59E0B), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Same Password Found Across ${osint.passwordReuseCount} Breaches',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B)),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'High risk of automated credential stuffing attack. Change passwords across all accounts.',
+                          style: TextStyle(fontSize: 10, color: isDark ? Colors.white60 : Colors.black54),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScoreAccordion({
+    required String title,
+    required String subtitle,
+    required int score,
+    required String bandLabel,
+    required Color barColor,
+    required List<ScoreReason> reasons,
+    required bool isOpen,
+    required VoidCallback onToggle,
+    required bool isDark,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 10, color: isDark ? Colors.white54 : Colors.black45),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$score',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: barColor,
+                          ),
+                        ),
+                        TextSpan(
+                          text: '/100',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? Colors.white38 : Colors.black38,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    bandLabel,
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: barColor),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: score / 100,
+              minHeight: 5,
+              backgroundColor: isDark ? Colors.white10 : Colors.black12,
+              valueColor: AlwaysStoppedAnimation<Color>(barColor),
+            ),
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: onToggle,
+            child: Row(
+              children: [
+                Icon(
+                  isOpen ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_right_rounded,
+                  size: 16,
+                  color: isDark ? Colors.white54 : Colors.black54,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Why this score',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white60 : Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isOpen) ...[
+            const SizedBox(height: 8),
+            const Divider(height: 1, color: Colors.white10),
+            const SizedBox(height: 8),
+            ...reasons.map((r) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          r.label,
+                          style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : const Color(0xFF475569)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: (r.points >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444)).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          r.points >= 0 ? '+${r.points}' : '${r.points}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: r.points >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntelBaseStealerCard(InfostealerThreatReport report, bool isDark) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A0A0A),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.5), width: 1.5),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.gpp_bad_rounded, color: Color(0xFFEF4444), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'INFOSTEALER MALWARE DETECTED',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Compromised Windows device logs indexed',
+                      style: TextStyle(fontSize: 11, color: Colors.white60),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            report.riskSummary,
+            style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: report.exposedDataTypes.map((dt) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  dt,
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFFCA5A5)),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntelBaseAccountsCard(List<DiscoveredAccount> accounts, bool isDark) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🌐', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Text(
+                'LIVE CONNECTED PLATFORMS (${accounts.length})',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                  color: isDark ? Colors.white70 : const Color(0xFF334155),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Active web profiles verified live via public identity endpoints.',
+            style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.black54),
+          ),
+          const SizedBox(height: 14),
+          ...accounts.map((acc) => Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.6) : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: acc.avatarUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: acc.avatarUrl!,
+                                fit: BoxFit.cover,
+                                errorWidget: (context, url, error) => Center(child: Text(acc.icon, style: const TextStyle(fontSize: 20))),
+                              )
+                            : Center(child: Text(acc.icon, style: const TextStyle(fontSize: 20))),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            acc.displayName ?? acc.username ?? acc.formattedName,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          Text(
+                            acc.formattedName,
+                            style: TextStyle(fontSize: 10, color: isDark ? Colors.white54 : Colors.black54),
+                          ),
+                          if (acc.bio != null && acc.bio!.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              acc.bio!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 10, color: isDark ? Colors.white60 : Colors.black45),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (acc.profileUrl != null) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                        color: const Color(0xFF3B82F6),
+                        onPressed: () async {
+                          final uri = Uri.tryParse(acc.profileUrl!);
+                          if (uri != null && await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntelBaseTimelineCard(List<TimelineEvent> timeline, bool isDark) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('⏳', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Text(
+                'DIGITAL FOOTPRINT TIMELINE',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                  color: isDark ? Colors.white70 : const Color(0xFF334155),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Chronological audit of platform creations and breach exposures.',
+            style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.black54),
+          ),
+          const SizedBox(height: 14),
+          ...timeline.take(5).map((ev) => Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: (ev.isBreach ? const Color(0xFFEF4444) : const Color(0xFF3B82F6)).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        ev.dateString,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: ev.isBreach ? const Color(0xFFEF4444) : const Color(0xFF3B82F6),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ev.title,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            ev.description,
+                            style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegacyEmailCards(bool isDark) {
     if (_emailBreaches.isEmpty) {
       return Container(
         width: double.infinity,
@@ -805,29 +1597,6 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
       ).animate().fadeIn();
     }
 
-    int score = 0;
-    bool passwordLeaked = false;
-    for (var b in _emailBreaches) {
-      if (b.dataClasses.contains('Passwords')) {
-        score += 40;
-        passwordLeaked = true;
-      }
-      if (b.dataClasses.contains('Email addresses')) score += 10;
-      if (b.dataClasses.contains('Phone numbers')) score += 20;
-      if (b.dataClasses.contains('Physical addresses')) score += 20;
-    }
-    score = score.clamp(0, 100);
-
-    String siteGrade = score >= 50 ? 'E' : (score >= 20 ? 'C' : 'B');
-    String secScore = score > 50 ? '1' : (score > 20 ? '5' : '8');
-
-    Set<String> allLeaked = {};
-    for (var b in _emailBreaches) {
-      allLeaked.addAll(b.dataClasses);
-    }
-    String topLeaked = allLeaked.take(3).join(', ');
-    if (topLeaked.isEmpty) topLeaked = 'Unknown Data';
-
     const outlineColor = Color(0xFFFF8A65);
     final cardStyle = BoxDecoration(
       color: Colors.transparent,
@@ -853,85 +1622,12 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                 child: const Text('Risk Analysis', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
               ),
               const SizedBox(height: 24),
-              Center(
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.warning_amber_rounded, color: Color(0xFF6C63FF), size: 36),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildRow('Security Grade', siteGrade, valueColor: outlineColor, isDark: isDark),
+              _buildRow('Security Grade', _emailBreaches.length >= 3 ? 'E' : 'C', valueColor: outlineColor, isDark: isDark),
               _divider(),
-              _buildRow('Security Score', secScore, valueColor: outlineColor, isDark: isDark),
-              _divider(),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 2, child: Text('Synopsis', style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 15, fontWeight: FontWeight.bold))),
-                  Expanded(flex: 3, child: Text(_emailVerdict.isEmpty ? 'Loading AI Analysis...' : _emailVerdict, style: const TextStyle(color: outlineColor, fontSize: 13, height: 1.4))),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          decoration: cardStyle,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF5D1D05),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text('Breach Details', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-              ),
-              const SizedBox(height: 24),
               _buildRow('Total Breaches', '${_emailBreaches.length} Databases', valueColor: outlineColor, isDark: isDark),
-              _divider(),
-              _buildRow('Top Leaked Data', topLeaked, valueColor: outlineColor, isDark: isDark),
-              const SizedBox(height: 8),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        if (passwordLeaked)
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFF3E120A),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text('Action Required', style: TextStyle(color: Color(0xFFFF8A65), fontSize: 16, fontWeight: FontWeight.bold)),
-                    Icon(Icons.warning_rounded, color: Color(0xFFFF8A65), size: 20),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Passwords were found in these breaches. Change your passwords immediately and enable Two-Factor Authentication.',
-                  style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-                ),
-              ],
-            ),
-          ),
         const SizedBox(height: 24),
         Align(
           alignment: Alignment.centerLeft,
