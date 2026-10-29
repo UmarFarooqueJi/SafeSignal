@@ -33,7 +33,8 @@ class AiVerdict {
   }
 
   factory AiVerdict.fromJson(Map<String, dynamic> json) {
-    String rawVerdict = (json['verdict'] as String? ?? 'SUSPICIOUS').toUpperCase();
+    String rawVerdict = (json['verdict'] as String? ?? 'SUSPICIOUS')
+        .toUpperCase();
     // Normalize: LIKELY_SAFE → SAFE, UNCERTAIN → SUSPICIOUS
     if (rawVerdict == 'LIKELY_SAFE') rawVerdict = 'SAFE';
     if (rawVerdict == 'UNCERTAIN') rawVerdict = 'SUSPICIOUS';
@@ -44,8 +45,11 @@ class AiVerdict {
     return AiVerdict(
       verdict: rawVerdict,
       riskScore: score,
-      reasons: List<String>.from(json['reasons'] as List? ??
-          json['why'] as List? ?? ['No specific reason provided']),
+      reasons: List<String>.from(
+        json['reasons'] as List? ??
+            json['why'] as List? ??
+            ['No specific reason provided'],
+      ),
       whatToDo: List<String>.from(json['whatToDo'] as List? ?? []),
       summary: json['summary'] as String? ?? '',
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.7,
@@ -56,9 +60,12 @@ class AiVerdict {
 
   static int _verdictToScore(String verdict) {
     switch (verdict) {
-      case 'SCAM': return 85;
-      case 'SUSPICIOUS': return 55;
-      default: return 10;
+      case 'SCAM':
+        return 85;
+      case 'SUSPICIOUS':
+        return 55;
+      default:
+        return 10;
     }
   }
 

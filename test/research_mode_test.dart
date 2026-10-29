@@ -7,10 +7,13 @@ void main() {
   group('ResearchModeService - Three-Tier Capability Framework Tests', () {
     final service = ResearchModeService();
 
-    test('Defaults to Tier 1 Standard Android Mode on standard platforms', () async {
-      final tier = await service.detectActiveTier();
-      expect(tier, equals(ResearchTier.tier1Standard));
-    });
+    test(
+      'Defaults to Tier 1 Standard Android Mode on standard platforms',
+      () async {
+        final tier = await service.detectActiveTier();
+        expect(tier, equals(ResearchTier.tier1Standard));
+      },
+    );
 
     test('Provides comprehensive capability profiles for all 3 tiers', () {
       final tier1 = service.getProfile(ResearchTier.tier1Standard);

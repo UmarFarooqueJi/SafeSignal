@@ -41,7 +41,8 @@ class _BlockedCall {
   }
 }
 
-class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBindingObserver {
+class _CallShieldScreenState extends State<CallShieldScreen>
+    with WidgetsBindingObserver {
   static const _channel = MethodChannel('safesignal/call_shield');
 
   bool _isScreeningActive = false;
@@ -72,14 +73,22 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
 
   Future<void> _loadState() async {
     try {
-      final active = await _channel.invokeMethod<bool>('isCallScreeningActive') ?? false;
-      final settings = await _channel.invokeMapMethod<String, dynamic>('getCallShieldSettings');
-      final logJson = await _channel.invokeMethod<String>('getBlockedCalls') ?? '[]';
+      final active =
+          await _channel.invokeMethod<bool>('isCallScreeningActive') ?? false;
+      final settings = await _channel.invokeMapMethod<String, dynamic>(
+        'getCallShieldSettings',
+      );
+      final logJson =
+          await _channel.invokeMethod<String>('getBlockedCalls') ?? '[]';
 
       List<_BlockedCall> logs = [];
       try {
         final decoded = jsonDecode(logJson) as List;
-        logs = decoded.map((e) => _BlockedCall.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+        logs = decoded
+            .map(
+              (e) => _BlockedCall.fromJson(Map<String, dynamic>.from(e as Map)),
+            )
+            .toList();
       } catch (_) {}
 
       if (mounted) {
@@ -87,7 +96,8 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
           _isScreeningActive = active;
           if (settings != null) {
             _blockTrai = settings['blockTrai'] as bool? ?? true;
-            _blockInternational = settings['blockInternational'] as bool? ?? false;
+            _blockInternational =
+                settings['blockInternational'] as bool? ?? false;
           }
           _blockedCalls = logs;
           _isLoading = false;
@@ -114,7 +124,10 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
     }
   }
 
-  Future<void> _updateSetting({bool? blockTrai, bool? blockInternational}) async {
+  Future<void> _updateSetting({
+    bool? blockTrai,
+    bool? blockInternational,
+  }) async {
     HapticFeedback.selectionClick();
     setState(() {
       if (blockTrai != null) _blockTrai = blockTrai;
@@ -144,7 +157,9 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
     final cardBg = isDark ? const Color(0xFF111827) : Colors.white;
     final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
     final textSub = isDark ? Colors.white60 : const Color(0xFF64748B);
-    final borderCol = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    final borderCol = isDark
+        ? const Color(0xFF1F2937)
+        : const Color(0xFFE2E8F0);
 
     return Scaffold(
       backgroundColor: bg,
@@ -158,7 +173,11 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
         ),
         title: Text(
           'Call Shield Engine',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: textMain),
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 20,
+            color: textMain,
+          ),
         ),
         actions: [
           IconButton(
@@ -173,8 +192,13 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
           : RefreshIndicator(
               onRefresh: _loadState,
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -184,15 +208,25 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: _isScreeningActive
-                              ? [const Color(0xFF064E3B), const Color(0xFF065F46)]
-                              : [const Color(0xFF1E293B), const Color(0xFF334155)],
+                              ? [
+                                  const Color(0xFF064E3B),
+                                  const Color(0xFF065F46),
+                                ]
+                              : [
+                                  const Color(0xFF1E293B),
+                                  const Color(0xFF334155),
+                                ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: (_isScreeningActive ? const Color(0xFF10B981) : Colors.black).withValues(alpha: 0.2),
+                            color:
+                                (_isScreeningActive
+                                        ? const Color(0xFF10B981)
+                                        : Colors.black)
+                                    .withValues(alpha: 0.2),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),
@@ -209,8 +243,12 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
-                                  _isScreeningActive ? Icons.shield_rounded : Icons.shield_outlined,
-                                  color: _isScreeningActive ? const Color(0xFF34D399) : const Color(0xFFCBD5E1),
+                                  _isScreeningActive
+                                      ? Icons.shield_rounded
+                                      : Icons.shield_outlined,
+                                  color: _isScreeningActive
+                                      ? const Color(0xFF34D399)
+                                      : const Color(0xFFCBD5E1),
                                   size: 32,
                                 ),
                               ),
@@ -220,7 +258,9 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      _isScreeningActive ? 'CALL SHIELD ARMED' : 'CALL SHIELD STANDBY',
+                                      _isScreeningActive
+                                          ? 'CALL SHIELD ARMED'
+                                          : 'CALL SHIELD STANDBY',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 16,
@@ -234,7 +274,9 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                                           ? 'Default Call Screening Service active. Unsolicited calls dropped pre-ring.'
                                           : 'SafeSignal must be set as Default Spam Screening app to drop calls.',
                                       style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.8),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.8,
+                                        ),
                                         fontSize: 12,
                                         height: 1.35,
                                       ),
@@ -250,7 +292,10 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                               width: double.infinity,
                               child: ElevatedButton.icon(
                                 onPressed: _requestScreeningRole,
-                                icon: const Icon(Icons.verified_user_rounded, size: 18),
+                                icon: const Icon(
+                                  Icons.verified_user_rounded,
+                                  size: 18,
+                                ),
                                 label: const FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text('ACTIVATE NATIVE CALL SHIELD'),
@@ -258,9 +303,17 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF2563EB),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                  textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                    horizontal: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ),
@@ -297,7 +350,11 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                             activeThumbColor: const Color(0xFF10B981),
                             title: Text(
                               'Block TRAI 140/160 Telemarketers',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textMain),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: textMain,
+                              ),
                             ),
                             subtitle: Text(
                               'Auto-drops commercial advertising and telemarketing prefixes registered with TRAI.',
@@ -306,20 +363,31 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                             secondary: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                                color: const Color(
+                                  0xFF3B82F6,
+                                ).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.campaign_outlined, color: Color(0xFF3B82F6), size: 22),
+                              child: const Icon(
+                                Icons.campaign_outlined,
+                                color: Color(0xFF3B82F6),
+                                size: 22,
+                              ),
                             ),
                           ),
                           Divider(height: 1, color: borderCol),
                           SwitchListTile(
                             value: _blockInternational,
-                            onChanged: (val) => _updateSetting(blockInternational: val),
+                            onChanged: (val) =>
+                                _updateSetting(blockInternational: val),
                             activeThumbColor: const Color(0xFF10B981),
                             title: Text(
                               'Block International VoIP Spoofing',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textMain),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: textMain,
+                              ),
                             ),
                             subtitle: Text(
                               'Silently drops unsolicited calls from +92, +84, +234, +4470, +93 spoof series.',
@@ -328,10 +396,16 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                             secondary: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                                color: const Color(
+                                  0xFFEF4444,
+                                ).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.public_off_rounded, color: Color(0xFFEF4444), size: 22),
+                              child: const Icon(
+                                Icons.public_off_rounded,
+                                color: Color(0xFFEF4444),
+                                size: 22,
+                              ),
                             ),
                           ),
                         ],
@@ -356,7 +430,13 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                         if (_blockedCalls.isNotEmpty)
                           TextButton(
                             onPressed: _clearLogs,
-                            child: const Text('Clear Log', style: TextStyle(fontSize: 12, color: Color(0xFFEF4444))),
+                            child: const Text(
+                              'Clear Log',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFFEF4444),
+                              ),
+                            ),
                           ),
                       ],
                     ),
@@ -372,11 +452,19 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                         ),
                         child: Column(
                           children: [
-                            Icon(Icons.call_end_rounded, color: textSub.withValues(alpha: 0.5), size: 36),
+                            Icon(
+                              Icons.call_end_rounded,
+                              color: textSub.withValues(alpha: 0.5),
+                              size: 36,
+                            ),
                             const SizedBox(height: 10),
                             Text(
                               'No Blocked Calls Yet',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textMain),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: textMain,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -392,7 +480,8 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _blockedCalls.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 8),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 8),
                         itemBuilder: (context, idx) {
                           final call = _blockedCalls[idx];
                           return Container(
@@ -407,15 +496,22 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                                    color: const Color(
+                                      0xFFEF4444,
+                                    ).withValues(alpha: 0.12),
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.phone_disabled_rounded, color: Color(0xFFEF4444), size: 20),
+                                  child: const Icon(
+                                    Icons.phone_disabled_rounded,
+                                    color: Color(0xFFEF4444),
+                                    size: 20,
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         call.number,
@@ -439,7 +535,10 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                                 ),
                                 Text(
                                   call.formattedTime,
-                                  style: TextStyle(fontSize: 11, color: textSub),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: textSub,
+                                  ),
                                 ),
                               ],
                             ),
@@ -453,16 +552,24 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E1428) : const Color(0xFFFAF5FF),
+                        color: isDark
+                            ? const Color(0xFF1E1428)
+                            : const Color(0xFFFAF5FF),
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: isDark ? const Color(0xFF4C1D95) : const Color(0xFFE9D5FF),
+                          color: isDark
+                              ? const Color(0xFF4C1D95)
+                              : const Color(0xFFE9D5FF),
                         ),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.gavel_rounded, color: Color(0xFF9333EA), size: 22),
+                          const Icon(
+                            Icons.gavel_rounded,
+                            color: Color(0xFF9333EA),
+                            size: 22,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -473,7 +580,9 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w800,
-                                    color: isDark ? Colors.white : const Color(0xFF581C87),
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF581C87),
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -481,7 +590,9 @@ class _CallShieldScreenState extends State<CallShieldScreen> with WidgetsBinding
                                   'Government of India warning: Indian law enforcement NEVER puts citizens under "digital arrest" via Skype, WhatsApp, or video calls. Disconnect immediately and dial 1930.',
                                   style: TextStyle(
                                     fontSize: 11.5,
-                                    color: isDark ? Colors.white70 : const Color(0xFF6B21A8),
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF6B21A8),
                                     height: 1.4,
                                   ),
                                 ),

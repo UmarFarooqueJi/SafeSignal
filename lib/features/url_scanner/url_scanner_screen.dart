@@ -18,16 +18,19 @@ class UrlScannerScreen extends StatefulWidget {
 
 enum _ScanState { idle, scanning, done, error }
 
-class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBindingObserver {
+class _UrlScannerScreenState extends State<UrlScannerScreen>
+    with WidgetsBindingObserver {
   final _controller = TextEditingController();
   _ScanState _state = _ScanState.idle;
   UrlResult? _result;
   String _statusMsg = '';
   bool _isDefaultBrowser = false;
-  final _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 8),
-    receiveTimeout: const Duration(seconds: 10),
-  ));
+  final _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 8),
+      receiveTimeout: const Duration(seconds: 10),
+    ),
+  );
 
   StreamSubscription<String>? _urlSub;
 
@@ -53,7 +56,9 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
   @override
   void didUpdateWidget(covariant UrlScannerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialUrl != null && widget.initialUrl != oldWidget.initialUrl && widget.initialUrl!.trim().isNotEmpty) {
+    if (widget.initialUrl != null &&
+        widget.initialUrl != oldWidget.initialUrl &&
+        widget.initialUrl!.trim().isNotEmpty) {
       _controller.text = widget.initialUrl!.trim();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scan();
@@ -99,7 +104,9 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
     if (parsed == null || !parsed.hasAuthority || !parsed.host.contains('.')) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Kripya ek valid URL ya domain enter karein (e.g. example.com)."),
+          content: const Text(
+            "Kripya ek valid URL ya domain enter karein (e.g. example.com).",
+          ),
           backgroundColor: Colors.red.shade800,
           behavior: SnackBarBehavior.floating,
         ),
@@ -138,18 +145,12 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
     return await UrlIntelligenceEngine.analyze(url);
   }
 
-
-
-
-
-
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? const Color(0xFF06090F) : const Color(0xFFEBF3FA);
     final textColor = isDark ? Colors.white : const Color(0xFF1E293B);
-    
+
     // Determine gauge score and status text
     double gaugeScore = 0;
     String statusText = '';
@@ -186,7 +187,11 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
               border: Border.all(color: Colors.white24, width: 1.5),
             ),
             child: IconButton(
-              icon: const Icon(Icons.grid_view_rounded, color: Colors.white54, size: 20),
+              icon: const Icon(
+                Icons.grid_view_rounded,
+                color: Colors.white54,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -197,7 +202,8 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
             fontWeight: FontWeight.bold,
             fontSize: 24,
             color: textColor,
-            fontFamily: 'serif', // Matching the screenshot's serif-like font for title
+            fontFamily:
+                'serif', // Matching the screenshot's serif-like font for title
           ),
         ),
         centerTitle: true,
@@ -229,7 +235,7 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                   fontFamily: 'serif',
                 ),
               ).animate(target: statusText.isNotEmpty ? 1 : 0).fadeIn(),
-              
+
               const SizedBox(height: 32),
 
               TextField(
@@ -243,11 +249,18 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                     fontSize: 13,
                   ),
                   floatingLabelBehavior: FloatingLabelBehavior.always,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
                   suffixIcon: Padding(
                     padding: const EdgeInsets.only(right: 8.0),
                     child: IconButton(
-                      icon: Icon(Icons.search, color: isDark ? Colors.white70 : Colors.black54, size: 24),
+                      icon: Icon(
+                        Icons.search,
+                        color: isDark ? Colors.white70 : Colors.black54,
+                        size: 24,
+                      ),
                       onPressed: _scan,
                     ),
                   ),
@@ -275,7 +288,7 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                 ),
                 onSubmitted: (_) => _scan(),
               ),
-              
+
               const SizedBox(height: 20),
 
               // Scan Button
@@ -306,14 +319,31 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                       Expanded(
                         child: Center(
                           child: Text(
-                            _state == _ScanState.scanning ? 'Scanning...' : 'Scan URL',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+                            _state == _ScanState.scanning
+                                ? 'Scanning...'
+                                : 'Scan URL',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
-                      _state == _ScanState.scanning 
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : Icon(Icons.language, color: isDark ? Colors.white : Colors.black87, size: 24),
+                      _state == _ScanState.scanning
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(
+                              Icons.language,
+                              color: isDark ? Colors.white : Colors.black87,
+                              size: 24,
+                            ),
                       const SizedBox(width: 8),
                     ],
                   ),
@@ -335,7 +365,10 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                     child: Text(
                       'Network error. Please check your connection and try again.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -347,33 +380,45 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
   }
 
   Widget _buildAnalysisCards(UrlResult result, bool isDark) {
-    String siteGrade = result.verdict == UrlVerdict.dangerous ? 'E' : (result.verdict == UrlVerdict.caution ? 'C' : 'A');
-    String secScore = result.riskScore > 50 ? '1' : (result.riskScore > 20 ? '5' : '9');
-    
+    String siteGrade = result.verdict == UrlVerdict.dangerous
+        ? 'E'
+        : (result.verdict == UrlVerdict.caution ? 'C' : 'A');
+    String secScore = result.riskScore > 50
+        ? '1'
+        : (result.riskScore > 20 ? '5' : '9');
+
     // Extract registry date if possible
     String registryDate = 'Unknown';
-    for(var c in result.domainChecks) {
-       if(c.name.contains('Domain Age') && c.detail.contains('days old')) {
-           final days = RegExp(r'(\d+) days old').firstMatch(c.detail)?.group(1) ?? '';
-           registryDate = days.isNotEmpty ? '$days days ago' : c.detail;
-       } else if (c.name.contains('Domain Age') && c.detail.contains('days ago')) {
-           final days = RegExp(r'(\d+) days ago').firstMatch(c.detail)?.group(1) ?? '';
-           registryDate = days.isNotEmpty ? '$days days ago' : c.detail;
-       }
+    for (var c in result.domainChecks) {
+      if (c.name.contains('Domain Age') && c.detail.contains('days old')) {
+        final days =
+            RegExp(r'(\d+) days old').firstMatch(c.detail)?.group(1) ?? '';
+        registryDate = days.isNotEmpty ? '$days days ago' : c.detail;
+      } else if (c.name.contains('Domain Age') &&
+          c.detail.contains('days ago')) {
+        final days =
+            RegExp(r'(\d+) days ago').firstMatch(c.detail)?.group(1) ?? '';
+        registryDate = days.isNotEmpty ? '$days days ago' : c.detail;
+      }
     }
 
     // Extract synopsis from failed checks
-    String synopsis = result.domainChecks.where((c) => c.passed == false).map((c) => c.detail).join('. ');
-    if (synopsis.isEmpty) synopsis = 'No major threats detected — all checks passed.';
+    String synopsis = result.domainChecks
+        .where((c) => c.passed == false)
+        .map((c) => c.detail)
+        .join('. ');
+    if (synopsis.isEmpty)
+      synopsis = 'No major threats detected — all checks passed.';
     if (result.verdict == UrlVerdict.dangerous && synopsis.length < 20) {
-      synopsis = 'Multiple security risks detected: possible phishing, suspicious domain structure, or flagged by threat intelligence databases.';
+      synopsis =
+          'Multiple security risks detected: possible phishing, suspicious domain structure, or flagged by threat intelligence databases.';
     }
 
     final outlineColor = result.verdict == UrlVerdict.dangerous
         ? const Color(0xFFFF8A65)
         : result.verdict == UrlVerdict.caution
-            ? const Color(0xFFFFB300)
-            : const Color(0xFF4CAF50);
+        ? const Color(0xFFFFB300)
+        : const Color(0xFF4CAF50);
 
     final cardStyle = BoxDecoration(
       color: Colors.transparent,
@@ -381,8 +426,16 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
       border: Border.all(color: outlineColor, width: 1.5),
     );
 
-    final labelStyle = TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14, fontWeight: FontWeight.bold);
-    final mutedStyle = TextStyle(color: isDark ? Colors.white54 : Colors.black45, fontSize: 13, height: 1.4);
+    final labelStyle = TextStyle(
+      color: isDark ? Colors.white : Colors.black87,
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+    );
+    final mutedStyle = TextStyle(
+      color: isDark ? Colors.white54 : Colors.black45,
+      fontSize: 13,
+      height: 1.4,
+    );
 
     return Column(
       children: [
@@ -397,8 +450,8 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                 colors: result.verdict == UrlVerdict.dangerous
                     ? [const Color(0xFF3B0D0C), const Color(0xFF200507)]
                     : result.verdict == UrlVerdict.caution
-                        ? [const Color(0xFF382505), const Color(0xFF1E1302)]
-                        : [const Color(0xFF07291B), const Color(0xFF03160D)],
+                    ? [const Color(0xFF382505), const Color(0xFF1E1302)]
+                    : [const Color(0xFF07291B), const Color(0xFF03160D)],
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
@@ -428,13 +481,14 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                       child: Icon(
                         result.threatType == MalwareThreatType.ratDropper
                             ? Icons.bug_report_rounded
-                            : result.threatType == MalwareThreatType.bankingTrojan
-                                ? Icons.account_balance_rounded
-                                : result.threatType == MalwareThreatType.apkDropper
-                                    ? Icons.system_update_alt_rounded
-                                    : result.verdict == UrlVerdict.safe
-                                        ? Icons.verified_user_rounded
-                                        : Icons.shield_rounded,
+                            : result.threatType ==
+                                  MalwareThreatType.bankingTrojan
+                            ? Icons.account_balance_rounded
+                            : result.threatType == MalwareThreatType.apkDropper
+                            ? Icons.system_update_alt_rounded
+                            : result.verdict == UrlVerdict.safe
+                            ? Icons.verified_user_rounded
+                            : Icons.shield_rounded,
                         color: outlineColor,
                         size: 26,
                       ),
@@ -458,8 +512,8 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                             result.verdict == UrlVerdict.dangerous
                                 ? 'Active Threat Intercepted'
                                 : result.verdict == UrlVerdict.caution
-                                    ? 'Unverified Destination'
-                                    : 'Validated Reputation',
+                                ? 'Unverified Destination'
+                                : 'Validated Reputation',
                             style: TextStyle(
                               color: isDark ? Colors.white70 : Colors.black54,
                               fontSize: 11,
@@ -476,7 +530,9 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                   Text(
                     result.threatForensicDetails,
                     style: TextStyle(
-                      color: isDark ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF1E293B),
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.9)
+                          : const Color(0xFF1E293B),
                       fontSize: 13,
                       height: 1.4,
                       fontWeight: FontWeight.w500,
@@ -517,8 +573,14 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Center(
                           child: Text(
-                            result.domain.isNotEmpty ? result.domain[0].toUpperCase() : 'A',
-                            style: const TextStyle(fontSize: 28, color: Color(0xFF6C63FF), fontWeight: FontWeight.bold),
+                            result.domain.isNotEmpty
+                                ? result.domain[0].toUpperCase()
+                                : 'A',
+                            style: const TextStyle(
+                              fontSize: 28,
+                              color: Color(0xFF6C63FF),
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -530,9 +592,13 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          result.siteTitle.isNotEmpty ? result.siteTitle : result.domain,
+                          result.siteTitle.isNotEmpty
+                              ? result.siteTitle
+                              : result.domain,
                           style: TextStyle(
-                            color: isDark ? Colors.white : const Color(0xFF0D1117),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF0D1117),
                             fontWeight: FontWeight.w800,
                             fontSize: 15,
                           ),
@@ -541,7 +607,12 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                         ),
                         if (result.siteDescription.isNotEmpty) ...[
                           const SizedBox(height: 4),
-                          Text(result.siteDescription, style: mutedStyle, maxLines: 2, overflow: TextOverflow.ellipsis),
+                          Text(
+                            result.siteDescription,
+                            style: mutedStyle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                       ],
                     ),
@@ -551,15 +622,35 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
               const SizedBox(height: 16),
               _divider2(isDark),
               const SizedBox(height: 12),
-              _buildRow('Site Grade', siteGrade, valueColor: outlineColor, isDark: isDark),
+              _buildRow(
+                'Site Grade',
+                siteGrade,
+                valueColor: outlineColor,
+                isDark: isDark,
+              ),
               _divider(),
-              _buildRow('Security Score', '$secScore/10', valueColor: outlineColor, isDark: isDark),
+              _buildRow(
+                'Security Score',
+                '$secScore/10',
+                valueColor: outlineColor,
+                isDark: isDark,
+              ),
               _divider(),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(flex: 2, child: Text('Synopsis', style: labelStyle)),
-                  Expanded(flex: 3, child: Text(synopsis, style: TextStyle(color: outlineColor, fontSize: 13, height: 1.4))),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      synopsis,
+                      style: TextStyle(
+                        color: outlineColor,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -577,17 +668,50 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
             children: [
               _cardHeader('Security Rating Breakdown', isDark),
               const SizedBox(height: 20),
-              _buildRow('Phishing Check', result.verdict == UrlVerdict.dangerous ? 'Failed' : 'Passed',
-                  valueColor: result.verdict == UrlVerdict.dangerous ? const Color(0xFFFF8A65) : const Color(0xFF4CAF50), isDark: isDark),
+              _buildRow(
+                'Phishing Check',
+                result.verdict == UrlVerdict.dangerous ? 'Failed' : 'Passed',
+                valueColor: result.verdict == UrlVerdict.dangerous
+                    ? const Color(0xFFFF8A65)
+                    : const Color(0xFF4CAF50),
+                isDark: isDark,
+              ),
               _divider(),
-              _buildRow('Malware Scan', result.verdict == UrlVerdict.dangerous ? 'Threat Found' : 'Clean',
-                  valueColor: result.verdict == UrlVerdict.dangerous ? const Color(0xFFFF8A65) : const Color(0xFF4CAF50), isDark: isDark),
+              _buildRow(
+                'Malware Scan',
+                result.verdict == UrlVerdict.dangerous
+                    ? 'Threat Found'
+                    : 'Clean',
+                valueColor: result.verdict == UrlVerdict.dangerous
+                    ? const Color(0xFFFF8A65)
+                    : const Color(0xFF4CAF50),
+                isDark: isDark,
+              ),
               _divider(),
-              _buildRow('URLhaus DB', result.domainChecks.any((c) => c.name.contains('URLhaus') && c.passed == false) ? 'Listed' : 'Clean',
-                  valueColor: result.domainChecks.any((c) => c.name.contains('URLhaus') && c.passed == false) ? const Color(0xFFFF8A65) : const Color(0xFF4CAF50), isDark: isDark),
+              _buildRow(
+                'URLhaus DB',
+                result.domainChecks.any(
+                      (c) => c.name.contains('URLhaus') && c.passed == false,
+                    )
+                    ? 'Listed'
+                    : 'Clean',
+                valueColor:
+                    result.domainChecks.any(
+                      (c) => c.name.contains('URLhaus') && c.passed == false,
+                    )
+                    ? const Color(0xFFFF8A65)
+                    : const Color(0xFF4CAF50),
+                isDark: isDark,
+              ),
               _divider(),
-              _buildRow('Domain Trust', result.verdict == UrlVerdict.dangerous ? 'Low' : 'Established',
-                  valueColor: result.verdict == UrlVerdict.dangerous ? const Color(0xFFFF8A65) : const Color(0xFF4CAF50), isDark: isDark),
+              _buildRow(
+                'Domain Trust',
+                result.verdict == UrlVerdict.dangerous ? 'Low' : 'Established',
+                valueColor: result.verdict == UrlVerdict.dangerous
+                    ? const Color(0xFFFF8A65)
+                    : const Color(0xFF4CAF50),
+                isDark: isDark,
+              ),
               _divider(),
               // Security headers
               _buildRow(
@@ -596,12 +720,17 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                 valueColor: result.securityHeaders >= 3
                     ? const Color(0xFF4CAF50)
                     : result.securityHeaders >= 2
-                        ? const Color(0xFFFFB300)
-                        : const Color(0xFFFF8A65),
+                    ? const Color(0xFFFFB300)
+                    : const Color(0xFFFF8A65),
                 isDark: isDark,
               ),
               _divider(),
-              _buildRow('Final Score', '$secScore/10', valueColor: outlineColor, isDark: isDark),
+              _buildRow(
+                'Final Score',
+                '$secScore/10',
+                valueColor: outlineColor,
+                isDark: isDark,
+              ),
             ],
           ),
         ),
@@ -617,14 +746,30 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
             children: [
               _cardHeader('Domain Reputation', isDark),
               const SizedBox(height: 20),
-              _buildRow('Domain', result.domain, valueColor: outlineColor, isDark: isDark),
+              _buildRow(
+                'Domain',
+                result.domain,
+                valueColor: outlineColor,
+                isDark: isDark,
+              ),
               if (registryDate != 'Unknown') ...[
                 _divider(),
-                _buildRow('Registered', registryDate, valueColor: outlineColor, isDark: isDark),
+                _buildRow(
+                  'Registered',
+                  registryDate,
+                  valueColor: outlineColor,
+                  isDark: isDark,
+                ),
               ],
               _divider(),
-              _buildRow('In Allowlist', result.isVerifiedSafe ? 'Yes (Trusted)' : 'No',
-                  valueColor: result.isVerifiedSafe ? const Color(0xFF4CAF50) : const Color(0xFFFF8A65), isDark: isDark),
+              _buildRow(
+                'In Allowlist',
+                result.isVerifiedSafe ? 'Yes (Trusted)' : 'No',
+                valueColor: result.isVerifiedSafe
+                    ? const Color(0xFF4CAF50)
+                    : const Color(0xFFFF8A65),
+                isDark: isDark,
+              ),
             ],
           ),
         ),
@@ -641,28 +786,60 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
               _cardHeader('Server Intelligence', isDark),
               const SizedBox(height: 20),
               if (result.serverIp.isNotEmpty) ...[
-                _buildRow('IP Address', result.serverIp, valueColor: outlineColor, isDark: isDark),
+                _buildRow(
+                  'IP Address',
+                  result.serverIp,
+                  valueColor: outlineColor,
+                  isDark: isDark,
+                ),
                 _divider(),
               ],
               if (result.serverCountry.isNotEmpty) ...[
-                _buildRow('Country', '${result.serverCity.isNotEmpty ? "${result.serverCity}, " : ""}${result.serverCountry}',
-                    valueColor: outlineColor, isDark: isDark),
+                _buildRow(
+                  'Country',
+                  '${result.serverCity.isNotEmpty ? "${result.serverCity}, " : ""}${result.serverCountry}',
+                  valueColor: outlineColor,
+                  isDark: isDark,
+                ),
                 _divider(),
               ],
               if (result.serverIsp.isNotEmpty) ...[
-                _buildRow('ISP / Host', result.serverIsp, valueColor: outlineColor, isDark: isDark),
+                _buildRow(
+                  'ISP / Host',
+                  result.serverIsp,
+                  valueColor: outlineColor,
+                  isDark: isDark,
+                ),
                 _divider(),
               ],
               if (result.serverSoftware.isNotEmpty) ...[
-                _buildRow('Server Software', result.serverSoftware, valueColor: outlineColor, isDark: isDark),
+                _buildRow(
+                  'Server Software',
+                  result.serverSoftware,
+                  valueColor: outlineColor,
+                  isDark: isDark,
+                ),
                 _divider(),
               ],
               if (result.poweredBy.isNotEmpty) ...[
-                _buildRow('Powered By', result.poweredBy, valueColor: outlineColor, isDark: isDark),
+                _buildRow(
+                  'Powered By',
+                  result.poweredBy,
+                  valueColor: outlineColor,
+                  isDark: isDark,
+                ),
                 _divider(),
               ],
-              _buildRow('Safe for Payments', result.verdict == UrlVerdict.dangerous ? 'No — High Risk' : 'Yes (HTTPS Secured)',
-                  valueColor: result.verdict == UrlVerdict.dangerous ? const Color(0xFFFF8A65) : const Color(0xFF4CAF50), isDark: isDark),
+              _buildRow(
+                'Safe for Payments',
+                result.verdict == UrlVerdict.dangerous
+                    ? 'No — High Risk'
+                    : 'Yes (HTTPS Secured)',
+                valueColor: result.verdict == UrlVerdict.dangerous
+                    ? const Color(0xFFFF8A65)
+                    : const Color(0xFF4CAF50),
+                isDark: isDark,
+              ),
             ],
           ),
         ),
@@ -679,25 +856,43 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
               _cardHeader('DNS & Email Recon (Cloudflare DoH)', isDark),
               const SizedBox(height: 20),
               if (result.aRecords.isNotEmpty) ...[
-                _buildRow('Resolved IPs (A)', result.aRecords.take(2).join(', '), valueColor: outlineColor, isDark: isDark),
+                _buildRow(
+                  'Resolved IPs (A)',
+                  result.aRecords.take(2).join(', '),
+                  valueColor: outlineColor,
+                  isDark: isDark,
+                ),
                 _divider(),
               ],
               _buildRow(
                 'Mail Server (MX)',
-                result.mxRecords.isNotEmpty ? result.mxRecords.first : 'No Mail Server (Phishing Suspect)',
-                valueColor: result.mxRecords.isNotEmpty ? const Color(0xFF4CAF50) : const Color(0xFFFF8A65),
+                result.mxRecords.isNotEmpty
+                    ? result.mxRecords.first
+                    : 'No Mail Server (Phishing Suspect)',
+                valueColor: result.mxRecords.isNotEmpty
+                    ? const Color(0xFF4CAF50)
+                    : const Color(0xFFFF8A65),
                 isDark: isDark,
               ),
               _divider(),
               _buildRow(
                 'DMARC Anti-Spoof',
-                result.hasDmarc ? 'Enabled (Valid Policy)' : 'Not Configured (Spoofable)',
-                valueColor: result.hasDmarc ? const Color(0xFF4CAF50) : const Color(0xFFFFB300),
+                result.hasDmarc
+                    ? 'Enabled (Valid Policy)'
+                    : 'Not Configured (Spoofable)',
+                valueColor: result.hasDmarc
+                    ? const Color(0xFF4CAF50)
+                    : const Color(0xFFFFB300),
                 isDark: isDark,
               ),
               if (result.nsRecords.isNotEmpty) ...[
                 _divider(),
-                _buildRow('Nameservers (NS)', result.nsRecords.take(2).join(', '), valueColor: outlineColor, isDark: isDark),
+                _buildRow(
+                  'Nameservers (NS)',
+                  result.nsRecords.take(2).join(', '),
+                  valueColor: outlineColor,
+                  isDark: isDark,
+                ),
               ],
             ],
           ),
@@ -705,7 +900,8 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
         const SizedBox(height: 16),
 
         // ── Card 5: Threat Warning (only if dangerous/caution) ────────────────
-        if (result.verdict == UrlVerdict.dangerous || result.verdict == UrlVerdict.caution)
+        if (result.verdict == UrlVerdict.dangerous ||
+            result.verdict == UrlVerdict.caution)
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -722,16 +918,24 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      result.verdict == UrlVerdict.dangerous ? 'Suspected Fraud' : 'Use With Caution',
+                      result.verdict == UrlVerdict.dangerous
+                          ? 'Suspected Fraud'
+                          : 'Use With Caution',
                       style: TextStyle(
-                        color: result.verdict == UrlVerdict.dangerous ? const Color(0xFFFF8A65) : const Color(0xFFFFB300),
+                        color: result.verdict == UrlVerdict.dangerous
+                            ? const Color(0xFFFF8A65)
+                            : const Color(0xFFFFB300),
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Icon(
-                      result.verdict == UrlVerdict.dangerous ? Icons.warning_rounded : Icons.info_outline,
-                      color: result.verdict == UrlVerdict.dangerous ? const Color(0xFFFF8A65) : const Color(0xFFFFB300),
+                      result.verdict == UrlVerdict.dangerous
+                          ? Icons.warning_rounded
+                          : Icons.info_outline,
+                      color: result.verdict == UrlVerdict.dangerous
+                          ? const Color(0xFFFF8A65)
+                          : const Color(0xFFFFB300),
                       size: 20,
                     ),
                   ],
@@ -741,16 +945,21 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                   result.verdict == UrlVerdict.dangerous
                       ? 'Do NOT perform any financial transactions or share personal information on this site. Report to cybercrime.gov.in or call 1930.'
                       : 'Proceed with caution. Verify the website authenticity before sharing any personal or financial information.',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
           ),
-        
+
         const SizedBox(height: 16),
 
         // ── Protective Action Buttons ─────────────────────────────────────────
-        if (result.verdict == UrlVerdict.dangerous || result.verdict == UrlVerdict.caution) ...[
+        if (result.verdict == UrlVerdict.dangerous ||
+            result.verdict == UrlVerdict.caution) ...[
           Container(
             width: double.infinity,
             height: 56,
@@ -773,12 +982,16 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('🛑 Malicious link blocked. SafeSignal kept your device protected.'),
+                    content: Text(
+                      '🛑 Malicious link blocked. SafeSignal kept your device protected.',
+                    ),
                     backgroundColor: Color(0xFF16A34A),
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -787,10 +1000,18 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                   Navigator.pop(context);
                 }
               },
-              icon: const Icon(Icons.shield_rounded, color: Colors.white, size: 22),
+              icon: const Icon(
+                Icons.shield_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
               label: const Text(
                 'Block & Abort (Recommended)',
-                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -799,12 +1020,22 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
             onPressed: () => _confirmAndOpenUrl(
               context,
               result.url,
-              result.threatCategoryBadge.isNotEmpty ? result.threatCategoryBadge : 'High Risk Domain',
+              result.threatCategoryBadge.isNotEmpty
+                  ? result.threatCategoryBadge
+                  : 'High Risk Domain',
             ),
-            icon: const Icon(Icons.open_in_new_rounded, color: Color(0xFF94A3B8), size: 18),
+            icon: const Icon(
+              Icons.open_in_new_rounded,
+              color: Color(0xFF94A3B8),
+              size: 18,
+            ),
             label: const Text(
               'Proceed to Browser (Dangerous)',
-              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, decoration: TextDecoration.underline),
+              style: TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 13,
+                decoration: TextDecoration.underline,
+              ),
             ),
           ),
         ] else ...[
@@ -831,7 +1062,9 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
               onPressed: () {
                 if (result.url.isNotEmpty) {
@@ -842,12 +1075,20 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                   );
                 }
               },
-              icon: const Icon(Icons.shield_outlined, color: Colors.black, size: 22),
+              icon: const Icon(
+                Icons.shield_outlined,
+                color: Colors.black,
+                size: 22,
+              ),
               label: const FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
                   'Open Inside SafeSignal (Sandbox)',
-                  style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ),
@@ -861,32 +1102,48 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
               color: isDark ? const Color(0xFF0F172A) : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                color: isDark
+                    ? const Color(0xFF334155)
+                    : const Color(0xFFCBD5E1),
                 width: 1.2,
               ),
             ),
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
                 side: BorderSide.none,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
               onPressed: () async {
                 if (result.url.isNotEmpty) {
-                  final launched = await LinkGuardService.openUrlInSystemBrowser(result.url);
+                  final launched =
+                      await LinkGuardService.openUrlInSystemBrowser(result.url);
                   if (!launched) {
                     final uri = Uri.tryParse(result.url);
                     if (uri != null && await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
                     }
                   }
                 }
               },
-              icon: Icon(Icons.open_in_browser_rounded, color: isDark ? Colors.white70 : const Color(0xFF334155), size: 20),
+              icon: Icon(
+                Icons.open_in_browser_rounded,
+                color: isDark ? Colors.white70 : const Color(0xFF334155),
+                size: 20,
+              ),
               label: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
                   'Open in Chrome / External Browser ↗',
-                  style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -897,7 +1154,11 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
     );
   }
 
-  Future<void> _confirmAndOpenUrl(BuildContext context, String url, String threatBadge) async {
+  Future<void> _confirmAndOpenUrl(
+    BuildContext context,
+    String url,
+    String threatBadge,
+  ) async {
     final proceed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -908,29 +1169,55 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
         ),
         title: const Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 28),
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Color(0xFFEF4444),
+              size: 28,
+            ),
             SizedBox(width: 10),
             Expanded(
               child: Text(
                 'Security Warning',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
             ),
           ],
         ),
         content: Text(
           'SafeSignal flagged this link as:\n\n• $threatBadge\n\nOpening this destination in an external browser may trigger drive-by malware downloads, Remote Access Trojans (RATs), or steal banking credentials.\n\nAre you sure you want to proceed?',
-          style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 13,
+            height: 1.4,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel & Stay Safe', style: TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Cancel & Stay Safe',
+              style: TextStyle(
+                color: Color(0xFF22C55E),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+            ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Proceed Anyway', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Proceed Anyway',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -954,8 +1241,12 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
         ? activeColor.withValues(alpha: 0.35)
         : inactiveColor.withValues(alpha: 0.35);
     final bgColor = isDark
-        ? (_isDefaultBrowser ? const Color(0xFF052012) : const Color(0xFF041B2D))
-        : (_isDefaultBrowser ? const Color(0xFFE8F5E9) : const Color(0xFFE1F5FE));
+        ? (_isDefaultBrowser
+              ? const Color(0xFF052012)
+              : const Color(0xFF041B2D))
+        : (_isDefaultBrowser
+              ? const Color(0xFFE8F5E9)
+              : const Color(0xFFE1F5FE));
 
     return Container(
       width: double.infinity,
@@ -974,12 +1265,15 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: (_isDefaultBrowser ? activeColor : inactiveColor).withValues(alpha: 0.2),
+                  color: (_isDefaultBrowser ? activeColor : inactiveColor)
+                      .withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
                   child: Icon(
-                    _isDefaultBrowser ? Icons.verified_user_rounded : Icons.shield_outlined,
+                    _isDefaultBrowser
+                        ? Icons.verified_user_rounded
+                        : Icons.shield_outlined,
                     color: _isDefaultBrowser ? activeColor : inactiveColor,
                     size: 20,
                   ),
@@ -991,7 +1285,9 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _isDefaultBrowser ? 'WhatsApp Link Shield: ACTIVE' : 'Link Protection: OPTIONAL',
+                      _isDefaultBrowser
+                          ? 'WhatsApp Link Shield: ACTIVE'
+                          : 'Link Protection: OPTIONAL',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -1022,14 +1318,19 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFFF97316),
                   side: const BorderSide(color: Color(0xFFF97316)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onPressed: () async {
                   await LinkGuardService.clearDefaultBrowser();
                   await LinkGuardService.openDefaultAppsSettings();
                   await _checkBrowserRole();
                 },
-                icon: const Icon(Icons.settings_backup_restore_rounded, size: 16),
+                icon: const Icon(
+                  Icons.settings_backup_restore_rounded,
+                  size: 16,
+                ),
                 label: const FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
@@ -1047,7 +1348,9 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                 style: ElevatedButton.styleFrom(
                   backgroundColor: inactiveColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   elevation: 0,
                 ),
                 onPressed: () async {
@@ -1077,7 +1380,14 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
         color: const Color(0xFF5D1D05),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+      ),
     );
   }
 
@@ -1087,18 +1397,37 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
     thickness: 1,
   );
 
-  Widget _buildRow(String label, String value, {required Color valueColor, required bool isDark}) {
+  Widget _buildRow(
+    String label,
+    String value, {
+    required Color valueColor,
+    required bool isDark,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(flex: 2, child: Text(label, style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 14, fontWeight: FontWeight.w600))),
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.black87,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
           Expanded(
             flex: 3,
             child: Text(
               value,
-              style: TextStyle(color: valueColor, fontSize: 13.5, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: valueColor,
+                fontSize: 13.5,
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.right,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -1117,9 +1446,6 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
   }
 }
 
-
-
-
 class SpeedometerGauge extends StatelessWidget {
   final double score; // 0 to 100
   const SpeedometerGauge({super.key, required this.score});
@@ -1128,10 +1454,9 @@ class SpeedometerGauge extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 240,
-      height: 140, // Height is roughly half of width + padding for the needle base
-      child: CustomPaint(
-        painter: _SpeedometerPainter(score),
-      ),
+      height:
+          140, // Height is roughly half of width + padding for the needle base
+      child: CustomPaint(painter: _SpeedometerPainter(score)),
     );
   }
 }
@@ -1145,57 +1470,64 @@ class _SpeedometerPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height - 20);
     final radius = size.width / 2;
-    
+
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 40
       ..strokeCap = StrokeCap.butt;
-    
+
     // Draw the 3 arcs (Green, Orange, Red)
     final rect = Rect.fromCircle(center: center, radius: radius - 20);
-    
+
     // Green (0 to 33)
     paint.color = Colors.greenAccent.shade400;
     canvas.drawArc(rect, 3.14159, 3.14159 / 3, false, paint);
-    
+
     // Orange (33 to 66)
     paint.color = Colors.orangeAccent.shade400;
     canvas.drawArc(rect, 3.14159 + (3.14159 / 3), 3.14159 / 3, false, paint);
-    
+
     // Red (66 to 100)
     paint.color = Colors.redAccent.shade400;
-    canvas.drawArc(rect, 3.14159 + (2 * 3.14159 / 3), 3.14159 / 3, false, paint);
-    
+    canvas.drawArc(
+      rect,
+      3.14159 + (2 * 3.14159 / 3),
+      3.14159 / 3,
+      false,
+      paint,
+    );
+
     // Draw needle
     // Map score (0-100) to angle (Pi to 2*Pi)
     // We map a bit inside the bounds so it doesn't go fully horizontal
     double clampedScore = score.clamp(0.0, 100.0);
     final angle = 3.14159 + (clampedScore / 100) * 3.14159;
-    
+
     canvas.save();
     canvas.translate(center.dx, center.dy);
     canvas.rotate(angle);
-    
+
     final needlePaint = Paint()
-      ..color = const Color(0xFFE0E0E0) // Light grey to work on both themes
+      ..color =
+          const Color(0xFFE0E0E0) // Light grey to work on both themes
       ..style = PaintingStyle.fill;
-    
+
     // Draw needle triangle
     final path = Path();
     path.moveTo(0, -6);
     path.lineTo(radius - 10, 0);
     path.lineTo(0, 6);
     path.close();
-    
+
     // Add shadow
     canvas.drawShadow(path, Colors.black, 4, true);
     canvas.drawPath(path, needlePaint);
-    
+
     // Draw center circle
     canvas.drawCircle(const Offset(0, 0), 16, needlePaint);
     final innerCirclePaint = Paint()..color = Colors.grey.shade400;
     canvas.drawCircle(const Offset(0, 0), 10, innerCirclePaint);
-    
+
     canvas.restore();
   }
 

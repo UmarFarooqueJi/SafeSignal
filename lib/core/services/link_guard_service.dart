@@ -4,8 +4,11 @@ import 'package:flutter/services.dart';
 /// LinkGuardService handles interception of shared links and text from Android system
 /// intents (ACTION_SEND and ACTION_VIEW) via the native MethodChannel bridge.
 class LinkGuardService {
-  static const MethodChannel _channel = MethodChannel('com.safesignal/app_scanner');
-  static final StreamController<String> _urlController = StreamController<String>.broadcast();
+  static const MethodChannel _channel = MethodChannel(
+    'com.safesignal/app_scanner',
+  );
+  static final StreamController<String> _urlController =
+      StreamController<String>.broadcast();
 
   /// Live stream of URLs intercepted in real-time while the application is active or resumed
   static Stream<String> get onUrlReceived => _urlController.stream;
@@ -76,7 +79,9 @@ class LinkGuardService {
   /// Opens a URL in an external system browser (Chrome/Firefox) without re-intercepting
   static Future<bool> openUrlInSystemBrowser(String url) async {
     try {
-      final res = await _channel.invokeMethod<bool>('openUrlInSystemBrowser', {'url': url});
+      final res = await _channel.invokeMethod<bool>('openUrlInSystemBrowser', {
+        'url': url,
+      });
       return res ?? false;
     } catch (_) {
       return false;

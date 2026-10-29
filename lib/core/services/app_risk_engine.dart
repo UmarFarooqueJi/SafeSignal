@@ -81,19 +81,63 @@ class AppRiskEngine {
   static String? getStoreName(String installer) => storeNames[installer];
 
   static const _dangerPerms = {
-    'android.permission.RECORD_AUDIO': ('Microphone', 4, 'Can record audio in background.'),
+    'android.permission.RECORD_AUDIO': (
+      'Microphone',
+      4,
+      'Can record audio in background.',
+    ),
     'android.permission.CAMERA': ('Camera', 4, 'Can access camera.'),
     'android.permission.READ_CONTACTS': ('Contacts', 4, 'Can read contacts.'),
-    'android.permission.READ_SMS': ('Read SMS', 8, 'Can read OTPs and private messages.'),
-    'android.permission.SEND_SMS': ('Send SMS', 8, 'Can send premium SMS messages.'),
-    'android.permission.RECEIVE_SMS': ('Receive SMS', 8, 'Can intercept incoming OTPs.'),
-    'android.permission.ACCESS_FINE_LOCATION': ('Precise Location', 4, 'Can track exact GPS location.'),
-    'android.permission.ACCESS_BACKGROUND_LOCATION': ('24/7 Location', 8, 'Can track location even when closed.'),
-    'android.permission.READ_CALL_LOG': ('Call History', 6, 'Can see who you called.'),
-    'android.permission.PROCESS_OUTGOING_CALLS': ('Intercept Calls', 8, 'Can monitor or block outgoing calls.'),
-    'android.permission.SYSTEM_ALERT_WINDOW': ('Screen Overlay', 10, 'Can draw over other apps.'),
-    'android.permission.BIND_ACCESSIBILITY_SERVICE': ('Accessibility', 14, 'Full control of device. Very dangerous if misused.'),
-    'android.permission.REQUEST_INSTALL_PACKAGES': ('Install Apps', 8, 'Can install other apps.'),
+    'android.permission.READ_SMS': (
+      'Read SMS',
+      8,
+      'Can read OTPs and private messages.',
+    ),
+    'android.permission.SEND_SMS': (
+      'Send SMS',
+      8,
+      'Can send premium SMS messages.',
+    ),
+    'android.permission.RECEIVE_SMS': (
+      'Receive SMS',
+      8,
+      'Can intercept incoming OTPs.',
+    ),
+    'android.permission.ACCESS_FINE_LOCATION': (
+      'Precise Location',
+      4,
+      'Can track exact GPS location.',
+    ),
+    'android.permission.ACCESS_BACKGROUND_LOCATION': (
+      '24/7 Location',
+      8,
+      'Can track location even when closed.',
+    ),
+    'android.permission.READ_CALL_LOG': (
+      'Call History',
+      6,
+      'Can see who you called.',
+    ),
+    'android.permission.PROCESS_OUTGOING_CALLS': (
+      'Intercept Calls',
+      8,
+      'Can monitor or block outgoing calls.',
+    ),
+    'android.permission.SYSTEM_ALERT_WINDOW': (
+      'Screen Overlay',
+      10,
+      'Can draw over other apps.',
+    ),
+    'android.permission.BIND_ACCESSIBILITY_SERVICE': (
+      'Accessibility',
+      14,
+      'Full control of device. Very dangerous if misused.',
+    ),
+    'android.permission.REQUEST_INSTALL_PACKAGES': (
+      'Install Apps',
+      8,
+      'Can install other apps.',
+    ),
   };
 
   // ─── Citizen Lab & Amnesty International Stalkerware Signature Database ────
@@ -191,11 +235,15 @@ class AppRiskEngine {
 
       // 2. Dangerous Trojan Combinations
       final hasInternet = perms.contains('android.permission.INTERNET');
-      final hasSMS = perms.contains('android.permission.RECEIVE_SMS') ||
+      final hasSMS =
+          perms.contains('android.permission.RECEIVE_SMS') ||
           perms.contains('android.permission.READ_SMS');
-      final hasOverlay = perms.contains('android.permission.SYSTEM_ALERT_WINDOW');
+      final hasOverlay = perms.contains(
+        'android.permission.SYSTEM_ALERT_WINDOW',
+      );
       final hasAccessibilityService =
-          perms.contains('android.permission.BIND_ACCESSIBILITY_SERVICE') || hasAccessibility;
+          perms.contains('android.permission.BIND_ACCESSIBILITY_SERVICE') ||
+          hasAccessibility;
 
       if (hasSMS && hasOverlay) {
         hasTrojanPattern = true;
@@ -233,7 +281,10 @@ class AppRiskEngine {
       if (hasDeviceAdmin) {
         if (isSideloaded) {
           score += 30;
-          reasons.insert(0, 'HIGH RISK: Untrusted app requested Device Admin privileges.');
+          reasons.insert(
+            0,
+            'HIGH RISK: Untrusted app requested Device Admin privileges.',
+          );
         } else {
           score += 15;
           reasons.add('Device Admin: Holds system administration privileges.');
@@ -243,12 +294,18 @@ class AppRiskEngine {
       if (isSideloaded) {
         // Untrusted APK from outside verified stores
         score += 20;
-        final instLabel = installer.isEmpty || installer == 'unknown' ? 'Direct APK' : installer;
-        reasons.add('Sideloaded App: Installed via unverified source ($instLabel).');
+        final instLabel = installer.isEmpty || installer == 'unknown'
+            ? 'Direct APK'
+            : installer;
+        reasons.add(
+          'Sideloaded App: Installed via unverified source ($instLabel).',
+        );
 
         if (targetSdk < 28) {
           score += 15;
-          reasons.add('Outdated SDK (Target: $targetSdk): Bypasses modern runtime protections.');
+          reasons.add(
+            'Outdated SDK (Target: $targetSdk): Bypasses modern runtime protections.',
+          );
         }
       }
 
@@ -286,12 +343,12 @@ class AppRiskEngine {
     final level = score >= 75
         ? RiskLevel.critical
         : score >= 50
-            ? RiskLevel.high
-            : score >= 25
-                ? RiskLevel.medium
-                : score >= 12
-                    ? RiskLevel.low
-                    : RiskLevel.safe;
+        ? RiskLevel.high
+        : score >= 25
+        ? RiskLevel.medium
+        : score >= 12
+        ? RiskLevel.low
+        : RiskLevel.safe;
 
     return AppInfo(
       name: name,

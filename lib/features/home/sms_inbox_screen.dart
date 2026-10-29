@@ -47,14 +47,17 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
         jsonList = json.decode(jsonString) as List<dynamic>;
       } catch (_) {}
     }
-    
-    final records = jsonList.map((m) {
-      try {
-        return SmsRecord.fromJson(m as Map<String, dynamic>);
-      } catch (_) {
-        return null;
-      }
-    }).whereType<SmsRecord>().toList();
+
+    final records = jsonList
+        .map((m) {
+          try {
+            return SmsRecord.fromJson(m as Map<String, dynamic>);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<SmsRecord>()
+        .toList();
 
     // Sort newest first
     records.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
@@ -68,7 +71,9 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
   List<SmsRecord> get _filtered {
     switch (_tabIndex) {
       case 1:
-        return _allSms.where((s) => s.verdict == 'SCAM' || s.verdict == 'CAUTION').toList();
+        return _allSms
+            .where((s) => s.verdict == 'SCAM' || s.verdict == 'CAUTION')
+            .toList();
       case 2:
         return _allSms.where((s) => s.verdict == 'SAFE').toList();
       default:
@@ -113,7 +118,11 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0D1117), size: 22),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Color(0xFF0D1117),
+            size: 22,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -128,7 +137,10 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
         centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.phonelink_lock_rounded, color: Color(0xFF0D1117)),
+            icon: const Icon(
+              Icons.phonelink_lock_rounded,
+              color: Color(0xFF0D1117),
+            ),
             onPressed: () => context.push('/otp-guard'),
             tooltip: 'SIM Hijack & USSD Tools',
           ),
@@ -146,7 +158,10 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
           unselectedLabelColor: const Color(0xFF0D1117).withValues(alpha: 0.5),
           indicatorColor: const Color(0xFF0D1117),
           indicatorWeight: 2.5,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+          ),
           tabs: [
             Tab(
               icon: const Icon(Icons.all_inbox_outlined, size: 18),
@@ -154,11 +169,13 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
             ),
             Tab(
               icon: const Icon(Icons.warning_amber_outlined, size: 18),
-              text: 'Scam (${_allSms.where((s) => s.verdict == 'SCAM' || s.verdict == 'CAUTION').length})',
+              text:
+                  'Scam (${_allSms.where((s) => s.verdict == 'SCAM' || s.verdict == 'CAUTION').length})',
             ),
             Tab(
               icon: const Icon(Icons.check_circle_outline, size: 18),
-              text: 'Safe (${_allSms.where((s) => s.verdict == 'SAFE').length})',
+              text:
+                  'Safe (${_allSms.where((s) => s.verdict == 'SAFE').length})',
             ),
           ],
         ),
@@ -181,36 +198,45 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                       alignment: Alignment.center,
                       children: [
                         const SizedBox(
-                          width: 80, height: 80,
+                          width: 80,
+                          height: 80,
                           child: CircularProgressIndicator(
                             strokeWidth: 4,
                             color: Color(0xFF2979FF),
                           ),
                         ),
-                        Image.asset('assets/images/logo_transparent.png', width: 40, height: 40)
-                            .animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1)),
+                        Image.asset(
+                              'assets/images/logo_transparent.png',
+                              width: 40,
+                              height: 40,
+                            )
+                            .animate(onPlay: (c) => c.repeat(reverse: true))
+                            .scale(
+                              begin: const Offset(0.9, 0.9),
+                              end: const Offset(1.1, 1.1),
+                            ),
                       ],
                     ),
                   ),
                 )
               : _filtered.isEmpty
-                  ? _buildEmpty(isDark)
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                      itemCount: _filtered.length,
-                      itemBuilder: (context, i) => _SmsCard(
-                        sms: _filtered[i],
-                        isDark: isDark,
-                        index: i,
-                      ),
-                    ),
+              ? _buildEmpty(isDark)
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                  itemCount: _filtered.length,
+                  itemBuilder: (context, i) =>
+                      _SmsCard(sms: _filtered[i], isDark: isDark, index: i),
+                ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showManualScanSheet(context),
         backgroundColor: const Color(0xFF2979FF),
         icon: const Icon(Icons.add_comment_outlined, color: Colors.white),
-        label: const Text('SMS Scan Karo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        label: const Text(
+          'SMS Scan Karo',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
       ),
     );
   }
@@ -236,7 +262,8 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
             children: [
               Center(
                 child: Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: Colors.black12,
                     borderRadius: BorderRadius.circular(2),
@@ -244,17 +271,32 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              const Text('SMS Paste Karo — Scan Karein', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF0D1117))),
+              const Text(
+                'SMS Paste Karo — Scan Karein',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                  color: Color(0xFF0D1117),
+                ),
+              ),
               const SizedBox(height: 6),
-              const Text('Koi bhi suspicious SMS yahan paste karo aur SafeSignal turant batayega.', style: TextStyle(color: Colors.black54, fontSize: 13)),
+              const Text(
+                'Koi bhi suspicious SMS yahan paste karo aur SafeSignal turant batayega.',
+                style: TextStyle(color: Colors.black54, fontSize: 13),
+              ),
               const SizedBox(height: 16),
               TextField(
                 controller: senderCtrl,
                 decoration: InputDecoration(
                   labelText: 'Sender (optional, e.g. +91-9999999999)',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   prefixIcon: const Icon(Icons.person_outline),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -264,12 +306,17 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                 decoration: InputDecoration(
                   labelText: 'SMS text yahan paste karo...',
                   alignLabelWithHint: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   prefixIcon: const Padding(
                     padding: EdgeInsets.only(bottom: 64),
                     child: Icon(Icons.sms_outlined),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -282,14 +329,22 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                     final sender = senderCtrl.text.trim();
                     if (text.isEmpty) return;
                     Navigator.pop(ctx);
-                    await _analyzeAndSave(text, sender.isEmpty ? 'Manual Scan' : sender);
+                    await _analyzeAndSave(
+                      text,
+                      sender.isEmpty ? 'Manual Scan' : sender,
+                    );
                   },
                   icon: const Icon(Icons.shield_outlined),
-                  label: const Text('Scan Karo', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  label: const Text(
+                    'Scan Karo',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2979FF),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     elevation: 0,
                   ),
                 ),
@@ -317,7 +372,9 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
     final existing = prefs.getString('sms_inbox');
     List<dynamic> list = [];
     if (existing != null) {
-      try { list = json.decode(existing) as List; } catch (_) {}
+      try {
+        list = json.decode(existing) as List;
+      } catch (_) {}
     }
     list.insert(0, record.toJson());
     if (list.length > 200) list = list.sublist(0, 200); // cap at 200
@@ -345,15 +402,15 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
             color: isScam
                 ? const Color(0xFF1A0000)
                 : isCaution
-                    ? const Color(0xFF1A1200)
-                    : const Color(0xFF001A08),
+                ? const Color(0xFF1A1200)
+                : const Color(0xFF001A08),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: isScam
                   ? const Color(0xFFEF5350)
                   : isCaution
-                      ? const Color(0xFFFFB300)
-                      : const Color(0xFF4CAF50),
+                  ? const Color(0xFFFFB300)
+                  : const Color(0xFF4CAF50),
               width: 1.5,
             ),
           ),
@@ -363,22 +420,45 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
             children: [
               // Big verdict icon
               Container(
-                width: 72, height: 72,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
-                  color: (isScam ? const Color(0xFFEF5350) : isCaution ? const Color(0xFFFFB300) : const Color(0xFF4CAF50)).withValues(alpha: 0.15),
+                  color:
+                      (isScam
+                              ? const Color(0xFFEF5350)
+                              : isCaution
+                              ? const Color(0xFFFFB300)
+                              : const Color(0xFF4CAF50))
+                          .withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  isScam ? Icons.dangerous_rounded : isCaution ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
+                  isScam
+                      ? Icons.dangerous_rounded
+                      : isCaution
+                      ? Icons.warning_amber_rounded
+                      : Icons.check_circle_rounded,
                   size: 44,
-                  color: isScam ? const Color(0xFFEF5350) : isCaution ? const Color(0xFFFFB300) : const Color(0xFF4CAF50),
+                  color: isScam
+                      ? const Color(0xFFEF5350)
+                      : isCaution
+                      ? const Color(0xFFFFB300)
+                      : const Color(0xFF4CAF50),
                 ),
               ),
               const SizedBox(height: 16),
               Text(
-                isScam ? '🚨 SCAM DETECTED!' : isCaution ? '⚠️ SUSPICIOUS SMS' : '✅ SMS SAFE Hai',
+                isScam
+                    ? '🚨 SCAM DETECTED!'
+                    : isCaution
+                    ? '⚠️ SUSPICIOUS SMS'
+                    : '✅ SMS SAFE Hai',
                 style: TextStyle(
-                  color: isScam ? const Color(0xFFEF5350) : isCaution ? const Color(0xFFFFB300) : const Color(0xFF4CAF50),
+                  color: isScam
+                      ? const Color(0xFFEF5350)
+                      : isCaution
+                      ? const Color(0xFFFFB300)
+                      : const Color(0xFF4CAF50),
                   fontWeight: FontWeight.w900,
                   fontSize: 20,
                   letterSpacing: -0.5,
@@ -390,9 +470,13 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                 isScam
                     ? 'Ye SMS ek confirmed scam pattern hai. Kisi link pe click mat karo, koi OTP share mat karo!'
                     : isCaution
-                        ? 'Ye SMS suspicious lagta hai. Sender ki identity verify karo pehle.'
-                        : 'Koi major red flag nahi mila. SMS safe lagta hai.',
-                style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+                    ? 'Ye SMS suspicious lagta hai. Sender ki identity verify karo pehle.'
+                    : 'Koi major red flag nahi mila. SMS safe lagta hai.',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
@@ -403,10 +487,26 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Risk Score', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
-                      Text('${record.confidence}/100', style: TextStyle(
-                        color: isScam ? const Color(0xFFEF5350) : isCaution ? const Color(0xFFFFB300) : const Color(0xFF4CAF50),
-                        fontSize: 12, fontWeight: FontWeight.w800)),
+                      const Text(
+                        'Risk Score',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '${record.confidence}/100',
+                        style: TextStyle(
+                          color: isScam
+                              ? const Color(0xFFEF5350)
+                              : isCaution
+                              ? const Color(0xFFFFB300)
+                              : const Color(0xFF4CAF50),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -415,7 +515,11 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                     child: LinearProgressIndicator(
                       value: record.confidence / 100,
                       backgroundColor: Colors.white12,
-                      color: isScam ? const Color(0xFFEF5350) : isCaution ? const Color(0xFFFFB300) : const Color(0xFF4CAF50),
+                      color: isScam
+                          ? const Color(0xFFEF5350)
+                          : isCaution
+                          ? const Color(0xFFFFB300)
+                          : const Color(0xFF4CAF50),
                       minHeight: 6,
                     ),
                   ),
@@ -431,18 +535,38 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: record.reason.split(';').where((r) => r.trim().isNotEmpty).map((r) =>
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(isScam ? '🔴 ' : isCaution ? '⚠️ ' : '✅ ', style: const TextStyle(fontSize: 11)),
-                            Expanded(child: Text(r.trim(), style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4))),
-                          ],
-                        ),
-                      ),
-                    ).toList(),
+                    children: record.reason
+                        .split(';')
+                        .where((r) => r.trim().isNotEmpty)
+                        .map(
+                          (r) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isScam
+                                      ? '🔴 '
+                                      : isCaution
+                                      ? '⚠️ '
+                                      : '✅ ',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    r.trim(),
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               ],
@@ -453,11 +577,16 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                   child: ElevatedButton.icon(
                     onPressed: () => Navigator.pop(ctx),
                     icon: const Icon(Icons.block, size: 18),
-                    label: const Text('Samajh Gaya — Block Karunga', style: TextStyle(fontWeight: FontWeight.w800)),
+                    label: const Text(
+                      'Samajh Gaya — Block Karunga',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFEF5350),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
@@ -465,7 +594,10 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Close', style: TextStyle(color: Colors.white38, fontSize: 13)),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(color: Colors.white38, fontSize: 13),
+                  ),
                 ),
               ] else
                 SizedBox(
@@ -473,12 +605,22 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(ctx),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isCaution ? const Color(0xFFFFB300) : const Color(0xFF4CAF50),
+                      backgroundColor: isCaution
+                          ? const Color(0xFFFFB300)
+                          : const Color(0xFF4CAF50),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    child: const Text('Theek Hai', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    child: const Text(
+                      'Theek Hai',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -487,8 +629,6 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
       ),
     );
   }
-
-
 
   Widget _buildEmpty(bool isDark) {
     return Center(
@@ -504,16 +644,19 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
                 color: const Color(0xFF2979FF).withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.inbox_outlined,
-                  size: 42, color: Color(0xFF2979FF)),
+              child: const Icon(
+                Icons.inbox_outlined,
+                size: 42,
+                color: Color(0xFF2979FF),
+              ),
             ).animate().scale(begin: const Offset(0.7, 0.7)).fadeIn(),
             const SizedBox(height: 24),
             Text(
               _tabIndex == 0
                   ? 'Abhi Koi SMS Nahi'
                   : _tabIndex == 1
-                      ? 'Koi Scam SMS Nahi Mila'
-                      : 'Koi Safe SMS Nahi Mila',
+                  ? 'Koi Scam SMS Nahi Mila'
+                  : 'Koi Safe SMS Nahi Mila',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
@@ -525,8 +668,8 @@ class _SmsInboxScreenState extends State<SmsInboxScreen>
               _tabIndex == 0
                   ? 'Jab bhi koi SMS aayega, SafeSignal automatically analyze karega aur yahan section-wise store karega.'
                   : _tabIndex == 1
-                      ? 'Abhi tak koi suspicious ya scam SMS detect nahi hua. Aapka inbox safe hai! ✅'
-                      : 'Safe SMS abhi yahan nahi hain.',
+                  ? 'Abhi tak koi suspicious ya scam SMS detect nahi hua. Aapka inbox safe hai! ✅'
+                  : 'Safe SMS abhi yahan nahi hain.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -546,7 +689,11 @@ class _SmsCard extends StatefulWidget {
   final SmsRecord sms;
   final bool isDark;
   final int index;
-  const _SmsCard({required this.sms, required this.isDark, required this.index});
+  const _SmsCard({
+    required this.sms,
+    required this.isDark,
+    required this.index,
+  });
 
   @override
   State<_SmsCard> createState() => _SmsCardState();
@@ -613,8 +760,8 @@ class _SmsCardState extends State<_SmsCard> {
             color: _expanded
                 ? vc.withValues(alpha: 0.5)
                 : (widget.isDark
-                    ? const Color(0xFF2A3347)
-                    : const Color(0xFFE8EEF8)),
+                      ? const Color(0xFF2A3347)
+                      : const Color(0xFFE8EEF8)),
             width: _expanded ? 1.5 : 1,
           ),
           boxShadow: [
@@ -643,8 +790,10 @@ class _SmsCardState extends State<_SmsCard> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Center(
-                      child: Text(_verdictEmoji,
-                          style: const TextStyle(fontSize: 22)),
+                      child: Text(
+                        _verdictEmoji,
+                        style: const TextStyle(fontSize: 22),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -669,13 +818,16 @@ class _SmsCardState extends State<_SmsCard> {
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: vc.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                    color: vc.withValues(alpha: 0.3),
-                                    width: 0.8),
+                                  color: vc.withValues(alpha: 0.3),
+                                  width: 0.8,
+                                ),
                               ),
                               child: Text(
                                 _verdictLabel,
@@ -705,11 +857,13 @@ class _SmsCardState extends State<_SmsCard> {
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            Icon(Icons.access_time_outlined,
-                                size: 11,
-                                color: widget.isDark
-                                    ? Colors.white30
-                                    : Colors.black26),
+                            Icon(
+                              Icons.access_time_outlined,
+                              size: 11,
+                              color: widget.isDark
+                                  ? Colors.white30
+                                  : Colors.black26,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               _timeAgo(sms.receivedAt),
@@ -751,15 +905,16 @@ class _SmsCardState extends State<_SmsCard> {
               ),
             ),
 
-      // Expanded: Risk score + Reason card + Report button
-            if (_expanded) ...[  
+            // Expanded: Risk score + Reason card + Report button
+            if (_expanded) ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
                 decoration: BoxDecoration(
                   color: vc.withValues(alpha: 0.05),
-                  borderRadius:
-                      const BorderRadius.vertical(bottom: Radius.circular(18)),
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(18),
+                  ),
                   border: Border(
                     top: BorderSide(color: vc.withValues(alpha: 0.15)),
                   ),
@@ -809,33 +964,43 @@ class _SmsCardState extends State<_SmsCard> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
-                          color: widget.isDark ? Colors.white54 : Colors.black45,
+                          color: widget.isDark
+                              ? Colors.white54
+                              : Colors.black45,
                           letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 8),
                       // Split reasons by newline or semicolon
-                      ...sms.reason.split(RegExp(r'[;\n]+')).where((r) => r.trim().isNotEmpty).map(
-                        (r) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('🔴 ', style: const TextStyle(fontSize: 12)),
-                              Expanded(
-                                child: Text(
-                                  r.trim(),
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    height: 1.45,
-                                    color: widget.isDark ? Colors.white70 : Colors.black87,
+                      ...sms.reason
+                          .split(RegExp(r'[;\n]+'))
+                          .where((r) => r.trim().isNotEmpty)
+                          .map(
+                            (r) => Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '🔴 ',
+                                    style: const TextStyle(fontSize: 12),
                                   ),
-                                ),
+                                  Expanded(
+                                    child: Text(
+                                      r.trim(),
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        height: 1.45,
+                                        color: widget.isDark
+                                            ? Colors.white70
+                                            : Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
                     ],
 
                     // Report as Scam button
@@ -844,14 +1009,17 @@ class _SmsCardState extends State<_SmsCard> {
                       GestureDetector(
                         onTap: () async {
                           await CrowdIntelService().reportThreat(
-                            rawValue: '${sms.sender}::${sms.body.substring(0, sms.body.length.clamp(0, 50))}',
+                            rawValue:
+                                '${sms.sender}::${sms.body.substring(0, sms.body.length.clamp(0, 50))}',
                             type: 'sms',
                             verdict: 'SCAM',
                           );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('✅ Reported! This will protect other SafeSignal users.'),
+                                content: Text(
+                                  '✅ Reported! This will protect other SafeSignal users.',
+                                ),
                                 backgroundColor: Color(0xFF4CAF50),
                               ),
                             );
@@ -861,14 +1029,24 @@ class _SmsCardState extends State<_SmsCard> {
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE53935).withValues(alpha: 0.1),
+                            color: const Color(
+                              0xFFE53935,
+                            ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFE53935).withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFE53935,
+                              ).withValues(alpha: 0.3),
+                            ),
                           ),
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.flag_outlined, color: Color(0xFFE53935), size: 15),
+                              Icon(
+                                Icons.flag_outlined,
+                                color: Color(0xFFE53935),
+                                size: 15,
+                              ),
                               SizedBox(width: 6),
                               Text(
                                 'Report as Scam',
@@ -913,21 +1091,21 @@ class SmsRecord {
   });
 
   factory SmsRecord.fromJson(Map<String, dynamic> m) => SmsRecord(
-        sender: m['sender'] as String? ?? 'Unknown',
-        body: m['body'] as String? ?? '',
-        verdict: m['verdict'] as String? ?? 'SAFE',
-        confidence: m['confidence'] as int? ?? 0,
-        reason: m['reason'] as String? ?? '',
-        receivedAt: DateTime.tryParse(m['receivedAt'] as String? ?? '') ??
-            DateTime.now(),
-      );
+    sender: m['sender'] as String? ?? 'Unknown',
+    body: m['body'] as String? ?? '',
+    verdict: m['verdict'] as String? ?? 'SAFE',
+    confidence: m['confidence'] as int? ?? 0,
+    reason: m['reason'] as String? ?? '',
+    receivedAt:
+        DateTime.tryParse(m['receivedAt'] as String? ?? '') ?? DateTime.now(),
+  );
 
   Map<String, dynamic> toJson() => {
-        'sender': sender,
-        'body': body,
-        'verdict': verdict,
-        'confidence': confidence,
-        'reason': reason,
-        'receivedAt': receivedAt.toIso8601String(),
-      };
+    'sender': sender,
+    'body': body,
+    'verdict': verdict,
+    'confidence': confidence,
+    'reason': reason,
+    'receivedAt': receivedAt.toIso8601String(),
+  };
 }

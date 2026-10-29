@@ -8,6 +8,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:dio/dio.dart';
 import '../../core/widgets/arc_gauge.dart';
+
 class WifiScannerScreen extends StatefulWidget {
   const WifiScannerScreen({super.key});
 
@@ -72,44 +73,57 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
     if (encryptionLevel == 0) {
       // Open network
       score -= 70;
-      checks.add(_Check(
-        label: 'Encryption',
-        detail: 'OPEN NETWORK — Koi encryption nahi! Data completely exposed hai',
-        level: _Level.critical,
-        icon: Icons.lock_open,
-      ));
+      checks.add(
+        _Check(
+          label: 'Encryption',
+          detail:
+              'OPEN NETWORK — Koi encryption nahi! Data completely exposed hai',
+          level: _Level.critical,
+          icon: Icons.lock_open,
+        ),
+      );
     } else if (encryptionLevel == 1) {
       // WEP — very old, broken
       score -= 50;
-      checks.add(_Check(
-        label: 'Encryption (WEP)',
-        detail: 'WEP bahut purani aur broken encryption hai — easily hack ho sakta hai',
-        level: _Level.danger,
-        icon: Icons.lock_outlined,
-      ));
+      checks.add(
+        _Check(
+          label: 'Encryption (WEP)',
+          detail:
+              'WEP bahut purani aur broken encryption hai — easily hack ho sakta hai',
+          level: _Level.danger,
+          icon: Icons.lock_outlined,
+        ),
+      );
     } else if (encryptionLevel == 2) {
       // WPA/WPA2
       score -= 10;
-      checks.add(_Check(
-        label: 'Encryption (WPA2)',
-        detail: 'WPA2 with PSK+CCMP security. Safe hai lekin WPA3 se upgrade karein',
-        level: _Level.ok,
-        icon: Icons.lock,
-      ));
+      checks.add(
+        _Check(
+          label: 'Encryption (WPA2)',
+          detail:
+              'WPA2 with PSK+CCMP security. Safe hai lekin WPA3 se upgrade karein',
+          level: _Level.ok,
+          icon: Icons.lock,
+        ),
+      );
     } else {
       // WPA3 — best
-      checks.add(_Check(
-        label: 'Encryption (WPA3)',
-        detail: 'WPA3 — Latest aur strongest encryption standard. Excellent!',
-        level: _Level.safe,
-        icon: Icons.lock,
-      ));
+      checks.add(
+        _Check(
+          label: 'Encryption (WPA3)',
+          detail: 'WPA3 — Latest aur strongest encryption standard. Excellent!',
+          level: _Level.safe,
+          icon: Icons.lock,
+        ),
+      );
     }
 
     // ─── Native ARP & Subnet Integrity Check ──────────────────────────────
     try {
       const netChannel = MethodChannel('safesignal/network');
-      final telemetry = await netChannel.invokeMapMethod<String, dynamic>('getNetworkSecurityTelemetry');
+      final telemetry = await netChannel.invokeMapMethod<String, dynamic>(
+        'getNetworkSecurityTelemetry',
+      );
       if (telemetry != null) {
         final arpPoisoned = telemetry['arpPoisoned'] as bool? ?? false;
         final dnsHealthy = telemetry['dnsHealthy'] as bool? ?? true;
@@ -117,57 +131,77 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
 
         if (arpPoisoned) {
           score -= 50;
-          checks.add(const _Check(
-            label: 'ARP Cache Integrity',
-            detail: 'CRITICAL: Multiple IPs share identical MAC addresses! Active ARP Spoofing / Man-In-The-Middle attack detected on this subnet.',
-            level: _Level.critical,
-            icon: Icons.security_update_warning,
-          ));
+          checks.add(
+            const _Check(
+              label: 'ARP Cache Integrity',
+              detail:
+                  'CRITICAL: Multiple IPs share identical MAC addresses! Active ARP Spoofing / Man-In-The-Middle attack detected on this subnet.',
+              level: _Level.critical,
+              icon: Icons.security_update_warning,
+            ),
+          );
         } else {
-          checks.add(const _Check(
-            label: 'ARP Subnet Integrity',
-            detail: 'Subnet neighbor table verified. Zero duplicate MAC spoofing detected.',
-            level: _Level.safe,
-            icon: Icons.verified_user_outlined,
-          ));
+          checks.add(
+            const _Check(
+              label: 'ARP Subnet Integrity',
+              detail:
+                  'Subnet neighbor table verified. Zero duplicate MAC spoofing detected.',
+              level: _Level.safe,
+              icon: Icons.verified_user_outlined,
+            ),
+          );
         }
 
         if (!dnsHealthy) {
           score -= 40;
-          checks.add(_Check(
-            label: 'DNS Canary Tampering',
-            detail: 'CRITICAL: Canary domain resolved to private/loopback IP ($canaryIp). Local router DNS is poisoned or hijacked!',
-            level: _Level.danger,
-            icon: Icons.dns_outlined,
-          ));
+          checks.add(
+            _Check(
+              label: 'DNS Canary Tampering',
+              detail:
+                  'CRITICAL: Canary domain resolved to private/loopback IP ($canaryIp). Local router DNS is poisoned or hijacked!',
+              level: _Level.danger,
+              icon: Icons.dns_outlined,
+            ),
+          );
         } else {
-          checks.add(const _Check(
-            label: 'DNS Integrity',
-            detail: 'Canary domain resolved cleanly. No local DNS redirection found.',
-            level: _Level.safe,
-            icon: Icons.dns,
-          ));
+          checks.add(
+            const _Check(
+              label: 'DNS Integrity',
+              detail:
+                  'Canary domain resolved cleanly. No local DNS redirection found.',
+              level: _Level.safe,
+              icon: Icons.dns,
+            ),
+          );
         }
 
-        final rogueDnsDetected = telemetry['rogueDnsDetected'] as bool? ?? false;
-        final dnsServers = (telemetry['dnsServers'] as List<dynamic>?)?.cast<String>() ?? [];
+        final rogueDnsDetected =
+            telemetry['rogueDnsDetected'] as bool? ?? false;
+        final dnsServers =
+            (telemetry['dnsServers'] as List<dynamic>?)?.cast<String>() ?? [];
         final gatewayIp = telemetry['gatewayIp'] as String? ?? gateway;
 
         if (rogueDnsDetected) {
           score -= 45;
-          checks.add(_Check(
-            label: 'Rogue DHCP / DNS Server',
-            detail: 'CRITICAL: DHCP assigned a rogue DNS server (${dnsServers.join(", ")}) differing from the gateway ($gatewayIp). High probability of active DNS Spoofing / MITM trap.',
-            level: _Level.critical,
-            icon: Icons.alt_route_rounded,
-          ));
+          checks.add(
+            _Check(
+              label: 'Rogue DHCP / DNS Server',
+              detail:
+                  'CRITICAL: DHCP assigned a rogue DNS server (${dnsServers.join(", ")}) differing from the gateway ($gatewayIp). High probability of active DNS Spoofing / MITM trap.',
+              level: _Level.critical,
+              icon: Icons.alt_route_rounded,
+            ),
+          );
         } else if (dnsServers.isNotEmpty) {
-          checks.add(_Check(
-            label: 'DHCP DNS Configuration',
-            detail: 'Active DNS servers (${dnsServers.take(2).join(", ")}) align with verified gateway ($gatewayIp).',
-            level: _Level.safe,
-            icon: Icons.lan_outlined,
-          ));
+          checks.add(
+            _Check(
+              label: 'DHCP DNS Configuration',
+              detail:
+                  'Active DNS servers (${dnsServers.take(2).join(", ")}) align with verified gateway ($gatewayIp).',
+              level: _Level.safe,
+              icon: Icons.lan_outlined,
+            ),
+          );
         }
       }
     } catch (_) {
@@ -175,59 +209,83 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
     }
 
     // IP range check
-    final isPrivateIp = ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.');
+    final isPrivateIp =
+        ip.startsWith('192.168.') ||
+        ip.startsWith('10.') ||
+        ip.startsWith('172.');
     if (!isPrivateIp && ip != 'N/A') {
       score -= 20;
-      checks.add(_Check(
-        label: 'Subnet IP Address',
-        detail: 'Unusual IP configuration ($ip) — non-standard private assignment',
-        level: _Level.warning,
-        icon: Icons.router_outlined,
-      ));
+      checks.add(
+        _Check(
+          label: 'Subnet IP Address',
+          detail:
+              'Unusual IP configuration ($ip) — non-standard private assignment',
+          level: _Level.warning,
+          icon: Icons.router_outlined,
+        ),
+      );
     } else {
-      checks.add(_Check(
-        label: 'Subnet IP Address',
-        detail: 'Standard private subnet assignment ($ip)',
-        level: _Level.safe,
-        icon: Icons.router,
-      ));
+      checks.add(
+        _Check(
+          label: 'Subnet IP Address',
+          detail: 'Standard private subnet assignment ($ip)',
+          level: _Level.safe,
+          icon: Icons.router,
+        ),
+      );
     }
 
     // ─── ACTIVE DEEP NETWORK INSPECTION ────────────────────────────────────────
 
     // 1. Captive Portal Detection (Man-in-the-Middle Trap)
     try {
-      final dio = Dio(BaseOptions(
-        connectTimeout: const Duration(seconds: 3),
-        receiveTimeout: const Duration(seconds: 3),
-        validateStatus: (status) => true,
-      ));
-      
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 3),
+          validateStatus: (status) => true,
+        ),
+      );
+
       try {
-        final portalRes = await dio.get('http://connectivitycheck.gstatic.com/generate_204');
+        final portalRes = await dio.get(
+          'http://connectivitycheck.gstatic.com/generate_204',
+        );
         if (portalRes.statusCode == 204) {
-          checks.add(const _Check(
-            label: 'Connection Interception',
-            detail: 'Direct internet access. Koi captive portal interception nahi.',
-            level: _Level.safe,
-            icon: Icons.shield_outlined,
-          ));
-        } else if (portalRes.statusCode != null && (portalRes.statusCode == 200 || portalRes.statusCode == 302 || portalRes.statusCode == 301)) {
+          checks.add(
+            const _Check(
+              label: 'Connection Interception',
+              detail:
+                  'Direct internet access. Koi captive portal interception nahi.',
+              level: _Level.safe,
+              icon: Icons.shield_outlined,
+            ),
+          );
+        } else if (portalRes.statusCode != null &&
+            (portalRes.statusCode == 200 ||
+                portalRes.statusCode == 302 ||
+                portalRes.statusCode == 301)) {
           score -= 30;
-          checks.add(const _Check(
-            label: 'Captive Portal Interception',
-            detail: 'Login page ya captive portal connection intercept kar raha hai. Authentication required.',
-            level: _Level.warning,
-            icon: Icons.warning_amber_rounded,
-          ));
+          checks.add(
+            const _Check(
+              label: 'Captive Portal Interception',
+              detail:
+                  'Login page ya captive portal connection intercept kar raha hai. Authentication required.',
+              level: _Level.warning,
+              icon: Icons.warning_amber_rounded,
+            ),
+          );
         }
       } on DioException catch (_) {
-        checks.add(const _Check(
-          label: 'Portal Verification',
-          detail: 'Portal check unreachable ya timeout (limited connectivity).',
-          level: _Level.warning,
-          icon: Icons.cloud_off,
-        ));
+        checks.add(
+          const _Check(
+            label: 'Portal Verification',
+            detail:
+                'Portal check unreachable ya timeout (limited connectivity).',
+            level: _Level.warning,
+            icon: Icons.cloud_off,
+          ),
+        );
       }
 
       // 2. SSL Stripping & DNS Hijacking Check + Ping Latency
@@ -235,50 +293,63 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
       try {
         final sslRes = await dio.get('https://1.1.1.1');
         stopwatch.stop();
-        
+
         if (sslRes.statusCode == 200) {
-          checks.add(const _Check(
-            label: 'DNS & SSL Secure',
-            detail: 'DNS hijacking nahi hai. SSL connection strongly encrypted hai.',
-            level: _Level.safe,
-            icon: Icons.lock_clock,
-          ));
+          checks.add(
+            const _Check(
+              label: 'DNS & SSL Secure',
+              detail:
+                  'DNS hijacking nahi hai. SSL connection strongly encrypted hai.',
+              level: _Level.safe,
+              icon: Icons.lock_clock,
+            ),
+          );
 
           final latency = stopwatch.elapsedMilliseconds;
           if (latency > 2000) {
             score -= 10;
-            checks.add(_Check(
-              label: 'Network Latency',
-              detail: 'Ping high hai (${latency}ms). Congestion ya low signal ho sakta hai.',
-              level: _Level.warning,
-              icon: Icons.speed,
-            ));
+            checks.add(
+              _Check(
+                label: 'Network Latency',
+                detail:
+                    'Ping high hai (${latency}ms). Congestion ya low signal ho sakta hai.',
+                level: _Level.warning,
+                icon: Icons.speed,
+              ),
+            );
           }
         }
       } on DioException catch (e) {
         stopwatch.stop();
         final errStr = e.error?.toString().toLowerCase() ?? '';
-        final isTlsTampering = e.error is HandshakeException ||
+        final isTlsTampering =
+            e.error is HandshakeException ||
             errStr.contains('certificate') ||
             errStr.contains('handshake') ||
             errStr.contains('certpath');
 
         if (isTlsTampering) {
           score -= 50;
-          checks.add(const _Check(
-            label: 'SSL Tampering Detected',
-            detail: 'CRITICAL: HTTPS connection certificate validation fail! Network traffic intercept/strip ho raha hai.',
-            level: _Level.critical,
-            icon: Icons.gpp_bad,
-          ));
+          checks.add(
+            const _Check(
+              label: 'SSL Tampering Detected',
+              detail:
+                  'CRITICAL: HTTPS connection certificate validation fail! Network traffic intercept/strip ho raha hai.',
+              level: _Level.critical,
+              icon: Icons.gpp_bad,
+            ),
+          );
         } else {
           // Timeout or connection error is NOT an active MITM attack
-          checks.add(const _Check(
-            label: 'SSL Probe Incomplete',
-            detail: 'Secure endpoint probe time out hua (slow connection ya offline).',
-            level: _Level.warning,
-            icon: Icons.wifi_off,
-          ));
+          checks.add(
+            const _Check(
+              label: 'SSL Probe Incomplete',
+              detail:
+                  'Secure endpoint probe time out hua (slow connection ya offline).',
+              level: _Level.warning,
+              icon: Icons.wifi_off,
+            ),
+          );
         }
       } catch (e) {
         // Non-dio exception
@@ -289,7 +360,11 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
         final openDangerousPorts = <int>[];
         for (final port in dangerousPorts) {
           try {
-            final socket = await Socket.connect(gateway, port, timeout: const Duration(milliseconds: 350));
+            final socket = await Socket.connect(
+              gateway,
+              port,
+              timeout: const Duration(milliseconds: 350),
+            );
             socket.destroy();
             openDangerousPorts.add(port);
           } catch (_) {}
@@ -297,30 +372,44 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
 
         if (openDangerousPorts.isNotEmpty) {
           score -= 30;
-          final portNames = openDangerousPorts.map((p) => p == 23 ? 'Telnet (23)' : (p == 21 ? 'FTP (21)' : 'SMB (445)')).join(', ');
-          checks.add(_Check(
-            label: 'Insecure Router Ports',
-            detail: 'CRITICAL: Router gateway has vulnerable unencrypted ports open ($portNames). Attackers on this WiFi can hijack the router.',
-            level: _Level.danger,
-            icon: Icons.router_outlined,
-          ));
+          final portNames = openDangerousPorts
+              .map(
+                (p) => p == 23
+                    ? 'Telnet (23)'
+                    : (p == 21 ? 'FTP (21)' : 'SMB (445)'),
+              )
+              .join(', ');
+          checks.add(
+            _Check(
+              label: 'Insecure Router Ports',
+              detail:
+                  'CRITICAL: Router gateway has vulnerable unencrypted ports open ($portNames). Attackers on this WiFi can hijack the router.',
+              level: _Level.danger,
+              icon: Icons.router_outlined,
+            ),
+          );
         } else {
-          checks.add(const _Check(
-            label: 'Router Port Hardening',
-            detail: 'Dangerous router administration ports (Telnet, SMB, FTP) are securely closed.',
-            level: _Level.safe,
-            icon: Icons.verified_user_outlined,
-          ));
+          checks.add(
+            const _Check(
+              label: 'Router Port Hardening',
+              detail:
+                  'Dangerous router administration ports (Telnet, SMB, FTP) are securely closed.',
+              level: _Level.safe,
+              icon: Icons.verified_user_outlined,
+            ),
+          );
         }
       }
     } catch (e) {
       // Offline ya totally unreachable
-      checks.add(const _Check(
-        label: 'Internet Connection',
-        detail: 'Active internet nahi mil raha (offline mode).',
-        level: _Level.warning,
-        icon: Icons.cloud_off,
-      ));
+      checks.add(
+        const _Check(
+          label: 'Internet Connection',
+          detail: 'Active internet nahi mil raha (offline mode).',
+          level: _Level.warning,
+          icon: Icons.cloud_off,
+        ),
+      );
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -328,7 +417,11 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
     score = score.clamp(0, 100);
     final rating = (score / 20).clamp(0.0, 5.0); // 0-100 → 0-5
 
-    final recommendations = _getRecommendations(securityType, encryptionLevel, ssid);
+    final recommendations = _getRecommendations(
+      securityType,
+      encryptionLevel,
+      ssid,
+    );
 
     setState(() {
       _phase = _Phase.done;
@@ -358,9 +451,13 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
 
   List<String> _getRecommendations(String secType, int level, String ssid) {
     final recs = <String>[];
-    if (level < 3) recs.add('1. WPA3 sabse latest aur strong standard hai — router settings mein enable karein');
+    if (level < 3)
+      recs.add(
+        '1. WPA3 sabse latest aur strong standard hai — router settings mein enable karein',
+      );
     if (level == 2) recs.add('2. WPA2 abhi bhi safe hai — use karte rehein');
-    if (level < 2) recs.add('2. Abhi router settings mein jaake WPA2/WPA3 enable karein');
+    if (level < 2)
+      recs.add('2. Abhi router settings mein jaake WPA2/WPA3 enable karein');
     recs.add('3. Router admin panel ka default password zaroor change karein');
     recs.add('4. Public WiFi pe VPN use karein banking ke liye');
     return recs;
@@ -376,7 +473,11 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0D1117), size: 22),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Color(0xFF0D1117),
+            size: 22,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -402,8 +503,8 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
           child: _phase == _Phase.idle
               ? _buildIdle(isDark)
               : _phase == _Phase.scanning
-                  ? _buildScanning(isDark)
-                  : _buildResult(isDark),
+              ? _buildScanning(isDark)
+              : _buildResult(isDark),
         ),
       ),
     );
@@ -421,7 +522,11 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
               color: AppTheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.wifi_find, size: 56, color: AppTheme.primary),
+            child: const Icon(
+              Icons.wifi_find,
+              size: 56,
+              color: AppTheme.primary,
+            ),
           ).animate().scale(begin: const Offset(0.7, 0.7)).fadeIn(),
           const SizedBox(height: 28),
           Text(
@@ -456,8 +561,13 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
                 minimumSize: const Size.fromHeight(56),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
                 elevation: 0,
               ),
             ),
@@ -486,11 +596,17 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
                     color: AppTheme.primary,
                     backgroundColor: AppTheme.primary.withValues(alpha: 0.15),
                   ),
-                )
-                    .animate(onPlay: (c) => c.repeat())
-                    .rotate(duration: 1200.ms),
-                Image.asset('assets/images/logo_transparent.png', width: 48, height: 48)
-                    .animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1)),
+                ).animate(onPlay: (c) => c.repeat()).rotate(duration: 1200.ms),
+                Image.asset(
+                      'assets/images/logo_transparent.png',
+                      width: 48,
+                      height: 48,
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .scale(
+                      begin: const Offset(0.9, 0.9),
+                      end: const Offset(1.1, 1.1),
+                    ),
               ],
             ),
           ),
@@ -506,7 +622,10 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
           const SizedBox(height: 8),
           Text(
             'Encryption type check ho rahi hai',
-            style: TextStyle(color: isDark ? Colors.white54 : Colors.black45, fontSize: 14),
+            style: TextStyle(
+              color: isDark ? Colors.white54 : Colors.black45,
+              fontSize: 14,
+            ),
           ),
         ],
       ),
@@ -526,9 +645,10 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
             Text(
               'WiFi Connected Nahi Hai',
               style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : const Color(0xFF0D1117)),
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF0D1117),
+              ),
             ),
             const SizedBox(height: 10),
             Text(
@@ -540,8 +660,9 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
             ElevatedButton(
               onPressed: _scan,
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white),
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Dobara Try Karo'),
             ),
           ],
@@ -552,10 +673,14 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
     final gaugeColor = r.score >= 70
         ? const Color(0xFF4CAF50)
         : r.score >= 40
-            ? const Color(0xFFFFB300)
-            : const Color(0xFFE53935);
+        ? const Color(0xFFFFB300)
+        : const Color(0xFFE53935);
 
-    final verdictText = r.score >= 70 ? 'SAFE' : r.score >= 40 ? 'CAUTION' : 'UNSAFE';
+    final verdictText = r.score >= 70
+        ? 'SAFE'
+        : r.score >= 40
+        ? 'CAUTION'
+        : 'UNSAFE';
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -570,7 +695,9 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
               value: r.rating,
               maxValue: 5.0,
               color: gaugeColor,
-              trackColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+              trackColor: isDark
+                  ? const Color(0xFF2A2A2A)
+                  : const Color(0xFFE0E0E0),
               strokeWidth: 18,
               sweepDegrees: 210,
               centerChild: Column(
@@ -634,7 +761,10 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
             decoration: BoxDecoration(
               color: gaugeColor.withValues(alpha: isDark ? 0.1 : 0.08),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: gaugeColor.withValues(alpha: 0.4), width: 1.5),
+              border: Border.all(
+                color: gaugeColor.withValues(alpha: 0.4),
+                width: 1.5,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -642,7 +772,10 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: gaugeColor,
                         borderRadius: BorderRadius.circular(8),
@@ -663,7 +796,9 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
-                          color: isDark ? Colors.white : const Color(0xFF0D1117),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF0D1117),
                         ),
                       ),
                     ),
@@ -685,7 +820,9 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.white.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Column(
@@ -706,17 +843,19 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      ...r.recommendations.map((rec) => Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Text(
-                              rec,
-                              style: TextStyle(
-                                fontSize: 13,
-                                height: 1.4,
-                                color: isDark ? Colors.white70 : Colors.black87,
-                              ),
+                      ...r.recommendations.map(
+                        (rec) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(
+                            rec,
+                            style: TextStyle(
+                              fontSize: 13,
+                              height: 1.4,
+                              color: isDark ? Colors.white70 : Colors.black87,
                             ),
-                          )),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -732,12 +871,12 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
             final color = c.level == _Level.safe
                 ? const Color(0xFF4CAF50)
                 : c.level == _Level.ok
-                    ? const Color(0xFF66BB6A)
-                    : c.level == _Level.warning
-                        ? const Color(0xFFFFB300)
-                        : c.level == _Level.danger
-                            ? const Color(0xFFE53935)
-                            : const Color(0xFFB71C1C);
+                ? const Color(0xFF66BB6A)
+                : c.level == _Level.warning
+                ? const Color(0xFFFFB300)
+                : c.level == _Level.danger
+                ? const Color(0xFFE53935)
+                : const Color(0xFFB71C1C);
 
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
@@ -746,7 +885,9 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
                 color: isDark ? const Color(0xFF161B27) : Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isDark ? const Color(0xFF30363D) : const Color(0xFFE8EEF8),
+                  color: isDark
+                      ? const Color(0xFF30363D)
+                      : const Color(0xFFE8EEF8),
                 ),
               ),
               child: Row(
@@ -770,7 +911,9 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 13,
-                            color: isDark ? Colors.white : const Color(0xFF0D1117),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF0D1117),
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -794,8 +937,9 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
           // Open Settings button
           ElevatedButton.icon(
             onPressed: () async {
-              const MethodChannel('com.safesignal/app_scanner')
-                  .invokeMethod('openWifiSettings');
+              const MethodChannel(
+                'com.safesignal/app_scanner',
+              ).invokeMethod('openWifiSettings');
             },
             icon: const Icon(Icons.open_in_new, size: 18),
             label: Text('${r.ssid} Settings Kholo'),
@@ -806,7 +950,9 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
                 side: BorderSide(
-                  color: isDark ? const Color(0xFF30363D) : const Color(0xFFE0E0E0),
+                  color: isDark
+                      ? const Color(0xFF30363D)
+                      : const Color(0xFFE0E0E0),
                 ),
               ),
               elevation: 0,
@@ -848,13 +994,19 @@ class _WifiScannerScreenState extends State<WifiScannerScreen> {
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 enum _Phase { idle, scanning, done }
+
 enum _Level { safe, ok, warning, danger, critical }
 
 class _Check {
   final String label, detail;
   final _Level level;
   final IconData icon;
-  const _Check({required this.label, required this.detail, required this.level, required this.icon});
+  const _Check({
+    required this.label,
+    required this.detail,
+    required this.level,
+    required this.icon,
+  });
 }
 
 class _WifiResult {
@@ -881,14 +1033,31 @@ class _WifiResult {
   });
 
   factory _WifiResult.noWifi() => const _WifiResult(
-        ssid: '', bssid: '', ip: '', gateway: '', securityType: '',
-        score: 0, rating: 0, checks: [], recommendations: [],
-        isConnected: false, message: 'WiFi se connect karo phir scan karo',
-      );
+    ssid: '',
+    bssid: '',
+    ip: '',
+    gateway: '',
+    securityType: '',
+    score: 0,
+    rating: 0,
+    checks: [],
+    recommendations: [],
+    isConnected: false,
+    message: 'WiFi se connect karo phir scan karo',
+  );
 
   factory _WifiResult.permissionDenied() => const _WifiResult(
-        ssid: '', bssid: '', ip: '', gateway: '', securityType: '',
-        score: 0, rating: 0, checks: [], recommendations: [],
-        isConnected: false, message: 'Location permission chahiye WiFi details ke liye.\nSettings > SafeSignal > Permissions > Location',
-      );
+    ssid: '',
+    bssid: '',
+    ip: '',
+    gateway: '',
+    securityType: '',
+    score: 0,
+    rating: 0,
+    checks: [],
+    recommendations: [],
+    isConnected: false,
+    message:
+        'Location permission chahiye WiFi details ke liye.\nSettings > SafeSignal > Permissions > Location',
+  );
 }

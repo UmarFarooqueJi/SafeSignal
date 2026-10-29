@@ -38,9 +38,11 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 12),
-                const Text('⚠️', style: TextStyle(fontSize: 64), textAlign: TextAlign.center)
-                    .animate()
-                    .scale(duration: 500.ms),
+                const Text(
+                  '⚠️',
+                  style: TextStyle(fontSize: 64),
+                  textAlign: TextAlign.center,
+                ).animate().scale(duration: 500.ms),
                 const SizedBox(height: 20),
                 Text(
                   'Zaroori Baat',
@@ -66,10 +68,14 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E150B) : const Color(0xFFFFFBEB),
+                    color: isDark
+                        ? const Color(0xFF1E150B)
+                        : const Color(0xFFFFFBEB),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: isDark ? const Color(0xFF3F2F1B) : const Color(0xFFFEF3C7),
+                      color: isDark
+                          ? const Color(0xFF3F2F1B)
+                          : const Color(0xFFFEF3C7),
                       width: 1.5,
                     ),
                   ),
@@ -86,7 +92,9 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                           fontSize: 14,
                           height: 1.6,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.orange.shade100 : Colors.amber.shade900,
+                          color: isDark
+                              ? Colors.orange.shade100
+                              : Colors.amber.shade900,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -100,11 +108,19 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: _agreed
-                          ? (isDark ? AppTheme.primary.withValues(alpha: 0.1) : const Color(0xFFEFF5FF))
-                          : (isDark ? const Color(0xFF0F1724) : const Color(0xFFF8FAFC)),
+                          ? (isDark
+                                ? AppTheme.primary.withValues(alpha: 0.1)
+                                : const Color(0xFFEFF5FF))
+                          : (isDark
+                                ? const Color(0xFF0F1724)
+                                : const Color(0xFFF8FAFC)),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: _agreed ? AppTheme.primary : (isDark ? const Color(0xFF202A3C) : const Color(0xFFE2E8F0)),
+                        color: _agreed
+                            ? AppTheme.primary
+                            : (isDark
+                                  ? const Color(0xFF202A3C)
+                                  : const Color(0xFFE2E8F0)),
                         width: 1.2,
                       ),
                     ),
@@ -113,9 +129,12 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                       children: [
                         Checkbox(
                           value: _agreed,
-                          onChanged: (v) => setState(() => _agreed = v ?? false),
+                          onChanged: (v) =>
+                              setState(() => _agreed = v ?? false),
                           activeColor: AppTheme.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -126,7 +145,9 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: isDark ? Colors.white70 : const Color(0xFF334155),
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF334155),
                               ),
                             ),
                           ),
@@ -143,10 +164,10 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     decoration: BoxDecoration(
-                      gradient: _agreed
-                          ? AppTheme.primaryGrad
-                          : null,
-                      color: _agreed ? null : (isDark ? Colors.white10 : Colors.grey.shade200),
+                      gradient: _agreed ? AppTheme.primaryGrad : null,
+                      color: _agreed
+                          ? null
+                          : (isDark ? Colors.white10 : Colors.grey.shade200),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: _agreed
                           ? [

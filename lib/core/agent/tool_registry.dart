@@ -18,19 +18,15 @@ class ToolResult {
   final Map<String, dynamic> data;
   final String? error;
 
-  const ToolResult.success(this.data)
-      : success = true,
-        error = null;
+  const ToolResult.success(this.data) : success = true, error = null;
 
-  const ToolResult.failure(this.error)
-      : success = false,
-        data = const {};
+  const ToolResult.failure(this.error) : success = false, data = const {};
 
   Map<String, dynamic> toJson() => {
-        'success': success,
-        'data': data,
-        if (error != null) 'error': error,
-      };
+    'success': success,
+    'data': data,
+    if (error != null) 'error': error,
+  };
 }
 
 /// Abstract contract for an agentic tool
@@ -49,16 +45,20 @@ class ScanUrlTool extends AgentTool {
   String get name => 'scan_url';
 
   @override
-  String get description => 'Perform deep on-device forensic analysis on a suspicious URL or domain.';
+  String get description =>
+      'Perform deep on-device forensic analysis on a suspicious URL or domain.';
 
   @override
   Map<String, dynamic> get parameterSchema => {
-        'type': 'object',
-        'properties': {
-          'url': {'type': 'string', 'description': 'The URL or hostname to inspect'}
-        },
-        'required': ['url']
-      };
+    'type': 'object',
+    'properties': {
+      'url': {
+        'type': 'string',
+        'description': 'The URL or hostname to inspect',
+      },
+    },
+    'required': ['url'],
+  };
 
   @override
   bool get requiresConfirmation => false; // Read-only
@@ -98,13 +98,16 @@ class AnalyzeSmsTool extends AgentTool {
 
   @override
   Map<String, dynamic> get parameterSchema => {
-        'type': 'object',
-        'properties': {
-          'text': {'type': 'string', 'description': 'Message body content'},
-          'sender': {'type': 'string', 'description': 'Originating phone number or sender ID'}
-        },
-        'required': ['text']
-      };
+    'type': 'object',
+    'properties': {
+      'text': {'type': 'string', 'description': 'Message body content'},
+      'sender': {
+        'type': 'string',
+        'description': 'Originating phone number or sender ID',
+      },
+    },
+    'required': ['text'],
+  };
 
   @override
   bool get requiresConfirmation => false; // Read-only
@@ -140,16 +143,20 @@ class VerifyUpiTool extends AgentTool {
   String get name => 'verify_upi';
 
   @override
-  String get description => 'Audit a UPI ID (VPA) or payment handle against known cyber fraud patterns.';
+  String get description =>
+      'Audit a UPI ID (VPA) or payment handle against known cyber fraud patterns.';
 
   @override
   Map<String, dynamic> get parameterSchema => {
-        'type': 'object',
-        'properties': {
-          'vpa': {'type': 'string', 'description': 'The UPI Virtual Payment Address (e.g. name@oksbi)'}
-        },
-        'required': ['vpa']
-      };
+    'type': 'object',
+    'properties': {
+      'vpa': {
+        'type': 'string',
+        'description': 'The UPI Virtual Payment Address (e.g. name@oksbi)',
+      },
+    },
+    'required': ['vpa'],
+  };
 
   @override
   bool get requiresConfirmation => false; // Read-only
@@ -158,16 +165,28 @@ class VerifyUpiTool extends AgentTool {
   Future<ToolResult> execute(Map<String, dynamic> args) async {
     final vpa = args['vpa']?.toString().trim().toLowerCase() ?? '';
     if (vpa.isEmpty || !vpa.contains('@')) {
-      return const ToolResult.failure('Invalid UPI VPA format. Must contain "@" separator.');
+      return const ToolResult.failure(
+        'Invalid UPI VPA format. Must contain "@" separator.',
+      );
     }
 
-    final suspiciousPrefixes = ['refund', 'cashback', 'reward', 'kbc', 'winner', 'support', 'lottery'];
+    final suspiciousPrefixes = [
+      'refund',
+      'cashback',
+      'reward',
+      'kbc',
+      'winner',
+      'support',
+      'lottery',
+    ];
     final isImpersonator = suspiciousPrefixes.any((p) => vpa.startsWith(p));
 
     return ToolResult.success({
       'vpa': vpa,
       'is_suspicious': isImpersonator,
-      'fraud_pattern': isImpersonator ? 'Deceptive reward/refund keyword impersonation' : 'Standard VPA structure',
+      'fraud_pattern': isImpersonator
+          ? 'Deceptive reward/refund keyword impersonation'
+          : 'Standard VPA structure',
       'warning': isImpersonator
           ? 'CRITICAL: Scammers use VPAs containing words like "refund" or "reward" to trick victims into paying.'
           : 'Normal payment address format. Remember: Entering UPI PIN always debits funds.',
@@ -186,24 +205,25 @@ class InspectAppPermissionsTool extends AgentTool {
 
   @override
   Map<String, dynamic> get parameterSchema => {
-        'type': 'object',
-        'properties': {
-          'package_name': {'type': 'string', 'description': 'Android package name'},
-          'permissions': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': 'List of requested Android permissions'
-          }
-        },
-        'required': ['permissions']
-      };
+    'type': 'object',
+    'properties': {
+      'package_name': {'type': 'string', 'description': 'Android package name'},
+      'permissions': {
+        'type': 'array',
+        'items': {'type': 'string'},
+        'description': 'List of requested Android permissions',
+      },
+    },
+    'required': ['permissions'],
+  };
 
   @override
   bool get requiresConfirmation => false; // Read-only
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args) async {
-    final permissions = (args['permissions'] as List?)?.map((p) => p.toString()).toList() ?? [];
+    final permissions =
+        (args['permissions'] as List?)?.map((p) => p.toString()).toList() ?? [];
     final packageName = args['package_name']?.toString() ?? 'unknown.package';
 
     final dangerousFlags = <String>[];
@@ -211,19 +231,27 @@ class InspectAppPermissionsTool extends AgentTool {
 
     for (final perm in permissions) {
       if (perm.contains('BIND_ACCESSIBILITY_SERVICE')) {
-        dangerousFlags.add('Accessibility Service Abuse: Can steal keystrokes and bypass 2FA');
+        dangerousFlags.add(
+          'Accessibility Service Abuse: Can steal keystrokes and bypass 2FA',
+        );
         threatScore += 50;
       }
       if (perm.contains('SYSTEM_ALERT_WINDOW')) {
-        dangerousFlags.add('Screen Overlay: Can draw fake phishing login screens over banking apps');
+        dangerousFlags.add(
+          'Screen Overlay: Can draw fake phishing login screens over banking apps',
+        );
         threatScore += 30;
       }
       if (perm.contains('RECEIVE_SMS') || perm.contains('READ_SMS')) {
-        dangerousFlags.add('SMS Interception: Capable of intercepting bank OTPs');
+        dangerousFlags.add(
+          'SMS Interception: Capable of intercepting bank OTPs',
+        );
         threatScore += 30;
       }
       if (perm.contains('REQUEST_INSTALL_PACKAGES')) {
-        dangerousFlags.add('Secondary Dropper: Can silently download and prompt secondary APK installation');
+        dangerousFlags.add(
+          'Secondary Dropper: Can silently download and prompt secondary APK installation',
+        );
         threatScore += 25;
       }
     }
@@ -236,7 +264,9 @@ class InspectAppPermissionsTool extends AgentTool {
       'is_suspicious': dangerousFlags.isNotEmpty,
       'is_trojan_candidate': isTrojanCandidate,
       'dangerous_flags': dangerousFlags,
-      'verdict': isTrojanCandidate ? 'DANGEROUS' : (dangerousFlags.isNotEmpty ? 'SUSPICIOUS' : 'SAFE'),
+      'verdict': isTrojanCandidate
+          ? 'DANGEROUS'
+          : (dangerousFlags.isNotEmpty ? 'SUSPICIOUS' : 'SAFE'),
     });
   }
 }
@@ -261,11 +291,15 @@ class ToolRegistry {
   AgentTool? getTool(String name) => _tools[name];
 
   List<Map<String, dynamic>> exportToolSchemas() {
-    return _tools.values.map((t) => {
-          'name': t.name,
-          'description': t.description,
-          'parameters': t.parameterSchema,
-          'requires_confirmation': t.requiresConfirmation,
-        }).toList();
+    return _tools.values
+        .map(
+          (t) => {
+            'name': t.name,
+            'description': t.description,
+            'parameters': t.parameterSchema,
+            'requires_confirmation': t.requiresConfirmation,
+          },
+        )
+        .toList();
   }
 }

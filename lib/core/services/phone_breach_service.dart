@@ -50,14 +50,14 @@ class ExposedDossierField {
   });
 
   Map<String, dynamic> toJson() => {
-        'fieldName': fieldName,
-        'icon': icon,
-        'category': category,
-        'exposureStatus': exposureStatus,
-        'threatDescription': threatDescription,
-        'isCompromised': isCompromised,
-        'severity': severity,
-      };
+    'fieldName': fieldName,
+    'icon': icon,
+    'category': category,
+    'exposureStatus': exposureStatus,
+    'threatDescription': threatDescription,
+    'isCompromised': isCompromised,
+    'severity': severity,
+  };
 }
 
 class LeakedIdentityDossier {
@@ -88,18 +88,18 @@ class LeakedIdentityDossier {
   });
 
   Map<String, dynamic> toJson() => {
-        'subscriberName': subscriberName,
-        'fatherName': fatherName,
-        'rawCafAddress': rawCafAddress,
-        'formattedAddress': formattedAddress,
-        'alternateNumber': alternateNumber,
-        'telecomCircle': telecomCircle,
-        'primaryCarrier': primaryCarrier,
-        'idProofToken': idProofToken,
-        'cafRetailerOrigin': cafRetailerOrigin,
-        'breachIncidentDate': breachIncidentDate,
-        'rawDumpSyntax': rawDumpSyntax,
-      };
+    'subscriberName': subscriberName,
+    'fatherName': fatherName,
+    'rawCafAddress': rawCafAddress,
+    'formattedAddress': formattedAddress,
+    'alternateNumber': alternateNumber,
+    'telecomCircle': telecomCircle,
+    'primaryCarrier': primaryCarrier,
+    'idProofToken': idProofToken,
+    'cafRetailerOrigin': cafRetailerOrigin,
+    'breachIncidentDate': breachIncidentDate,
+    'rawDumpSyntax': rawDumpSyntax,
+  };
 
   LeakedIdentityDossier copyWith({
     String? subscriberName,
@@ -207,7 +207,9 @@ class PhoneIntelligenceResult {
 }
 
 class PhoneBreachService {
-  static const MethodChannel _deviceChannel = MethodChannel('safesignal/device');
+  static const MethodChannel _deviceChannel = MethodChannel(
+    'safesignal/device',
+  );
 
   /// Reads active SIM hardware telemetry directly from the Android device
   static Future<Map<String, dynamic>> getDeviceActiveSim() async {
@@ -243,7 +245,8 @@ class PhoneBreachService {
       tenDigit = digitsOnly.substring(digitsOnly.length - 10);
     }
 
-    final isValid = tenDigit.length == 10 && RegExp(r'^[6-9]\d{9}$').hasMatch(tenDigit);
+    final isValid =
+        tenDigit.length == 10 && RegExp(r'^[6-9]\d{9}$').hasMatch(tenDigit);
     final formatted = isValid
         ? '+$countryCode ${tenDigit.substring(0, 5)} ${tenDigit.substring(5)}'
         : inputNumber.trim();
@@ -271,8 +274,11 @@ class PhoneBreachService {
     // 1. Resolve Telecom Circle and Carrier using DoT / TRAI series allocation tables
     final telecom = _resolveIndianTelecomSeries(tenDigit);
     final isOverridden = overrideCarrier != null && overrideCarrier.isNotEmpty;
-    final activeCarrier = isOverridden ? overrideCarrier : (telecom['carrier'] ?? 'Cellular');
-    final activeCircle = overrideCircle ?? (telecom['circle'] ?? 'Delhi NCR Circle');
+    final activeCarrier = isOverridden
+        ? overrideCarrier
+        : (telecom['carrier'] ?? 'Cellular');
+    final activeCircle =
+        overrideCircle ?? (telecom['circle'] ?? 'Delhi NCR Circle');
     final allocatedCarrier = telecom['carrier'] ?? 'Cellular';
 
     // 2. Discover Known Breaches & Compromised Datasets
@@ -293,15 +299,22 @@ class PhoneBreachService {
     if (leakedClasses.any((c) => c.toLowerCase().contains('password'))) {
       score += 25;
     }
-    if (leakedClasses.any((c) =>
-        c.toLowerCase().contains('address') ||
-        c.toLowerCase().contains('kyc') ||
-        c.toLowerCase().contains('father') ||
-        c.toLowerCase().contains('caf'))) {
+    if (leakedClasses.any(
+      (c) =>
+          c.toLowerCase().contains('address') ||
+          c.toLowerCase().contains('kyc') ||
+          c.toLowerCase().contains('father') ||
+          c.toLowerCase().contains('caf'),
+    )) {
       score += 25;
-      simSwapRisk = true; // Address + Father's Name allows social engineering SIM swap at telco stores
+      simSwapRisk =
+          true; // Address + Father's Name allows social engineering SIM swap at telco stores
     }
-    if (leakedClasses.any((c) => c.toLowerCase().contains('financial') || c.toLowerCase().contains('bank'))) {
+    if (leakedClasses.any(
+      (c) =>
+          c.toLowerCase().contains('financial') ||
+          c.toLowerCase().contains('bank'),
+    )) {
       score += 20;
     }
 
@@ -320,10 +333,18 @@ class PhoneBreachService {
     }
 
     // 4. Synthesize Granular Leaked Identity Dossier (Forensic CAF schema extracted by stacademy.in & dark-web aggregators)
-    final hasCaf = breaches.any((b) => b.title.contains('CAF') || b.title.contains('Telecom KYC'));
-    final hasOrder = breaches.any((b) => b.title.contains('Domino') || b.title.contains('BigBasket'));
-    final hasIspOrBsnl = breaches.any((b) => b.title.contains('BSNL') || b.title.contains('AirJaldi'));
-    final hasCallerId = breaches.any((b) => b.title.contains('Caller ID') || b.title.contains('Truecaller'));
+    final hasCaf = breaches.any(
+      (b) => b.title.contains('CAF') || b.title.contains('Telecom KYC'),
+    );
+    final hasOrder = breaches.any(
+      (b) => b.title.contains('Domino') || b.title.contains('BigBasket'),
+    );
+    final hasIspOrBsnl = breaches.any(
+      (b) => b.title.contains('BSNL') || b.title.contains('AirJaldi'),
+    );
+    final hasCallerId = breaches.any(
+      (b) => b.title.contains('Caller ID') || b.title.contains('Truecaller'),
+    );
 
     final dossier = _synthesizeLeakedDossier(
       tenDigit,
@@ -337,7 +358,9 @@ class PhoneBreachService {
         fieldName: 'Subscriber Legal Name',
         icon: '👤',
         category: 'Identity Record',
-        exposureStatus: hasCaf ? 'Compromised: Leaked in Retailer CAF Dumps' : 'Safe / Clean Record',
+        exposureStatus: hasCaf
+            ? 'Compromised: Leaked in Retailer CAF Dumps'
+            : 'Safe / Clean Record',
         threatDescription: hasCaf
             ? 'Customer Acquisition Form (CAF) records from this series were compromised at retail counters; enables targeted phishing and SIM impersonation.'
             : 'No verified public link found between subscriber legal name and this number.',
@@ -348,7 +371,9 @@ class PhoneBreachService {
         fieldName: "Father's / Guardian Name",
         icon: '👨',
         category: 'Telecom CAF (KYC)',
-        exposureStatus: hasCaf ? 'Compromised: High-Risk Digital Arrest Vector' : 'Safe / Not Exposed',
+        exposureStatus: hasCaf
+            ? 'Compromised: High-Risk Digital Arrest Vector'
+            : 'Safe / Not Exposed',
         threatDescription: hasCaf
             ? 'CBI/Police impersonators cite Father\'s Name in Digital Arrest scams to fake official authority; also used for SIM-swap authorization at telecom stores.'
             : 'Father\'s name not detected in dark-web CAF catalogs.',
@@ -359,7 +384,9 @@ class PhoneBreachService {
         fieldName: 'Residential Physical Address',
         icon: '📍',
         category: 'Geolocation & Delivery',
-        exposureStatus: hasCaf ? 'CAF Syntax: ${dossier.rawCafAddress}' : 'Safe / No Delivery Leaks',
+        exposureStatus: hasCaf
+            ? 'CAF Syntax: ${dossier.rawCafAddress}'
+            : 'Safe / No Delivery Leaks',
         threatDescription: hasCaf
             ? 'Full residential address (flat/house number, street, city & PIN code) accessible to commercial OSINT lookup tools for ₹10.'
             : 'No physical delivery or residential addresses leaked.',
@@ -370,7 +397,9 @@ class PhoneBreachService {
         fieldName: 'Alternate Contact Number',
         icon: '📱',
         category: 'Linked Contacts',
-        exposureStatus: hasCaf ? 'Exposed: Family Contacts at Risk' : 'Safe / Not Exposed',
+        exposureStatus: hasCaf
+            ? 'Exposed: Family Contacts at Risk'
+            : 'Safe / Not Exposed',
         threatDescription: hasCaf
             ? 'Emergency/family numbers harvested from activation records; extortionists call relatives if your primary number is unreachable.'
             : 'Alternate emergency contacts remain secure.',
@@ -381,7 +410,9 @@ class PhoneBreachService {
         fieldName: 'Govt ID / Aadhaar Reference',
         icon: '🆔',
         category: 'National Identity Proof',
-        exposureStatus: hasIspOrBsnl ? 'Compromised: Masked Identity Proof' : 'Safe / Protected',
+        exposureStatus: hasIspOrBsnl
+            ? 'Compromised: Masked Identity Proof'
+            : 'Safe / Protected',
         threatDescription: hasIspOrBsnl
             ? 'Masked government identity proof reference leaked; used to convince victims that scammers possess legitimate government records.'
             : 'Aadhaar and voter ID linkages are protected.',
@@ -392,8 +423,10 @@ class PhoneBreachService {
         fieldName: 'Carrier & Telecom Circle',
         icon: '📡',
         category: 'DoT Network Telemetry',
-        exposureStatus: 'Allocated: ${telecom['circle']} (${telecom['carrier']})',
-        threatDescription: 'Network operator and circle used to target regional language scripts and carrier-specific customer care loopholes.',
+        exposureStatus:
+            'Allocated: ${telecom['circle']} (${telecom['carrier']})',
+        threatDescription:
+            'Network operator and circle used to target regional language scripts and carrier-specific customer care loopholes.',
         isCompromised: false,
         severity: 'Safe',
       ),
@@ -428,20 +461,38 @@ class PhoneBreachService {
     // 5. Construct Actionable Defense Steps
     final steps = <String>[];
     if (simSwapRisk) {
-      steps.add('Enable Carrier SIM Lock PIN with ${telecom['carrier']} to block unauthorized SIM card swaps.');
-      steps.add('Lock your Aadhaar biometrics on the official UIDAI portal (myaadhaar.uidai.gov.in) to prevent rogue SIM activations in your name.');
-      steps.add('Switch your WhatsApp, Google, and Banking 2FA from SMS OTP to an Authenticator app (e.g. Google Authenticator / Bitwarden).');
+      steps.add(
+        'Enable Carrier SIM Lock PIN with ${telecom['carrier']} to block unauthorized SIM card swaps.',
+      );
+      steps.add(
+        'Lock your Aadhaar biometrics on the official UIDAI portal (myaadhaar.uidai.gov.in) to prevent rogue SIM activations in your name.',
+      );
+      steps.add(
+        'Switch your WhatsApp, Google, and Banking 2FA from SMS OTP to an Authenticator app (e.g. Google Authenticator / Bitwarden).',
+      );
     }
     if (leakedClasses.any((c) => c.toLowerCase().contains('password'))) {
-      steps.add('Update passwords on online accounts linked to this mobile number and terminate active web sessions.');
+      steps.add(
+        'Update passwords on online accounts linked to this mobile number and terminate active web sessions.',
+      );
     }
     if (breaches.isNotEmpty) {
-      steps.add('Activate TRAI DND: Send SMS "START 0" to 1909 to block unsolicited marketing calls and spam.');
-      steps.add('Beware of Digital Arrest / Police Impersonation scams: Scammers quoting your Father\'s name or address are reading from leaked telecom CAF data.');
-      steps.add('Never share one-time passcodes (OTPs) over phone calls, even if the caller quotes your father name or address.');
+      steps.add(
+        'Activate TRAI DND: Send SMS "START 0" to 1909 to block unsolicited marketing calls and spam.',
+      );
+      steps.add(
+        'Beware of Digital Arrest / Police Impersonation scams: Scammers quoting your Father\'s name or address are reading from leaked telecom CAF data.',
+      );
+      steps.add(
+        'Never share one-time passcodes (OTPs) over phone calls, even if the caller quotes your father name or address.',
+      );
     } else {
-      steps.add('No active dark-web breach exposures identified for this number.');
-      steps.add('Keep SMS preview disabled on your lock screen to protect incoming OTPs.');
+      steps.add(
+        'No active dark-web breach exposures identified for this number.',
+      );
+      steps.add(
+        'Keep SMS preview disabled on your lock screen to protect incoming OTPs.',
+      );
       steps.add('Never share OTPs or click unverified links received via SMS.');
     }
 
@@ -500,7 +551,8 @@ class PhoneBreachService {
 
     // 2. Update exposed profile telemetry items
     final updatedProfile = original.exposedProfile.map((field) {
-      if (field.fieldName.contains('Carrier') || field.category.contains('Telemetry')) {
+      if (field.fieldName.contains('Carrier') ||
+          field.category.contains('Telemetry')) {
         return ExposedDossierField(
           fieldName: field.fieldName,
           icon: field.icon,
@@ -567,7 +619,8 @@ class PhoneBreachService {
         : 'Clean Catalog (No Incidents)';
 
     // Real API Schema format matching what illicit aggregators query
-    final rawDump = '{\n'
+    final rawDump =
+        '{\n'
         '  "mobile": "$tenDigit",\n'
         '  "dot_allocation": "${carrier.toUpperCase()} ${circle.toUpperCase()}",\n'
         '  "threat_profile": "${isCafExposed ? 'HIGH_EXPOSURE_RISK' : 'CLEAN_RECORD'}",\n'
@@ -641,13 +694,13 @@ class PhoneBreachService {
     if (prefix4 == 9868 || prefix4 == 9968) {
       return {
         'carrier': 'MTNL Dolphin (Mahanagar Telephone Nigam Ltd)',
-        'circle': 'Delhi NCR Circle'
+        'circle': 'Delhi NCR Circle',
       };
     }
     if (prefix4 == 9869 || prefix4 == 9969) {
       return {
         'carrier': 'MTNL Dolphin (Mahanagar Telephone Nigam Ltd)',
-        'circle': 'Mumbai Metro Circle'
+        'circle': 'Mumbai Metro Circle',
       };
     }
 
@@ -712,7 +765,10 @@ class PhoneBreachService {
         prefix4 == 9881 ||
         prefix4 == 9921 ||
         prefix4 == 9922) {
-      return {'carrier': 'Vodafone Idea (Vi)', 'circle': 'Maharashtra & Goa Circle'};
+      return {
+        'carrier': 'Vodafone Idea (Vi)',
+        'circle': 'Maharashtra & Goa Circle',
+      };
     }
 
     // Gujarat (LSA 5)
@@ -740,14 +796,20 @@ class PhoneBreachService {
         prefix4 == 9959 ||
         prefix4 == 9963 ||
         prefix4 == 9989) {
-      return {'carrier': 'Bharti Airtel', 'circle': 'Andhra Pradesh & Telangana Circle'};
+      return {
+        'carrier': 'Bharti Airtel',
+        'circle': 'Andhra Pradesh & Telangana Circle',
+      };
     }
     if (prefix4 == 9848 ||
         prefix4 == 9885 ||
         prefix4 == 9948 ||
         prefix4 == 9966 ||
         prefix4 == 9985) {
-      return {'carrier': 'Vodafone Idea (Vi)', 'circle': 'Andhra Pradesh & Telangana Circle'};
+      return {
+        'carrier': 'Vodafone Idea (Vi)',
+        'circle': 'Andhra Pradesh & Telangana Circle',
+      };
     }
 
     // Karnataka / Bangalore (LSA 7)
@@ -773,7 +835,10 @@ class PhoneBreachService {
         prefix4 == 9944 ||
         prefix4 == 9965 ||
         prefix4 == 9994) {
-      return {'carrier': 'Bharti Airtel', 'circle': 'Tamil Nadu & Chennai Circle'};
+      return {
+        'carrier': 'Bharti Airtel',
+        'circle': 'Tamil Nadu & Chennai Circle',
+      };
     }
     if (prefix4 == 9841 ||
         prefix4 == 9842 ||
@@ -783,11 +848,17 @@ class PhoneBreachService {
         prefix4 == 9942 ||
         prefix4 == 9943 ||
         prefix4 == 9962) {
-      return {'carrier': 'Vodafone Idea (Vi)', 'circle': 'Tamil Nadu & Chennai Circle'};
+      return {
+        'carrier': 'Vodafone Idea (Vi)',
+        'circle': 'Tamil Nadu & Chennai Circle',
+      };
     }
 
     // Kerala (LSA 10)
-    if (prefix4 == 9847 || prefix4 == 9895 || prefix4 == 9947 || prefix4 == 9995) {
+    if (prefix4 == 9847 ||
+        prefix4 == 9895 ||
+        prefix4 == 9947 ||
+        prefix4 == 9995) {
       return {'carrier': 'Bharti Airtel', 'circle': 'Kerala Circle'};
     }
     if (prefix4 == 9846 || prefix4 == 9946 || prefix4 == 9961) {
@@ -795,7 +866,10 @@ class PhoneBreachService {
     }
 
     // Punjab (LSA 11)
-    if (prefix4 == 9814 || prefix4 == 9872 || prefix4 == 9876 || prefix4 == 9914) {
+    if (prefix4 == 9814 ||
+        prefix4 == 9872 ||
+        prefix4 == 9876 ||
+        prefix4 == 9914) {
       return {'carrier': 'Bharti Airtel', 'circle': 'Punjab Circle'};
     }
     if (prefix4 == 9815 ||
@@ -816,26 +890,44 @@ class PhoneBreachService {
     }
 
     // Uttar Pradesh (East) (LSA 13)
-    if (prefix4 == 9838 || prefix4 == 9935 || prefix4 == 9936 || prefix4 == 9956) {
-      return {'carrier': 'Bharti Airtel', 'circle': 'Uttar Pradesh (East) Circle'};
+    if (prefix4 == 9838 ||
+        prefix4 == 9935 ||
+        prefix4 == 9936 ||
+        prefix4 == 9956) {
+      return {
+        'carrier': 'Bharti Airtel',
+        'circle': 'Uttar Pradesh (East) Circle',
+      };
     }
     if (prefix4 == 9839 || prefix4 == 9918 || prefix4 == 9919) {
-      return {'carrier': 'Vodafone Idea (Vi)', 'circle': 'Uttar Pradesh (East) Circle'};
+      return {
+        'carrier': 'Vodafone Idea (Vi)',
+        'circle': 'Uttar Pradesh (East) Circle',
+      };
     }
 
     // Uttar Pradesh (West) & Uttarakhand (LSA 14)
     if (prefix4 == 9897 || prefix4 == 9997) {
-      return {'carrier': 'Bharti Airtel', 'circle': 'Uttar Pradesh (West) & Uttarakhand Circle'};
+      return {
+        'carrier': 'Bharti Airtel',
+        'circle': 'Uttar Pradesh (West) & Uttarakhand Circle',
+      };
     }
     if (prefix4 == 9837 || prefix4 == 9917 || prefix4 == 9927) {
-      return {'carrier': 'Vodafone Idea (Vi)', 'circle': 'Uttar Pradesh (West) & Uttarakhand Circle'};
+      return {
+        'carrier': 'Vodafone Idea (Vi)',
+        'circle': 'Uttar Pradesh (West) & Uttarakhand Circle',
+      };
     }
 
     // Rajasthan (LSA 15)
     if (prefix4 == 9829 || prefix4 == 9928 || prefix4 == 9929) {
       return {'carrier': 'Bharti Airtel', 'circle': 'Rajasthan Circle'};
     }
-    if (prefix4 == 9828 || prefix4 == 9887 || prefix4 == 9982 || prefix4 == 9983) {
+    if (prefix4 == 9828 ||
+        prefix4 == 9887 ||
+        prefix4 == 9982 ||
+        prefix4 == 9983) {
       return {'carrier': 'Vodafone Idea (Vi)', 'circle': 'Rajasthan Circle'};
     }
 
@@ -845,13 +937,22 @@ class PhoneBreachService {
         prefix4 == 9977 ||
         prefix4 == 9981 ||
         prefix4 == 9993) {
-      return {'carrier': 'Bharti Airtel', 'circle': 'Madhya Pradesh & Chhattisgarh Circle'};
+      return {
+        'carrier': 'Bharti Airtel',
+        'circle': 'Madhya Pradesh & Chhattisgarh Circle',
+      };
     }
     if (prefix4 == 9827) {
-      return {'carrier': 'Reliance Jio Infocomm', 'circle': 'Madhya Pradesh & Chhattisgarh Circle'};
+      return {
+        'carrier': 'Reliance Jio Infocomm',
+        'circle': 'Madhya Pradesh & Chhattisgarh Circle',
+      };
     }
     if (prefix4 == 9907 || prefix4 == 9926) {
-      return {'carrier': 'Vodafone Idea (Vi)', 'circle': 'Madhya Pradesh & Chhattisgarh Circle'};
+      return {
+        'carrier': 'Vodafone Idea (Vi)',
+        'circle': 'Madhya Pradesh & Chhattisgarh Circle',
+      };
     }
 
     // West Bengal & Odisha (LSA 17 & 18)
@@ -867,21 +968,33 @@ class PhoneBreachService {
 
     // Bihar & Jharkhand (LSA 19)
     if (prefix4 == 9835 || prefix4 == 9852) {
-      return {'carrier': 'Reliance Jio Infocomm', 'circle': 'Bihar & Jharkhand Circle'};
+      return {
+        'carrier': 'Reliance Jio Infocomm',
+        'circle': 'Bihar & Jharkhand Circle',
+      };
     }
-    if (prefix4 == 9931 || prefix4 == 9934 || prefix4 == 9939 || prefix4 == 9955) {
+    if (prefix4 == 9931 ||
+        prefix4 == 9934 ||
+        prefix4 == 9939 ||
+        prefix4 == 9955) {
       return {'carrier': 'Bharti Airtel', 'circle': 'Bihar & Jharkhand Circle'};
     }
 
     // Assam & North East (LSA 20 & 21)
     if (prefix4 == 9854 || prefix4 == 9856 || prefix4 == 9862) {
-      return {'carrier': 'Bharti Airtel', 'circle': 'Assam & North East Circle'};
+      return {
+        'carrier': 'Bharti Airtel',
+        'circle': 'Assam & North East Circle',
+      };
     }
     if (prefix4 == 9859) {
       return {'carrier': 'Vodafone Idea (Vi)', 'circle': 'Assam Circle'};
     }
     if (prefix4 == 9863) {
-      return {'carrier': 'BSNL Mobile (Bharat Sanchar Nigam Ltd)', 'circle': 'North East Circle'};
+      return {
+        'carrier': 'BSNL Mobile (Bharat Sanchar Nigam Ltd)',
+        'circle': 'North East Circle',
+      };
     }
 
     // 3. High-Precision 4G/5G Allotted Series (6xxx, 7xxx, 8xxx, 9xxx)
@@ -1013,7 +1126,8 @@ class PhoneBreachService {
     // 8xxx series - 80 to 89
     if (prefix2 >= 80 && prefix2 <= 89) {
       // High-precision Jio blocks in 8xxx
-      final isJio8Series = (prefix2 == 82 || prefix2 == 83 || prefix2 == 87 || prefix2 == 89) ||
+      final isJio8Series =
+          (prefix2 == 82 || prefix2 == 83 || prefix2 == 87 || prefix2 == 89) ||
           (prefix4 == 8080 ||
               prefix4 == 8097 ||
               prefix4 == 8104 ||
@@ -1050,7 +1164,11 @@ class PhoneBreachService {
           circle = 'Delhi NCR Circle';
         } else if (prefix3 >= 890 && prefix3 <= 894) {
           circle = 'Uttar Pradesh (West) Circle';
-        } else if (prefix4 == 8080 || prefix4 == 8097 || prefix4 == 8104 || prefix4 == 8108 || prefix4 == 8169) {
+        } else if (prefix4 == 8080 ||
+            prefix4 == 8097 ||
+            prefix4 == 8104 ||
+            prefix4 == 8108 ||
+            prefix4 == 8169) {
           circle = 'Mumbai Metro Circle';
         } else {
           circle = 'Delhi NCR Circle';
@@ -1069,7 +1187,9 @@ class PhoneBreachService {
           carrier = 'Bharti Airtel';
           circle = prefix3 == 805
               ? 'Karnataka Circle'
-              : (prefix3 == 801 ? 'Delhi NCR Circle' : 'Bihar & Jharkhand Circle');
+              : (prefix3 == 801
+                    ? 'Delhi NCR Circle'
+                    : 'Bihar & Jharkhand Circle');
         }
       } else if (prefix2 == 81) {
         if (prefix3 == 810) {
@@ -1124,11 +1244,19 @@ class PhoneBreachService {
     // 90xx, 95xx, 96xx series
     if (prefix2 == 90 || prefix2 == 95 || prefix2 == 96) {
       // Check Jio series in 95xx / 96xx
-      if (prefix4 == 9540 || prefix4 == 9560 || prefix4 == 9582 || prefix4 == 9599 ||
-          prefix4 == 9619 || prefix4 == 9625 || prefix4 == 9643 || prefix4 == 9650) {
+      if (prefix4 == 9540 ||
+          prefix4 == 9560 ||
+          prefix4 == 9582 ||
+          prefix4 == 9599 ||
+          prefix4 == 9619 ||
+          prefix4 == 9625 ||
+          prefix4 == 9643 ||
+          prefix4 == 9650) {
         return {
           'carrier': 'Reliance Jio Infocomm',
-          'circle': (prefix4 == 9619 ? 'Mumbai Metro Circle' : 'Delhi NCR Circle'),
+          'circle': (prefix4 == 9619
+              ? 'Mumbai Metro Circle'
+              : 'Delhi NCR Circle'),
         };
       }
 
@@ -1166,7 +1294,10 @@ class PhoneBreachService {
 
     // 97xx series
     if (prefix2 == 97) {
-      if (prefix3 >= 977 || prefix4 == 9711 || prefix4 == 9717 || prefix4 == 9718) {
+      if (prefix3 >= 977 ||
+          prefix4 == 9711 ||
+          prefix4 == 9717 ||
+          prefix4 == 9718) {
         carrier = 'Reliance Jio Infocomm';
         circle = prefix3 >= 977
             ? 'Madhya Pradesh & Chhattisgarh Circle'
@@ -1184,30 +1315,60 @@ class PhoneBreachService {
     // Default fallback by primary digit block
     final prefix1 = int.tryParse(tenDigit.substring(0, 1)) ?? 0;
     if (prefix1 == 6) {
-      return {'carrier': 'Reliance Jio Infocomm', 'circle': circle.isNotEmpty ? circle : 'Pan-India 4G/5G Circle'};
+      return {
+        'carrier': 'Reliance Jio Infocomm',
+        'circle': circle.isNotEmpty ? circle : 'Pan-India 4G/5G Circle',
+      };
     } else if (prefix1 == 7) {
       if (prefix2 == 70 || prefix2 == 79) {
-        return {'carrier': 'Reliance Jio Infocomm', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+        return {
+          'carrier': 'Reliance Jio Infocomm',
+          'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle',
+        };
       } else if (prefix2 == 72 || prefix2 == 74 || prefix2 == 77) {
-        return {'carrier': 'Vodafone Idea (Vi)', 'circle': circle.isNotEmpty ? circle : 'Maharashtra & Goa Circle'};
+        return {
+          'carrier': 'Vodafone Idea (Vi)',
+          'circle': circle.isNotEmpty ? circle : 'Maharashtra & Goa Circle',
+        };
       } else {
-        return {'carrier': 'Bharti Airtel', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+        return {
+          'carrier': 'Bharti Airtel',
+          'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle',
+        };
       }
     } else if (prefix1 == 8) {
       if (prefix2 == 82 || prefix2 == 83 || prefix2 == 87 || prefix2 == 89) {
-        return {'carrier': 'Reliance Jio Infocomm', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+        return {
+          'carrier': 'Reliance Jio Infocomm',
+          'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle',
+        };
       } else if (prefix2 == 84 || prefix2 == 85 || prefix2 == 86) {
-        return {'carrier': 'Vodafone Idea (Vi)', 'circle': circle.isNotEmpty ? circle : 'Mumbai Metro Circle'};
+        return {
+          'carrier': 'Vodafone Idea (Vi)',
+          'circle': circle.isNotEmpty ? circle : 'Mumbai Metro Circle',
+        };
       } else {
-        return {'carrier': 'Bharti Airtel', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+        return {
+          'carrier': 'Bharti Airtel',
+          'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle',
+        };
       }
     } else if (prefix1 == 9) {
       if (prefix2 == 92 || prefix2 == 93) {
-        return {'carrier': 'Reliance Jio Infocomm', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+        return {
+          'carrier': 'Reliance Jio Infocomm',
+          'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle',
+        };
       } else if (prefix2 == 94) {
-        return {'carrier': 'BSNL Mobile (Bharat Sanchar Nigam Ltd)', 'circle': 'BSNL Pan-India Circle'};
+        return {
+          'carrier': 'BSNL Mobile (Bharat Sanchar Nigam Ltd)',
+          'circle': 'BSNL Pan-India Circle',
+        };
       } else if (prefix2 == 91) {
-        return {'carrier': 'Vodafone Idea (Vi)', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+        return {
+          'carrier': 'Vodafone Idea (Vi)',
+          'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle',
+        };
       }
     }
 
@@ -1216,7 +1377,9 @@ class PhoneBreachService {
 
   /// Correlates breaches for the phone number across major verified cyber incidents
   Future<List<PhoneBreachInfo>> _correlateBreaches(
-      String tenDigit, String carrier) async {
+    String tenDigit,
+    String carrier,
+  ) async {
     final List<PhoneBreachInfo> matched = [];
 
     final prefix2 = int.tryParse(tenDigit.substring(0, 2)) ?? 0;
@@ -1224,7 +1387,15 @@ class PhoneBreachService {
 
     // 1. Indian Telecom KYC / CAF Scraped Dump (stacademy index)
     // Historical series registered at physical retail counters and indexed by dark-web aggregators
-    final isHistoricCafSeries = prefix2 == 98 || prefix2 == 94 || prefix2 == 99 || prefix2 == 97 || prefix2 == 88 || prefix2 == 91 || prefix2 == 90 || prefix2 == 96;
+    final isHistoricCafSeries =
+        prefix2 == 98 ||
+        prefix2 == 94 ||
+        prefix2 == 99 ||
+        prefix2 == 97 ||
+        prefix2 == 88 ||
+        prefix2 == 91 ||
+        prefix2 == 90 ||
+        prefix2 == 96;
     if (isHistoricCafSeries) {
       matched.add(
         const PhoneBreachInfo(
@@ -1239,7 +1410,7 @@ class PhoneBreachService {
             'Father\'s Name',
             'Physical Residential Address',
             'Alternate Contact Number',
-            'Telecom Circle Details'
+            'Telecom Circle Details',
           ],
           severity: 'Critical',
           logoPath: 'https://xposedornot.com/static/logos/Telecom.png',
@@ -1260,7 +1431,7 @@ class PhoneBreachService {
             'Caller ID Full Name',
             'Original Operator',
             'Circle',
-            'Gender'
+            'Gender',
           ],
           severity: 'Medium',
           logoPath: 'https://xposedornot.com/static/logos/Truecaller.png',
@@ -1284,7 +1455,7 @@ class PhoneBreachService {
             'Delivery addresses',
             'GPS Coordinates',
             'Order details',
-            'Total spend'
+            'Total spend',
           ],
           severity: 'High',
           logoPath: 'https://xposedornot.com/static/logos/Dominos.png',
@@ -1305,7 +1476,7 @@ class PhoneBreachService {
             'Masked Bank Account Numbers',
             'Payment Transaction Logs',
             'Merchant IDs',
-            'KYC Verification Status'
+            'KYC Verification Status',
           ],
           severity: 'Critical',
           logoPath: 'https://xposedornot.com/static/logos/Mobikwik.png',
@@ -1328,7 +1499,7 @@ class PhoneBreachService {
               'Facebook Profile IDs',
               'Full Names',
               'Gender',
-              'Account Creation Date'
+              'Account Creation Date',
             ],
             severity: 'High',
             logoPath: 'https://xposedornot.com/static/logos/Facebook.png',
@@ -1339,7 +1510,10 @@ class PhoneBreachService {
     }
 
     // 5. BigBasket Consumer Leak (20 Million Records)
-    if (isHistoricCafSeries || prefix2 == 70 || prefix2 == 80 || prefix2 == 93) {
+    if (isHistoricCafSeries ||
+        prefix2 == 70 ||
+        prefix2 == 80 ||
+        prefix2 == 93) {
       matched.add(
         const PhoneBreachInfo(
           title: 'BigBasket E-Commerce Breach (20M Records)',
@@ -1353,7 +1527,7 @@ class PhoneBreachService {
             'Email addresses',
             'Password hashes',
             'Physical addresses',
-            'Dates of birth'
+            'Dates of birth',
           ],
           severity: 'High',
           logoPath: 'https://xposedornot.com/static/logos/BigBasket.png',
@@ -1364,7 +1538,14 @@ class PhoneBreachService {
 
     // 6. BSNL Telecom Database Breach (2024 - 2.78 Million Records)
     // Strictly limited to BSNL / MTNL mobile series (94xx, 9868, 9869, 9968, 9969)
-    final isBsnlSeries = carrier.contains('BSNL') || carrier.contains('MTNL') || prefix2 == 94 || prefix4 == 9868 || prefix4 == 9869 || prefix4 == 9968 || prefix4 == 9969;
+    final isBsnlSeries =
+        carrier.contains('BSNL') ||
+        carrier.contains('MTNL') ||
+        prefix2 == 94 ||
+        prefix4 == 9868 ||
+        prefix4 == 9869 ||
+        prefix4 == 9968 ||
+        prefix4 == 9969;
     if (isBsnlSeries) {
       matched.add(
         const PhoneBreachInfo(
@@ -1378,7 +1559,7 @@ class PhoneBreachService {
             'Subscriber Full Name',
             'IMSI / SIM Serial Number',
             'Billing Address',
-            'Circle Code'
+            'Circle Code',
           ],
           severity: 'Critical',
           logoPath: 'https://xposedornot.com/static/logos/Telecom.png',

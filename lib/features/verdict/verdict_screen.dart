@@ -20,14 +20,14 @@ class VerdictScreen extends StatelessWidget {
       verdictTitle = isScam
           ? 'SCAM HAI! 🛑'
           : isSafe
-              ? 'SAFE HAI ✅'
-              : 'SAVDHAN RAHO ⚠️';
+          ? 'SAFE HAI ✅'
+          : 'SAVDHAN RAHO ⚠️';
     } else {
       verdictTitle = isScam
           ? 'IT\'S A SCAM! 🛑'
           : isSafe
-              ? 'LOOKS SAFE ✅'
-              : 'BE CAREFUL ⚠️';
+          ? 'LOOKS SAFE ✅'
+          : 'BE CAREFUL ⚠️';
     }
 
     final bg = isDark ? const Color(0xFF060A12) : Colors.white;
@@ -69,7 +69,10 @@ class VerdictScreen extends StatelessWidget {
                           AppTheme.verdictEmoji(verdict.verdict),
                           style: const TextStyle(fontSize: 52),
                         ),
-                      ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+                      ).animate().scale(
+                        duration: 500.ms,
+                        curve: Curves.elasticOut,
+                      ),
                       const SizedBox(height: 14),
                       Text(
                         verdictTitle,
@@ -83,7 +86,10 @@ class VerdictScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       // Confidence indicator
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
@@ -138,7 +144,9 @@ class VerdictScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF241C10) : const Color(0xFFFFFDF5),
+                        color: isDark
+                            ? const Color(0xFF241C10)
+                            : const Color(0xFFFFFDF5),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: const Color(0xFFFFB300).withValues(alpha: 0.3),
@@ -154,7 +162,9 @@ class VerdictScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  verdict.language == 'hi' ? 'SECURITY ALERT' : 'SECURITY ALERT',
+                                  verdict.language == 'hi'
+                                      ? 'SECURITY ALERT'
+                                      : 'SECURITY ALERT',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w900,
                                     fontSize: 11,
@@ -168,7 +178,9 @@ class VerdictScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: isDark ? Colors.white.withValues(alpha: 0.87) : Colors.black.withValues(alpha: 0.87),
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.87)
+                                        : Colors.black.withValues(alpha: 0.87),
                                   ),
                                 ),
                               ],
@@ -188,7 +200,13 @@ class VerdictScreen extends StatelessWidget {
                     isDark: isDark,
                     child: Column(
                       children: verdict.why
-                          .map((w) => _BulletItem(text: w, color: color, isDark: isDark))
+                          .map(
+                            (w) => _BulletItem(
+                              text: w,
+                              color: color,
+                              isDark: isDark,
+                            ),
+                          )
                           .toList(),
                     ),
                   ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.05),
@@ -197,13 +215,22 @@ class VerdictScreen extends StatelessWidget {
 
                   // WHAT TO DO section
                   _SectionCard(
-                    title: verdict.language == 'hi' ? 'AB KYA KARO? / WHAT TO DO?' : 'ACTION STEPS',
+                    title: verdict.language == 'hi'
+                        ? 'AB KYA KARO? / WHAT TO DO?'
+                        : 'ACTION STEPS',
                     icon: Icons.checklist_rounded,
                     color: color,
                     isDark: isDark,
                     child: Column(
                       children: verdict.whatToDo
-                          .map((w) => _BulletItem(text: w, color: color, isTick: true, isDark: isDark))
+                          .map(
+                            (w) => _BulletItem(
+                              text: w,
+                              color: color,
+                              isTick: true,
+                              isDark: isDark,
+                            ),
+                          )
                           .toList(),
                     ),
                   ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.05),
@@ -212,7 +239,9 @@ class VerdictScreen extends StatelessWidget {
 
                   // Feedback section
                   Text(
-                    verdict.language == 'hi' ? 'Kya yeh verdict sahi tha?' : 'Was this verdict helpful?',
+                    verdict.language == 'hi'
+                        ? 'Kya yeh verdict sahi tha?'
+                        : 'Was this verdict helpful?',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
@@ -226,13 +255,23 @@ class VerdictScreen extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => _sendFeedback(context, true),
-                          icon: const Icon(Icons.thumb_up_alt_outlined, size: 18),
-                          label: Text(verdict.language == 'hi' ? 'Sahi Tha' : 'Helpful'),
+                          icon: const Icon(
+                            Icons.thumb_up_alt_outlined,
+                            size: 18,
+                          ),
+                          label: Text(
+                            verdict.language == 'hi' ? 'Sahi Tha' : 'Helpful',
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppTheme.safeGreen,
-                            side: const BorderSide(color: AppTheme.safeGreen, width: 1.5),
+                            side: const BorderSide(
+                              color: AppTheme.safeGreen,
+                              width: 1.5,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
                         ),
                       ),
@@ -240,13 +279,25 @@ class VerdictScreen extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => _sendFeedback(context, false),
-                          icon: const Icon(Icons.thumb_down_alt_outlined, size: 18),
-                          label: Text(verdict.language == 'hi' ? 'Galat Tha' : 'Incorrect'),
+                          icon: const Icon(
+                            Icons.thumb_down_alt_outlined,
+                            size: 18,
+                          ),
+                          label: Text(
+                            verdict.language == 'hi'
+                                ? 'Galat Tha'
+                                : 'Incorrect',
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppTheme.scamRed,
-                            side: const BorderSide(color: AppTheme.scamRed, width: 1.5),
+                            side: const BorderSide(
+                              color: AppTheme.scamRed,
+                              width: 1.5,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
                         ),
                       ),
@@ -275,7 +326,11 @@ class VerdictScreen extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.share_outlined, color: Colors.white, size: 18),
+                          const Icon(
+                            Icons.share_outlined,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             verdict.language == 'hi'
@@ -298,10 +353,14 @@ class VerdictScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF0F1724) : const Color(0xFFF8FAFC),
+                      color: isDark
+                          ? const Color(0xFF0F1724)
+                          : const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isDark ? const Color(0xFF202A3C) : const Color(0xFFEDF2F7),
+                        color: isDark
+                            ? const Color(0xFF202A3C)
+                            : const Color(0xFFEDF2F7),
                         width: 1,
                       ),
                     ),
@@ -321,7 +380,11 @@ class VerdictScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.phone_in_talk, color: Color(0xFFEF5350), size: 16),
+                            const Icon(
+                              Icons.phone_in_talk,
+                              color: Color(0xFFEF5350),
+                              size: 16,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               verdict.language == 'hi'
@@ -352,8 +415,12 @@ class VerdictScreen extends StatelessWidget {
       SnackBar(
         content: Text(
           verdict.language == 'hi'
-              ? (correct ? 'Shukriya! Feedback mila ✓' : 'Shukriya! Hum sudhar karenge.')
-              : (correct ? 'Thank you for your feedback! ✓' : 'Thank you! We will improve.'),
+              ? (correct
+                    ? 'Shukriya! Feedback mila ✓'
+                    : 'Shukriya! Hum sudhar karenge.')
+              : (correct
+                    ? 'Thank you for your feedback! ✓'
+                    : 'Thank you! We will improve.'),
         ),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -406,7 +473,7 @@ class _SectionCard extends StatelessWidget {
             color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.03),
             blurRadius: 16,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -438,10 +505,7 @@ class _SectionCard extends StatelessWidget {
             ),
           ),
           const Divider(height: 1, color: Colors.black12),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: child,
-          ),
+          Padding(padding: const EdgeInsets.all(20), child: child),
         ],
       ),
     );

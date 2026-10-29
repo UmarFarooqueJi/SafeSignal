@@ -18,9 +18,9 @@ import '../services/local_rule_engine.dart';
 
 /// Target small language model architecture profiles evaluated for mobile execution
 enum ModelArchitecture {
-  qwen2_5_0_5b,   // Qwen2.5-0.5B-Instruct (GGUF Q4_K_M ~350MB, RAM ~650MB) - Primary Recommended
-  smollm2_360m,   // SmolLM2-360M-Instruct (GGUF Q4_K_M ~230MB, RAM ~450MB) - Ultra-Lightweight
-  llama_3_2_1b,   // Llama-3.2-1B-Instruct (GGUF Q4_K_M ~750MB, RAM ~1200MB) - Upper Ceiling
+  qwen2_5_0_5b, // Qwen2.5-0.5B-Instruct (GGUF Q4_K_M ~350MB, RAM ~650MB) - Primary Recommended
+  smollm2_360m, // SmolLM2-360M-Instruct (GGUF Q4_K_M ~230MB, RAM ~450MB) - Ultra-Lightweight
+  llama_3_2_1b, // Llama-3.2-1B-Instruct (GGUF Q4_K_M ~750MB, RAM ~1200MB) - Upper Ceiling
   ruleEngineFallback, // Deterministic offline heuristic engine (0MB weight, ~10MB RAM)
 }
 
@@ -48,21 +48,22 @@ class DeviceHardwareProfile {
     this.totalRamMb = 4096, // 4GB standard mobile tier
     this.maxModelRamBudgetMb = 1024, // 25% max budget to prevent LMK thrashing
     this.availableCpuCores = 8, // Octa-core CPU profile
-    this.recommendedThreads = 2, // 2 threads to prevent UI jank & thermal throttling
+    this.recommendedThreads =
+        2, // 2 threads to prevent UI jank & thermal throttling
     this.hasNpuAcceleration = false,
     this.deviceModel = 'Realme RMX3268',
     this.osVersion = 'Android 11 (API 30)',
   });
 
   Map<String, dynamic> toJson() => {
-        'total_ram_mb': totalRamMb,
-        'max_model_ram_budget_mb': maxModelRamBudgetMb,
-        'available_cpu_cores': availableCpuCores,
-        'recommended_threads': recommendedThreads,
-        'has_npu_acceleration': hasNpuAcceleration,
-        'device_model': deviceModel,
-        'os_version': osVersion,
-      };
+    'total_ram_mb': totalRamMb,
+    'max_model_ram_budget_mb': maxModelRamBudgetMb,
+    'available_cpu_cores': availableCpuCores,
+    'recommended_threads': recommendedThreads,
+    'has_npu_acceleration': hasNpuAcceleration,
+    'device_model': deviceModel,
+    'os_version': osVersion,
+  };
 }
 
 /// Configuration settings for local model execution
@@ -109,21 +110,22 @@ class OnDeviceInferenceResult {
   });
 
   Map<String, dynamic> toJson() => {
-        'success': success,
-        'output_text': outputText,
-        'structured_json': structuredJson,
-        'architecture_used': architectureUsed.name,
-        'prompt_tokens': promptTokens,
-        'completion_tokens': completionTokens,
-        'inference_latency_ms': inferenceLatency.inMilliseconds,
-        'used_deterministic_fallback': usedDeterministicFallback,
-        if (error != null) 'error': error,
-      };
+    'success': success,
+    'output_text': outputText,
+    'structured_json': structuredJson,
+    'architecture_used': architectureUsed.name,
+    'prompt_tokens': promptTokens,
+    'completion_tokens': completionTokens,
+    'inference_latency_ms': inferenceLatency.inMilliseconds,
+    'used_deterministic_fallback': usedDeterministicFallback,
+    if (error != null) 'error': error,
+  };
 }
 
 /// Production on-device SLM inference engine with deterministic fallback
 class OnDeviceInferenceEngine {
-  static final OnDeviceInferenceEngine _instance = OnDeviceInferenceEngine._internal();
+  static final OnDeviceInferenceEngine _instance =
+      OnDeviceInferenceEngine._internal();
   factory OnDeviceInferenceEngine() => _instance;
   OnDeviceInferenceEngine._internal();
 
@@ -168,8 +170,11 @@ class OnDeviceInferenceEngine {
 
     try {
       // Memory check: reject models exceeding hardware budget on 4GB device
-      if (architecture == ModelArchitecture.llama_3_2_1b && _hardwareProfile.totalRamMb <= 3072) {
-        debugPrint('[Inference] Insufficient RAM for Llama-3.2-1B. Falling back to rule engine.');
+      if (architecture == ModelArchitecture.llama_3_2_1b &&
+          _hardwareProfile.totalRamMb <= 3072) {
+        debugPrint(
+          '[Inference] Insufficient RAM for Llama-3.2-1B. Falling back to rule engine.',
+        );
         _state = ModelInferenceState.fallbackRuleEngine;
         _activeArchitecture = ModelArchitecture.ruleEngineFallback;
         return false;
@@ -180,7 +185,9 @@ class OnDeviceInferenceEngine {
         final fileSizeMb = fileSize / (1024 * 1024);
 
         if (fileSizeMb > _hardwareProfile.maxModelRamBudgetMb) {
-          debugPrint('[Inference] Model file ($fileSizeMb MB) exceeds RAM budget (${_hardwareProfile.maxModelRamBudgetMb} MB).');
+          debugPrint(
+            '[Inference] Model file ($fileSizeMb MB) exceeds RAM budget (${_hardwareProfile.maxModelRamBudgetMb} MB).',
+          );
           _state = ModelInferenceState.fallbackRuleEngine;
           _activeArchitecture = ModelArchitecture.ruleEngineFallback;
           return false;
@@ -188,12 +195,16 @@ class OnDeviceInferenceEngine {
 
         _loadedModelPath = modelFilePath;
         _state = ModelInferenceState.ready;
-        debugPrint('[Inference] On-device model initialized from $modelFilePath.');
+        debugPrint(
+          '[Inference] On-device model initialized from $modelFilePath.',
+        );
         return true;
       }
 
       // No model weights on disk: seamlessly use deterministic rule engine
-      debugPrint('[Inference] No local GGUF weights on disk. Operating in deterministic rule engine mode.');
+      debugPrint(
+        '[Inference] No local GGUF weights on disk. Operating in deterministic rule engine mode.',
+      );
       _state = ModelInferenceState.fallbackRuleEngine;
       _activeArchitecture = ModelArchitecture.ruleEngineFallback;
       return true;
@@ -243,12 +254,17 @@ class OnDeviceInferenceEngine {
           usedDeterministicFallback: false,
         );
       } catch (e) {
-        debugPrint('[Inference] Native inference failed: $e. Falling back to deterministic engine.');
+        debugPrint(
+          '[Inference] Native inference failed: $e. Falling back to deterministic engine.',
+        );
       }
     }
 
     // Deterministic Rule Engine Fallback (Instant, Offline, 100% Privacy)
-    final fallbackVerdict = _ruleEngine.analyze(prompt, type: taskType ?? 'sms');
+    final fallbackVerdict = _ruleEngine.analyze(
+      prompt,
+      type: taskType ?? 'sms',
+    );
     stopwatch.stop();
 
     final fallbackOutput = jsonEncode({

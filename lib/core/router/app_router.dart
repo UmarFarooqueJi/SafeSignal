@@ -30,7 +30,6 @@ import '../../features/history/history_screen.dart';
 import '../../data/models/verdict_model.dart';
 import '../services/link_guard_service.dart';
 
-
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 bool _isLinkGuardSubscribed = false;
 
@@ -51,23 +50,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final loc = state.uri.toString();
       final scheme = state.uri.scheme.toLowerCase();
-      if (scheme == 'http' || scheme == 'https' || loc.startsWith('http://') || loc.startsWith('https://')) {
+      if (scheme == 'http' ||
+          scheme == 'https' ||
+          loc.startsWith('http://') ||
+          loc.startsWith('https://')) {
         return '/url-scanner?url=${Uri.encodeComponent(loc)}';
       }
       return null;
     },
     errorBuilder: (context, state) {
       final loc = state.uri.toString();
-      if (loc.startsWith('http://') || loc.startsWith('https://') || state.uri.hasScheme) {
+      if (loc.startsWith('http://') ||
+          loc.startsWith('https://') ||
+          state.uri.hasScheme) {
         return UrlScannerScreen(initialUrl: loc);
       }
       return const HomeScreen();
     },
     routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const HomeScreen(),
-      ),
+      GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashRedirectScreen(),
@@ -97,14 +98,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/url-scanner',
         builder: (context, state) {
-          final initialUrl = state.extra as String? ?? state.uri.queryParameters['url'];
+          final initialUrl =
+              state.extra as String? ?? state.uri.queryParameters['url'];
           return UrlScannerScreen(initialUrl: initialUrl);
         },
       ),
       GoRoute(
         path: '/in-app-browser',
         builder: (context, state) {
-          final url = state.extra as String? ?? state.uri.queryParameters['url'] ?? 'https://google.com';
+          final url =
+              state.extra as String? ??
+              state.uri.queryParameters['url'] ??
+              'https://google.com';
           return InAppBrowserScreen(url: url);
         },
       ),
@@ -138,7 +143,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/phone-breach',
-        builder: (context, state) => const EmailBreachScreen(initialPhoneMode: true),
+        builder: (context, state) =>
+            const EmailBreachScreen(initialPhoneMode: true),
       ),
       GoRoute(
         path: '/qr-scanner',
@@ -148,10 +154,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/social-osint',
         builder: (context, state) => const SocialOsintScreen(),
       ),
-      GoRoute(
-        path: '/vault',
-        builder: (context, state) => const VaultScreen(),
-      ),
+      GoRoute(path: '/vault', builder: (context, state) => const VaultScreen()),
       GoRoute(
         path: '/vault-lock',
         builder: (context, state) => const VaultLockScreen(),
@@ -163,10 +166,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return VerdictScreen(verdict: verdict);
         },
       ),
-      GoRoute(
-        path: '/chat',
-        builder: (context, state) => const ChatScreen(),
-      ),
+      GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
       GoRoute(
         path: '/incident-response',
         builder: (context, state) => const IncidentResponseScreen(),
@@ -177,14 +177,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       // Top-level routes for main sections
-      GoRoute(
-        path: '/home',
-        builder: (context, state) => const HomeScreen(),
-      ),
-      GoRoute(
-        path: '/feed',
-        builder: (context, state) => const FeedScreen(),
-      ),
+      GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(path: '/feed', builder: (context, state) => const FeedScreen()),
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
@@ -214,10 +208,14 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1300),
     );
-    _scaleAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOutBack)
-        .drive(Tween(begin: 0.7, end: 1.0));
-    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn)
-        .drive(Tween(begin: 0.0, end: 1.0));
+    _scaleAnim = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutBack,
+    ).drive(Tween(begin: 0.7, end: 1.0));
+    _fadeAnim = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeIn,
+    ).drive(Tween(begin: 0.0, end: 1.0));
     _controller.forward();
     _redirect();
   }
@@ -241,7 +239,7 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
     }
 
     final prefs = await SharedPreferences.getInstance();
-    
+
     final isVaultEnabled = prefs.getBool('isVaultEnabled') ?? false;
     if (!mounted) return;
     if (isVaultEnabled) {
@@ -261,7 +259,9 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
           builder: (context, child) {
             final fullText = "SafeSignal";
             // Calculate how many characters to show based on animation progress (0.0 to 1.0)
-            final charCount = (_controller.value * fullText.length).round().clamp(0, fullText.length);
+            final charCount = (_controller.value * fullText.length)
+                .round()
+                .clamp(0, fullText.length);
             final currentText = fullText.substring(0, charCount);
 
             return FadeTransition(
@@ -280,7 +280,9 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
                         borderRadius: BorderRadius.circular(26),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF0284C7).withValues(alpha: 0.15),
+                            color: const Color(
+                              0xFF0284C7,
+                            ).withValues(alpha: 0.15),
                             blurRadius: 28,
                             offset: const Offset(0, 10),
                           ),
@@ -296,11 +298,12 @@ class _SplashRedirectScreenState extends State<SplashRedirectScreen>
                           'assets/images/logo_transparent.png',
                           width: 64,
                           height: 64,
-                          errorBuilder: (context, error, stackTrace) => const Icon(
-                            Icons.shield_rounded,
-                            color: Color(0xFF0284C7),
-                            size: 50,
-                          ),
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                                Icons.shield_rounded,
+                                color: Color(0xFF0284C7),
+                                size: 50,
+                              ),
                         ),
                       ),
                     ),

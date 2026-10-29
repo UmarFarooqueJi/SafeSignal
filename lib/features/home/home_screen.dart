@@ -8,11 +8,11 @@ import 'package:go_router/go_router.dart';
 import '../../core/services/link_guard_service.dart';
 
 // ─── Color Palette ────────────────────────────────────────────────────────────
-const _kScaffold   = Color(0xFFDEEBF7); // light blue like reference
-const _kCard       = Colors.white;
-const _kBlue       = Color(0xFF0284C7);
-const _kTextMain   = Color(0xFF0F172A);
-const _kOrange     = Color(0xFFEA580C);
+const _kScaffold = Color(0xFFDEEBF7); // light blue like reference
+const _kCard = Colors.white;
+const _kBlue = Color(0xFF0284C7);
+const _kTextMain = Color(0xFF0F172A);
+const _kOrange = Color(0xFFEA580C);
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -92,10 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     url,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 11,
-                    ),
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                 ],
               ),
@@ -135,7 +132,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           systemNavigationBarColor: scaffoldBg,
-          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark
+              ? Brightness.light
+              : Brightness.dark,
         ),
         child: SafeArea(
           bottom: false,
@@ -224,8 +223,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(
                     padding: const EdgeInsets.all(8),
-                    child: Icon(Icons.more_vert_rounded,
-                        color: textMain, size: 24),
+                    child: Icon(
+                      Icons.more_vert_rounded,
+                      color: textMain,
+                      size: 24,
+                    ),
                   ),
                 ),
               ),
@@ -262,7 +264,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   // ── Device Secured Banner ─────────────────────────────────────────────────
-  Widget _buildSecuredBanner(BuildContext context) => const _DeviceSecuredCard();
+  Widget _buildSecuredBanner(BuildContext context) =>
+      const _DeviceSecuredCard();
 
   // ── 2-Column Feature Card Grid ────────────────────────────────────────────
   Widget _buildCardGrid(BuildContext context) {
@@ -272,7 +275,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         subtitle: 'Malware & Trojan Check',
         icon: Icons.android_rounded,
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF0F172A), Color(0xFF1E3A2F)],
         ),
         accentColor: const Color(0xFF22C55E),
@@ -283,7 +287,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         subtitle: 'Phishing & RAT Radar',
         icon: Icons.language_rounded,
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF0F1A0F), Color(0xFF0A2A1A)],
         ),
         accentColor: const Color(0xFF4ADE80),
@@ -294,7 +299,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         subtitle: 'Network Threat Alert',
         icon: Icons.wifi_password_rounded,
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF0A0F2A), Color(0xFF1A1060)],
         ),
         accentColor: const Color(0xFF818CF8),
@@ -305,7 +311,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         subtitle: 'Email & Mobile Breach Scan',
         icon: Icons.lock_open_rounded,
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF1A0A0A), Color(0xFF2D0000)],
         ),
         accentColor: const Color(0xFFF87171),
@@ -316,7 +323,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         subtitle: 'Username & Profile Recon',
         icon: Icons.person_search_rounded,
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF1A0A1A), Color(0xFF2D0040)],
         ),
         accentColor: const Color(0xFFC084FC),
@@ -327,7 +335,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         subtitle: 'Safe Link & Pay Scan',
         icon: Icons.qr_code_scanner_rounded,
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF0A1A2A), Color(0xFF0E2A4A)],
         ),
         accentColor: const Color(0xFF60A5FA),
@@ -338,7 +347,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         subtitle: 'AES-256 Multi-Template',
         icon: Icons.shield_rounded,
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF0B1B15), Color(0xFF0D3326)],
         ),
         accentColor: const Color(0xFF10B981),
@@ -349,7 +359,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         subtitle: 'Spam Call Protection',
         icon: Icons.phone_in_talk_rounded,
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF0A1A2A), Color(0xFF0C2A4D)],
         ),
         accentColor: const Color(0xFF38BDF8),
@@ -360,7 +371,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         subtitle: 'Fake SMS & OTP Guard',
         icon: Icons.sms_failed_rounded,
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF1A0A00), Color(0xFF2D1200)],
         ),
         accentColor: const Color(0xFFFB923C),
@@ -371,7 +383,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         subtitle: 'On-Device Cyber Assistant',
         icon: Icons.smart_toy_rounded,
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF001A10), Color(0xFF002D1A)],
         ),
         accentColor: const Color(0xFF34D399),
@@ -382,7 +395,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         subtitle: 'Emergency 1930 Protocol',
         icon: Icons.bolt_rounded,
         gradient: const LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF1A0000), Color(0xFF3D0000)],
         ),
         accentColor: const Color(0xFFEF4444),
@@ -422,7 +436,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           color: cardBg,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: const Color(0xFFEF4444).withValues(alpha: isDark ? 0.35 : 0.25),
+            color: const Color(
+              0xFFEF4444,
+            ).withValues(alpha: isDark ? 0.35 : 0.25),
             width: 1.2,
           ),
           boxShadow: [
@@ -441,8 +457,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 color: const Color(0xFFEF4444).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.phone_in_talk_rounded,
-                  color: Color(0xFFDC2626), size: 24),
+              child: const Icon(
+                Icons.phone_in_talk_rounded,
+                color: Color(0xFFDC2626),
+                size: 24,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -525,18 +544,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 const Text(
                   'SafeSignal',
                   style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
                 ),
-                const Text('AI Threat Intelligence',
-                    style: TextStyle(fontSize: 12, color: Colors.white70)),
+                const Text(
+                  'AI Threat Intelligence',
+                  style: TextStyle(fontSize: 12, color: Colors.white70),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          _drawerItem(context, Icons.newspaper_rounded, 'Cyber News & Alerts', '/feed'),
-          _drawerItem(context, Icons.history_rounded, 'Scan History', '/history'),
+          _drawerItem(
+            context,
+            Icons.newspaper_rounded,
+            'Cyber News & Alerts',
+            '/feed',
+          ),
+          _drawerItem(
+            context,
+            Icons.history_rounded,
+            'Scan History',
+            '/history',
+          ),
           _drawerItem(context, Icons.settings_rounded, 'Settings', '/settings'),
         ],
       ),
@@ -544,7 +576,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _drawerItem(
-      BuildContext context, IconData icon, String label, String route) {
+    BuildContext context,
+    IconData icon,
+    String label,
+    String route,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListTile(
@@ -557,11 +593,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ),
         child: Icon(icon, color: _kBlue, size: 20),
       ),
-      title: Text(label,
-          style: TextStyle(
-              color: isDark ? Colors.white : _kTextMain,
-              fontWeight: FontWeight.w600,
-              fontSize: 14)),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: isDark ? Colors.white : _kTextMain,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+      ),
       onTap: () {
         Navigator.pop(context);
         context.push(route);
@@ -672,19 +711,25 @@ class _FeatureCardState extends State<_FeatureCard>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: widget.data.accentColor.withValues(alpha: isDark ? 0.18 : 0.12),
+                        color: widget.data.accentColor.withValues(
+                          alpha: isDark ? 0.18 : 0.12,
+                        ),
                         blurRadius: 20,
                         offset: const Offset(0, 6),
                       ),
                       BoxShadow(
-                        color: (isDark ? Colors.black : Colors.white).withValues(alpha: isDark ? 0.3 : 0.5),
+                        color: (isDark ? Colors.black : Colors.white)
+                            .withValues(alpha: isDark ? 0.3 : 0.5),
                         blurRadius: 1,
                         offset: const Offset(0, -1),
                       ),
                     ],
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 12,
+                    ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -696,7 +741,9 @@ class _FeatureCardState extends State<_FeatureCard>
                           color: widget.data.accentColor,
                           shadows: [
                             Shadow(
-                              color: widget.data.accentColor.withValues(alpha: 0.38),
+                              color: widget.data.accentColor.withValues(
+                                alpha: 0.38,
+                              ),
                               blurRadius: 10,
                               offset: const Offset(0, 2),
                             ),
@@ -715,7 +762,9 @@ class _FeatureCardState extends State<_FeatureCard>
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF0F172A),
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
                                 height: 1.2,
@@ -734,7 +783,9 @@ class _FeatureCardState extends State<_FeatureCard>
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
                             fontSize: 10.5,
                             fontWeight: FontWeight.w500,
                           ),
@@ -834,12 +885,16 @@ class _DeviceSecuredCardState extends State<_DeviceSecuredCard>
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: const Color(0xFF38BDF8).withValues(alpha: isDark ? 0.35 : 0.28),
+                color: const Color(
+                  0xFF38BDF8,
+                ).withValues(alpha: isDark ? 0.35 : 0.28),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF2563EB).withValues(alpha: isDark ? 0.25 : 0.08),
+                  color: const Color(
+                    0xFF2563EB,
+                  ).withValues(alpha: isDark ? 0.25 : 0.08),
                   blurRadius: 22,
                   offset: const Offset(0, 8),
                 ),
@@ -885,7 +940,10 @@ class _DeviceSecuredCardState extends State<_DeviceSecuredCard>
 
                   // Layer 3: Main interactive content
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 22,
+                    ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -922,12 +980,18 @@ class _DeviceSecuredCardState extends State<_DeviceSecuredCard>
                                       color: Colors.white,
                                       shadows: [
                                         Shadow(
-                                          color: (isDark
-                                                  ? const Color(0xFF00FF66)
-                                                  : const Color(0xFF10B981))
-                                              .withValues(
-                                                  alpha: 0.55 + (_pulseAnim.value * 0.4)),
-                                          blurRadius: 18 + (_pulseAnim.value * 8),
+                                          color:
+                                              (isDark
+                                                      ? const Color(0xFF00FF66)
+                                                      : const Color(0xFF10B981))
+                                                  .withValues(
+                                                    alpha:
+                                                        0.55 +
+                                                        (_pulseAnim.value *
+                                                            0.4),
+                                                  ),
+                                          blurRadius:
+                                              18 + (_pulseAnim.value * 8),
                                           offset: Offset.zero,
                                         ),
                                       ],
@@ -955,7 +1019,9 @@ class _DeviceSecuredCardState extends State<_DeviceSecuredCard>
                                     child: Text(
                                       'Device Secured',
                                       style: TextStyle(
-                                        color: isDark ? Colors.white : _kTextMain,
+                                        color: isDark
+                                            ? Colors.white
+                                            : _kTextMain,
                                         fontSize: 16,
                                         fontWeight: FontWeight.w900,
                                         letterSpacing: -0.3,
@@ -991,9 +1057,15 @@ class _DeviceSecuredCardState extends State<_DeviceSecuredCard>
                                           color: const Color(0xFF10B981),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: const Color(0xFF10B981).withValues(
-                                                  alpha: 0.4 + (_pulseAnim.value * 0.5)),
-                                              blurRadius: 4 + (_pulseAnim.value * 4),
+                                              color: const Color(0xFF10B981)
+                                                  .withValues(
+                                                    alpha:
+                                                        0.4 +
+                                                        (_pulseAnim.value *
+                                                            0.5),
+                                                  ),
+                                              blurRadius:
+                                                  4 + (_pulseAnim.value * 4),
                                               spreadRadius: 1,
                                             ),
                                           ],
@@ -1007,18 +1079,21 @@ class _DeviceSecuredCardState extends State<_DeviceSecuredCard>
                                   // Smooth animated switcher for live security telemetry
                                   Expanded(
                                     child: AnimatedSwitcher(
-                                      duration: const Duration(milliseconds: 240),
+                                      duration: const Duration(
+                                        milliseconds: 240,
+                                      ),
                                       switchInCurve: Curves.easeIn,
                                       switchOutCurve: Curves.easeOut,
-                                      layoutBuilder: (currentChild, previousChildren) {
-                                        return Stack(
-                                          alignment: Alignment.centerLeft,
-                                          children: [
-                                            ...previousChildren,
-                                            ?currentChild,
-                                          ],
-                                        );
-                                      },
+                                      layoutBuilder:
+                                          (currentChild, previousChildren) {
+                                            return Stack(
+                                              alignment: Alignment.centerLeft,
+                                              children: [
+                                                ...previousChildren,
+                                                ?currentChild,
+                                              ],
+                                            );
+                                          },
                                       transitionBuilder: (child, animation) {
                                         return FadeTransition(
                                           opacity: animation,
@@ -1057,20 +1132,22 @@ class _DeviceSecuredCardState extends State<_DeviceSecuredCard>
 
                         // Right: Sleek high-tech "Audit" button
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF2563EB),
-                                Color(0xFF1D4ED8),
-                              ],
+                              colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
                             ),
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                                color: const Color(
+                                  0xFF2563EB,
+                                ).withValues(alpha: 0.35),
                                 blurRadius: 10,
                                 offset: const Offset(0, 3),
                               ),
@@ -1079,7 +1156,11 @@ class _DeviceSecuredCardState extends State<_DeviceSecuredCard>
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.shield_outlined, color: Colors.white, size: 13),
+                              Icon(
+                                Icons.shield_outlined,
+                                color: Colors.white,
+                                size: 13,
+                              ),
                               SizedBox(width: 4),
                               Text(
                                 'Audit',
@@ -1141,7 +1222,11 @@ class _CyberCardTexturePainter extends CustomPainter {
     // ── 3. PCB Circuit Bus Traces with Solder Vias (Hacker Motherboard) ───────
     final tracePaint = Paint()
       ..color = (isDark ? const Color(0xFF38BDF8) : const Color(0xFF2563EB))
-          .withValues(alpha: isDark ? (0.16 + (pulseValue * 0.08)) : (0.08 + (pulseValue * 0.04)))
+          .withValues(
+            alpha: isDark
+                ? (0.16 + (pulseValue * 0.08))
+                : (0.08 + (pulseValue * 0.04)),
+          )
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
 
@@ -1193,14 +1278,26 @@ class _CyberCardTexturePainter extends CustomPainter {
     canvas.drawLine(const Offset(8, 8), const Offset(20, 8), bracketPaint);
 
     // Bottom-right bracket ┘
-    canvas.drawLine(Offset(size.width - 20, size.height - 8), Offset(size.width - 8, size.height - 8), bracketPaint);
-    canvas.drawLine(Offset(size.width - 8, size.height - 8), Offset(size.width - 8, size.height - 16), bracketPaint);
+    canvas.drawLine(
+      Offset(size.width - 20, size.height - 8),
+      Offset(size.width - 8, size.height - 8),
+      bracketPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width - 8, size.height - 8),
+      Offset(size.width - 8, size.height - 16),
+      bracketPaint,
+    );
 
     // ── 5. Concentric Radar Scanner Sweep ────────────────────────────────────
     final radarCenter = Offset(size.width * 0.88, size.height * 0.5);
     final arcPaint = Paint()
       ..color = (isDark ? const Color(0xFF38BDF8) : const Color(0xFF2563EB))
-          .withValues(alpha: isDark ? (0.09 + (pulseValue * 0.05)) : (0.05 + (pulseValue * 0.03)))
+          .withValues(
+            alpha: isDark
+                ? (0.09 + (pulseValue * 0.05))
+                : (0.05 + (pulseValue * 0.03)),
+          )
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
@@ -1209,20 +1306,25 @@ class _CyberCardTexturePainter extends CustomPainter {
     canvas.drawCircle(radarCenter, 96 + (pulseValue * 10), arcPaint);
 
     // Radar crosshair ticks on radar center
-    canvas.drawLine(Offset(radarCenter.dx - 10, radarCenter.dy), Offset(radarCenter.dx + 10, radarCenter.dy), arcPaint);
-    canvas.drawLine(Offset(radarCenter.dx, radarCenter.dy - 10), Offset(radarCenter.dx, radarCenter.dy + 10), arcPaint);
+    canvas.drawLine(
+      Offset(radarCenter.dx - 10, radarCenter.dy),
+      Offset(radarCenter.dx + 10, radarCenter.dy),
+      arcPaint,
+    );
+    canvas.drawLine(
+      Offset(radarCenter.dx, radarCenter.dy - 10),
+      Offset(radarCenter.dx, radarCenter.dy + 10),
+      arcPaint,
+    );
 
     // ── 6. Ethereal Holographic Bloom directly behind Shield Icon ────────────
     final glowPaint = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset(40, size.height * 0.5),
-        56,
-        [
-          (isDark ? const Color(0xFF00FF66) : const Color(0xFF10B981))
-              .withValues(alpha: isDark ? (0.30 + pulseValue * 0.12) : 0.18),
-          Colors.transparent,
-        ],
-      );
+      ..shader = ui.Gradient.radial(Offset(40, size.height * 0.5), 56, [
+        (isDark ? const Color(0xFF00FF66) : const Color(0xFF10B981)).withValues(
+          alpha: isDark ? (0.30 + pulseValue * 0.12) : 0.18,
+        ),
+        Colors.transparent,
+      ]);
     canvas.drawCircle(Offset(40, size.height * 0.5), 56, glowPaint);
   }
 

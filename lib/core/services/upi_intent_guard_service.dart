@@ -40,8 +40,10 @@ class UpiRiskAnalysis {
     payeeAddress: '',
     payeeName: '',
     warnings: [],
-    forensicDetail: 'Verified standard UPI Intent with no anomalous fraud indicators.',
-    actionGuidance: 'Confirm payee name and amount in your UPI app before entering UPI PIN.',
+    forensicDetail:
+        'Verified standard UPI Intent with no anomalous fraud indicators.',
+    actionGuidance:
+        'Confirm payee name and amount in your UPI app before entering UPI PIN.',
   );
 }
 
@@ -98,7 +100,9 @@ class UpiIntentGuardService {
       );
     }
 
-    final isMandate = uri.host.toLowerCase() == 'mandate' || rawUri.toLowerCase().contains('mandate');
+    final isMandate =
+        uri.host.toLowerCase() == 'mandate' ||
+        rawUri.toLowerCase().contains('mandate');
     final params = uri.queryParameters;
 
     final pa = params['pa']?.trim() ?? ''; // Payee Address (VPA)
@@ -126,7 +130,10 @@ class UpiIntentGuardService {
 
     // 2. SOCIAL ENGINEERING VPA IMPERSONATION
     for (final kw in _impersonationVpaKeywords) {
-      if (lowerPa.contains(kw) || lowerPn.contains(kw) || compactPa.contains(kw) || compactPn.contains(kw)) {
+      if (lowerPa.contains(kw) ||
+          lowerPn.contains(kw) ||
+          compactPa.contains(kw) ||
+          compactPn.contains(kw)) {
         score += 70;
         warnings.add(
           '🚨 IMPERSONATED CUSTOMER CARE / REFUND VPA: "$pa" uses deceptive authority keyword "$kw". Legitimate customer care teams NEVER request incoming UPI payments!',
@@ -136,7 +143,8 @@ class UpiIntentGuardService {
     }
 
     // 3. REVERSE PAYMENT FRAUD (Cashback / Refund Lure with DEBIT Amount)
-    final hasLureKeyword = lowerTn.contains('refund') ||
+    final hasLureKeyword =
+        lowerTn.contains('refund') ||
         lowerTn.contains('cashback') ||
         lowerTn.contains('won') ||
         lowerTn.contains('prize') ||
@@ -156,7 +164,8 @@ class UpiIntentGuardService {
     // 4. SUSPICIOUS P2P DISGUISED AS MERCHANT
     if (mc != null && mc.isNotEmpty && mc != '0000') {
       // Claims merchant MCC, but uses standard consumer VPA handle
-      final isPersonalHandle = lowerPa.endsWith('@oksbi') ||
+      final isPersonalHandle =
+          lowerPa.endsWith('@oksbi') ||
           lowerPa.endsWith('@okaxis') ||
           lowerPa.endsWith('@okhdfcbank') ||
           lowerPa.endsWith('@okicici') ||

@@ -19,17 +19,13 @@ class OsintPost {
   final String? subtitle;
   final String? date;
 
-  const OsintPost({
-    required this.title,
-    this.url,
-    this.subtitle,
-    this.date,
-  });
+  const OsintPost({required this.title, this.url, this.subtitle, this.date});
 }
 
 class OsintProfile {
   final String platform;
-  final String category; // 'Social Network', 'Microblogging', 'Code & DevOps', 'Discussions', etc.
+  final String
+  category; // 'Social Network', 'Microblogging', 'Code & DevOps', 'Discussions', etc.
   final String profileUrl;
   final IconData icon;
   final Color brandColor;
@@ -61,15 +57,18 @@ class OsintProfile {
 
 class _SocialOsintScreenState extends State<SocialOsintScreen> {
   final _controller = TextEditingController();
-  final _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 7),
-    receiveTimeout: const Duration(seconds: 7),
-    validateStatus: (s) => s != null && s < 500,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      'Accept': 'application/json, text/html, */*',
-    },
-  ));
+  final _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 7),
+      receiveTimeout: const Duration(seconds: 7),
+      validateStatus: (s) => s != null && s < 500,
+      headers: {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/html, */*',
+      },
+    ),
+  );
 
   _ScanState _state = _ScanState.idle;
   String _activeQuery = '';
@@ -152,18 +151,36 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
         _scanGitLab(raw),
       ]);
 
-      final found = results.whereType<OsintProfile>().where((p) => p.isFound).toList();
+      final found = results
+          .whereType<OsintProfile>()
+          .where((p) => p.isFound)
+          .toList();
 
       // Sort with top social & community networks prioritized
       found.sort((a, b) {
-        final order = ['Instagram', 'X (Twitter)', 'Threads', 'YouTube', 'Telegram', 'GitHub', 'Reddit', 'Dev.to', 'Hacker News (YC)', 'Chess.com', 'GitLab'];
+        final order = [
+          'Instagram',
+          'X (Twitter)',
+          'Threads',
+          'YouTube',
+          'Telegram',
+          'GitHub',
+          'Reddit',
+          'Dev.to',
+          'Hacker News (YC)',
+          'Chess.com',
+          'GitLab',
+        ];
         final aIdx = order.indexOf(a.platform);
         final bIdx = order.indexOf(b.platform);
         return (aIdx == -1 ? 99 : aIdx).compareTo(bIdx == -1 ? 99 : bIdx);
       });
 
       _setStep('Compiling digital footprint matrix...');
-      final unconfirmed = _generateUnconfirmedLinks(raw, found.map((f) => f.platform).toSet());
+      final unconfirmed = _generateUnconfirmedLinks(
+        raw,
+        found.map((f) => f.platform).toSet(),
+      );
 
       setState(() {
         _foundProfiles = found;
@@ -183,17 +200,25 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
         'https://www.instagram.com/$user/',
         options: Options(
           headers: {
-            'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'User-Agent':
+                'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+            'Accept':
+                'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           },
         ),
       );
       final body = res.data?.toString() ?? '';
       if (body.isEmpty || res.statusCode == 404) return null;
 
-      final descMatch = RegExp(r'<meta property="og:description" content="([^"]+)"').firstMatch(body);
-      final titleMatch = RegExp(r'<meta property="og:title" content="([^"]+)"').firstMatch(body);
-      final imgMatch = RegExp(r'<meta property="og:image" content="([^"]+)"').firstMatch(body);
+      final descMatch = RegExp(
+        r'<meta property="og:description" content="([^"]+)"',
+      ).firstMatch(body);
+      final titleMatch = RegExp(
+        r'<meta property="og:title" content="([^"]+)"',
+      ).firstMatch(body);
+      final imgMatch = RegExp(
+        r'<meta property="og:image" content="([^"]+)"',
+      ).firstMatch(body);
 
       final rawDesc = descMatch?.group(1) ?? '';
       final rawTitle = titleMatch?.group(1) ?? '';
@@ -203,15 +228,21 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
       }
 
       // Check if user actually exists on Instagram
-      if (rawDesc.contains('Followers') || rawTitle.contains('Instagram photos and videos')) {
+      if (rawDesc.contains('Followers') ||
+          rawTitle.contains('Instagram photos and videos')) {
         String name = user;
-        final nameMatch = RegExp(r'^(.*?)\s*\((\@|\&#064;)', caseSensitive: false).firstMatch(rawTitle);
+        final nameMatch = RegExp(
+          r'^(.*?)\s*\((\@|\&#064;)',
+          caseSensitive: false,
+        ).firstMatch(rawTitle);
         if (nameMatch != null && nameMatch.group(1)!.trim().isNotEmpty) {
           name = _cleanHtml(nameMatch.group(1)!);
         }
 
         final statsMap = <String, String>{};
-        final statsRegex = RegExp(r'([0-9.,KMBkmb]+)\s+Followers,\s+([0-9.,KMBkmb]+)\s+Following,\s+([0-9.,KMBkmb]+)\s+Posts');
+        final statsRegex = RegExp(
+          r'([0-9.,KMBkmb]+)\s+Followers,\s+([0-9.,KMBkmb]+)\s+Following,\s+([0-9.,KMBkmb]+)\s+Posts',
+        );
         final m = statsRegex.firstMatch(rawDesc);
         if (m != null) {
           statsMap['Followers'] = m.group(1)!;
@@ -241,7 +272,9 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
   Future<OsintProfile?> _scanXTwitter(String user) async {
     try {
       final res = await _dio.get('https://api.fxtwitter.com/$user');
-      if (res.statusCode == 200 && res.data is Map && res.data['user'] != null) {
+      if (res.statusCode == 200 &&
+          res.data is Map &&
+          res.data['user'] != null) {
         final u = res.data['user'] as Map;
         final name = u['name']?.toString() ?? user;
         final screenName = u['screen_name']?.toString() ?? user;
@@ -295,16 +328,23 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
         'https://www.threads.net/@$user',
         options: Options(
           headers: {
-            'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+            'User-Agent':
+                'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
           },
         ),
       );
       final body = res.data?.toString() ?? '';
       if (body.isEmpty || res.statusCode == 404) return null;
 
-      final descMatch = RegExp(r'<meta property="og:description" content="([^"]+)"').firstMatch(body);
-      final titleMatch = RegExp(r'<meta property="og:title" content="([^"]+)"').firstMatch(body);
-      final imgMatch = RegExp(r'<meta property="og:image" content="([^"]+)"').firstMatch(body);
+      final descMatch = RegExp(
+        r'<meta property="og:description" content="([^"]+)"',
+      ).firstMatch(body);
+      final titleMatch = RegExp(
+        r'<meta property="og:title" content="([^"]+)"',
+      ).firstMatch(body);
+      final imgMatch = RegExp(
+        r'<meta property="og:image" content="([^"]+)"',
+      ).firstMatch(body);
 
       final rawDesc = descMatch?.group(1) ?? '';
       final rawTitle = titleMatch?.group(1) ?? '';
@@ -313,18 +353,26 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
         avatar = avatar.replaceAll('&amp;', '&');
       }
 
-      if (rawTitle.toLowerCase().contains('threads') || rawDesc.contains('Followers')) {
+      if (rawTitle.toLowerCase().contains('threads') ||
+          rawDesc.contains('Followers')) {
         String name = user;
-        final nameMatch = RegExp(r'^(.*?)\s*\((\@|\&#064;)', caseSensitive: false).firstMatch(rawTitle);
+        final nameMatch = RegExp(
+          r'^(.*?)\s*\((\@|\&#064;)',
+          caseSensitive: false,
+        ).firstMatch(rawTitle);
         if (nameMatch != null && nameMatch.group(1)!.trim().isNotEmpty) {
           name = _cleanHtml(nameMatch.group(1)!);
         }
 
         final statsMap = <String, String>{};
-        final fMatch = RegExp(r'([0-9.,KMBkmb]+)\s+Followers').firstMatch(rawDesc);
+        final fMatch = RegExp(
+          r'([0-9.,KMBkmb]+)\s+Followers',
+        ).firstMatch(rawDesc);
         if (fMatch != null) statsMap['Followers'] = fMatch.group(1)!;
 
-        final thMatch = RegExp(r'([0-9.,KMBkmb]+)\s+Threads').firstMatch(rawDesc);
+        final thMatch = RegExp(
+          r'([0-9.,KMBkmb]+)\s+Threads',
+        ).firstMatch(rawDesc);
         if (thMatch != null) statsMap['Threads'] = thMatch.group(1)!;
 
         return OsintProfile(
@@ -352,15 +400,23 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
       final body = res.data?.toString() ?? '';
       if (body.isEmpty || res.statusCode == 404) return null;
 
-      final titleMatch = RegExp(r'<meta property="og:title" content="([^"]+)"').firstMatch(body);
-      final descMatch = RegExp(r'<meta property="og:description" content="([^"]+)"').firstMatch(body);
-      final imgMatch = RegExp(r'<meta property="og:image" content="([^"]+)"').firstMatch(body);
+      final titleMatch = RegExp(
+        r'<meta property="og:title" content="([^"]+)"',
+      ).firstMatch(body);
+      final descMatch = RegExp(
+        r'<meta property="og:description" content="([^"]+)"',
+      ).firstMatch(body);
+      final imgMatch = RegExp(
+        r'<meta property="og:image" content="([^"]+)"',
+      ).firstMatch(body);
 
       final title = titleMatch?.group(1);
       final desc = descMatch?.group(1);
       final img = imgMatch?.group(1);
 
-      if (title != null && !title.toLowerCase().contains('404 not found') && !title.toLowerCase().contains('youtube')) {
+      if (title != null &&
+          !title.toLowerCase().contains('404 not found') &&
+          !title.toLowerCase().contains('youtube')) {
         return OsintProfile(
           platform: 'YouTube',
           category: 'Video & Streaming',
@@ -372,9 +428,7 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           displayName: _cleanHtml(title),
           handle: '@$user',
           bio: desc != null && desc.isNotEmpty ? _cleanHtml(desc) : null,
-          stats: {
-            'Status': 'Public Channel',
-          },
+          stats: {'Status': 'Public Channel'},
         );
       }
     } catch (_) {}
@@ -386,16 +440,24 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
     try {
       final res = await _dio.get('https://t.me/$user');
       final body = res.data?.toString() ?? '';
-      if (body.contains('tgme_page_title') || body.contains('tgme_page_photo')) {
-        final tMatch = RegExp(r'<meta property="og:title" content="([^"]+)"').firstMatch(body);
-        final dMatch = RegExp(r'<meta property="og:description" content="([^"]+)"').firstMatch(body);
-        final iMatch = RegExp(r'<meta property="og:image" content="([^"]+)"').firstMatch(body);
+      if (body.contains('tgme_page_title') ||
+          body.contains('tgme_page_photo')) {
+        final tMatch = RegExp(
+          r'<meta property="og:title" content="([^"]+)"',
+        ).firstMatch(body);
+        final dMatch = RegExp(
+          r'<meta property="og:description" content="([^"]+)"',
+        ).firstMatch(body);
+        final iMatch = RegExp(
+          r'<meta property="og:image" content="([^"]+)"',
+        ).firstMatch(body);
 
         final title = tMatch?.group(1);
         final desc = dMatch?.group(1);
         final img = iMatch?.group(1);
 
-        if (title != null && !title.toLowerCase().contains('telegram: contact')) {
+        if (title != null &&
+            !title.toLowerCase().contains('telegram: contact')) {
           return OsintProfile(
             platform: 'Telegram',
             category: 'Encrypted Messaging',
@@ -436,7 +498,9 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
         // Fetch recent repos
         final posts = <OsintPost>[];
         try {
-          final repoRes = await _dio.get('https://api.github.com/users/$user/repos?sort=pushed&per_page=3');
+          final repoRes = await _dio.get(
+            'https://api.github.com/users/$user/repos?sort=pushed&per_page=3',
+          );
           if (repoRes.statusCode == 200 && repoRes.data is List) {
             for (final r in repoRes.data as List) {
               if (r is Map) {
@@ -445,11 +509,13 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
                 final rStars = r['stargazers_count']?.toString() ?? '0';
                 final rLang = r['language']?.toString() ?? 'Code';
                 final rUrl = r['html_url']?.toString();
-                posts.add(OsintPost(
-                  title: rName,
-                  subtitle: '$rLang • ★ $rStars • $rDesc',
-                  url: rUrl,
-                ));
+                posts.add(
+                  OsintPost(
+                    title: rName,
+                    subtitle: '$rLang • ★ $rStars • $rDesc',
+                    url: rUrl,
+                  ),
+                );
               }
             }
           }
@@ -467,10 +533,7 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           handle: '@$user',
           bio: bio,
           createdDate: joined != null ? 'Joined $joined' : null,
-          stats: {
-            'Followers': followers,
-            'Public Repos': repos,
-          },
+          stats: {'Followers': followers, 'Public Repos': repos},
           recentPosts: posts,
         );
       }
@@ -485,7 +548,9 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
         'https://www.reddit.com/user/$user/about.json',
         options: Options(headers: {'User-Agent': 'SafeSignal-OSINT/2.0'}),
       );
-      if (res.statusCode == 200 && res.data is Map && res.data['data'] != null) {
+      if (res.statusCode == 200 &&
+          res.data is Map &&
+          res.data['data'] != null) {
         final d = res.data['data'] as Map;
         final name = d['name']?.toString() ?? user;
         final karma = _formatCount(d['total_karma']);
@@ -500,7 +565,9 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
         final createdUtc = d['created_utc'];
         String? joined;
         if (createdUtc is num) {
-          final dt = DateTime.fromMillisecondsSinceEpoch(createdUtc.toInt() * 1000);
+          final dt = DateTime.fromMillisecondsSinceEpoch(
+            createdUtc.toInt() * 1000,
+          );
           joined = DateFormat('MMM yyyy').format(dt);
         }
 
@@ -511,19 +578,24 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
             'https://www.reddit.com/user/$user/submitted.json?limit=3',
             options: Options(headers: {'User-Agent': 'SafeSignal-OSINT/2.0'}),
           );
-          if (postRes.statusCode == 200 && postRes.data is Map && postRes.data['data']?['children'] != null) {
+          if (postRes.statusCode == 200 &&
+              postRes.data is Map &&
+              postRes.data['data']?['children'] != null) {
             for (final c in postRes.data['data']['children'] as List) {
               final p = c['data'] as Map?;
               if (p != null) {
                 final pTitle = p['title']?.toString() ?? 'Post';
-                final pSub = p['subreddit_name_prefixed']?.toString() ?? 'r/reddit';
+                final pSub =
+                    p['subreddit_name_prefixed']?.toString() ?? 'r/reddit';
                 final pScore = p['score']?.toString() ?? '0';
                 final pPerma = p['permalink']?.toString();
-                posts.add(OsintPost(
-                  title: pTitle,
-                  subtitle: '$pSub • ▲ $pScore upvotes',
-                  url: pPerma != null ? 'https://reddit.com$pPerma' : null,
-                ));
+                posts.add(
+                  OsintPost(
+                    title: pTitle,
+                    subtitle: '$pSub • ▲ $pScore upvotes',
+                    url: pPerma != null ? 'https://reddit.com$pPerma' : null,
+                  ),
+                );
               }
             }
           }
@@ -541,9 +613,7 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           handle: 'u/$name',
           bio: publicDesc,
           createdDate: joined != null ? 'Redditor since $joined' : null,
-          stats: {
-            'Karma Score': karma,
-          },
+          stats: {'Karma Score': karma},
           recentPosts: posts,
         );
       }
@@ -554,7 +624,9 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
   // ─── 8. Dev.to Recon ────────────────────────────────────────────────────────
   Future<OsintProfile?> _scanDevTo(String user) async {
     try {
-      final res = await _dio.get('https://dev.to/api/users/by_username?url=$user');
+      final res = await _dio.get(
+        'https://dev.to/api/users/by_username?url=$user',
+      );
       if (res.statusCode == 200 && res.data is Map) {
         final d = res.data as Map;
         final name = d['name']?.toString() ?? user;
@@ -564,18 +636,23 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
 
         final posts = <OsintPost>[];
         try {
-          final artRes = await _dio.get('https://dev.to/api/articles?username=$user&per_page=3');
+          final artRes = await _dio.get(
+            'https://dev.to/api/articles?username=$user&per_page=3',
+          );
           if (artRes.statusCode == 200 && artRes.data is List) {
             for (final a in artRes.data as List) {
               if (a is Map) {
                 final aTitle = a['title']?.toString() ?? 'Article';
-                final aReactions = a['positive_reactions_count']?.toString() ?? '0';
+                final aReactions =
+                    a['positive_reactions_count']?.toString() ?? '0';
                 final aUrl = a['url']?.toString();
-                posts.add(OsintPost(
-                  title: aTitle,
-                  subtitle: '❤️ $aReactions reactions',
-                  url: aUrl,
-                ));
+                posts.add(
+                  OsintPost(
+                    title: aTitle,
+                    subtitle: '❤️ $aReactions reactions',
+                    url: aUrl,
+                  ),
+                );
               }
             }
           }
@@ -603,7 +680,9 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
   // ─── 9. HackerNews Recon ────────────────────────────────────────────────────
   Future<OsintProfile?> _scanHackerNews(String user) async {
     try {
-      final res = await _dio.get('https://hacker-news.firebaseio.com/v0/user/$user.json');
+      final res = await _dio.get(
+        'https://hacker-news.firebaseio.com/v0/user/$user.json',
+      );
       if (res.statusCode == 200 && res.data is Map) {
         final d = res.data as Map;
         final karma = d['karma']?.toString() ?? '0';
@@ -611,7 +690,9 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
         final created = d['created'];
         String? joined;
         if (created is num) {
-          final dt = DateTime.fromMillisecondsSinceEpoch(created.toInt() * 1000);
+          final dt = DateTime.fromMillisecondsSinceEpoch(
+            created.toInt() * 1000,
+          );
           joined = DateFormat('MMM yyyy').format(dt);
         }
 
@@ -626,9 +707,7 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           handle: 'id: $user',
           bio: about != null ? _cleanHtml(about) : null,
           createdDate: joined != null ? 'Member since $joined' : null,
-          stats: {
-            'Karma Score': karma,
-          },
+          stats: {'Karma Score': karma},
         );
       }
     } catch (_) {}
@@ -648,7 +727,9 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
         final joinedSec = d['joined'];
         String? joined;
         if (joinedSec is num) {
-          final dt = DateTime.fromMillisecondsSinceEpoch(joinedSec.toInt() * 1000);
+          final dt = DateTime.fromMillisecondsSinceEpoch(
+            joinedSec.toInt() * 1000,
+          );
           joined = DateFormat('MMM yyyy').format(dt);
         }
 
@@ -676,8 +757,12 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
   // ─── 11. GitLab Recon ───────────────────────────────────────────────────────
   Future<OsintProfile?> _scanGitLab(String user) async {
     try {
-      final res = await _dio.get('https://gitlab.com/api/v4/users?username=$user');
-      if (res.statusCode == 200 && res.data is List && (res.data as List).isNotEmpty) {
+      final res = await _dio.get(
+        'https://gitlab.com/api/v4/users?username=$user',
+      );
+      if (res.statusCode == 200 &&
+          res.data is List &&
+          (res.data as List).isNotEmpty) {
         final d = (res.data as List).first as Map;
         final name = d['name']?.toString() ?? user;
         final avatar = d['avatar_url']?.toString();
@@ -702,7 +787,10 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
   }
 
   // ─── Generate Remaining Links ───────────────────────────────────────────────
-  List<OsintProfile> _generateUnconfirmedLinks(String user, Set<String> foundPlatforms) {
+  List<OsintProfile> _generateUnconfirmedLinks(
+    String user,
+    Set<String> foundPlatforms,
+  ) {
     final all = [
       OsintProfile(
         platform: 'TikTok',
@@ -746,7 +834,9 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
       ),
     ];
 
-    return all.where((item) => !foundPlatforms.contains(item.platform)).toList();
+    return all
+        .where((item) => !foundPlatforms.contains(item.platform))
+        .toList();
   }
 
   Future<void> _openUrl(String url) async {
@@ -768,7 +858,11 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: isDark ? Colors.white : const Color(0xFF0D1117), size: 22),
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            color: isDark ? Colors.white : const Color(0xFF0D1117),
+            size: 22,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
@@ -818,7 +912,10 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF2979FF).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
@@ -857,7 +954,10 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
                   const SizedBox(height: 6),
                   Text(
                     'Tap to inspect if this handle is registered on other networks.',
-                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black45),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white38 : Colors.black45,
+                    ),
                   ),
                   const SizedBox(height: 14),
 
@@ -906,7 +1006,11 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
                   color: const Color(0xFF2979FF).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.radar_rounded, color: Color(0xFF2979FF), size: 24),
+                child: const Icon(
+                  Icons.radar_rounded,
+                  color: Color(0xFF2979FF),
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -951,25 +1055,47 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
                 color: isDark ? Colors.white38 : Colors.black38,
                 fontWeight: FontWeight.normal,
               ),
-              prefixIcon: const Icon(Icons.alternate_email_rounded, color: Color(0xFF2979FF)),
+              prefixIcon: const Icon(
+                Icons.alternate_email_rounded,
+                color: Color(0xFF2979FF),
+              ),
               suffixIcon: IconButton(
-                icon: const Icon(Icons.arrow_forward_rounded, color: Color(0xFF2979FF)),
+                icon: const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: Color(0xFF2979FF),
+                ),
                 onPressed: () => _startScan(),
               ),
               filled: true,
-              fillColor: isDark ? const Color(0xFF0A0E17) : const Color(0xFFF8FAFC),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              fillColor: isDark
+                  ? const Color(0xFF0A0E17)
+                  : const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0)),
+                borderSide: BorderSide(
+                  color: isDark
+                      ? const Color(0xFF232D42)
+                      : const Color(0xFFE2E8F0),
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0)),
+                borderSide: BorderSide(
+                  color: isDark
+                      ? const Color(0xFF232D42)
+                      : const Color(0xFFE2E8F0),
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFF2979FF), width: 1.8),
+                borderSide: const BorderSide(
+                  color: Color(0xFF2979FF),
+                  width: 1.8,
+                ),
               ),
             ),
           ),
@@ -1051,13 +1177,20 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           const SizedBox(height: 6),
           Text(
             _currentStep,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF2979FF), fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF2979FF),
+              fontWeight: FontWeight.bold,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
           Text(
             'Interrogating Instagram, X, Threads, YouTube, GitHub for "@$_activeQuery"...',
-            style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white54 : Colors.black54,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -1075,11 +1208,13 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
     if (count >= 5) {
       levelColor = const Color(0xFFEF5350);
       levelText = 'HIGH DIGITAL EXPOSURE';
-      desc = 'This handle is indexed across multiple major social & developer platforms. High correlation footprint.';
+      desc =
+          'This handle is indexed across multiple major social & developer platforms. High correlation footprint.';
     } else if (count >= 2) {
       levelColor = const Color(0xFFFFB300);
       levelText = 'MODERATE EXPOSURE';
-      desc = 'Confirmed public accounts found across major social networks and code repositories.';
+      desc =
+          'Confirmed public accounts found across major social networks and code repositories.';
     } else if (count == 1) {
       levelColor = const Color(0xFF4CAF50);
       levelText = 'LOW / ISOLATED EXPOSURE';
@@ -1096,7 +1231,10 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
       decoration: BoxDecoration(
         color: levelColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: levelColor.withValues(alpha: 0.35), width: 1.5),
+        border: Border.all(
+          color: levelColor.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1119,14 +1257,21 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: levelColor.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '$count Profiles Found',
-                  style: TextStyle(color: levelColor, fontWeight: FontWeight.w900, fontSize: 11.5),
+                  style: TextStyle(
+                    color: levelColor,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11.5,
+                  ),
                 ),
               ),
             ],
@@ -1134,7 +1279,11 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           const SizedBox(height: 10),
           Text(
             desc,
-            style: TextStyle(fontSize: 12.5, height: 1.4, color: isDark ? Colors.white70 : const Color(0xFF334155)),
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.4,
+              color: isDark ? Colors.white70 : const Color(0xFF334155),
+            ),
           ),
         ],
       ),
@@ -1168,11 +1317,16 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: p.brandColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: p.brandColor.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: p.brandColor.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1195,7 +1349,10 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
               Expanded(
                 child: Text(
                   p.category,
-                  style: TextStyle(fontSize: 11, color: isDark ? Colors.white38 : Colors.black45),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? Colors.white38 : Colors.black45,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -1209,10 +1366,18 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
                     children: [
                       Text(
                         'Open',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: p.brandColor),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: p.brandColor,
+                        ),
                       ),
                       const SizedBox(width: 3),
-                      Icon(Icons.open_in_new_rounded, size: 14, color: p.brandColor),
+                      Icon(
+                        Icons.open_in_new_rounded,
+                        size: 14,
+                        color: p.brandColor,
+                      ),
                     ],
                   ),
                 ),
@@ -1232,7 +1397,10 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: p.brandColor.withValues(alpha: 0.12),
-                  border: Border.all(color: p.brandColor.withValues(alpha: 0.35), width: 1.8),
+                  border: Border.all(
+                    color: p.brandColor.withValues(alpha: 0.35),
+                    width: 1.8,
+                  ),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: p.avatarUrl != null && p.avatarUrl!.isNotEmpty
@@ -1243,7 +1411,9 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
                           child: Icon(p.icon, color: p.brandColor, size: 28),
                         ),
                       )
-                    : Center(child: Icon(p.icon, color: p.brandColor, size: 28)),
+                    : Center(
+                        child: Icon(p.icon, color: p.brandColor, size: 28),
+                      ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -1258,13 +1428,19 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.w900,
                               fontSize: 16.5,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(Icons.verified_rounded, color: Color(0xFF2979FF), size: 16),
+                        const Icon(
+                          Icons.verified_rounded,
+                          color: Color(0xFF2979FF),
+                          size: 16,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -1281,11 +1457,18 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
                       const SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(Icons.calendar_today_outlined, size: 11, color: isDark ? Colors.white38 : Colors.black38),
+                          Icon(
+                            Icons.calendar_today_outlined,
+                            size: 11,
+                            color: isDark ? Colors.white38 : Colors.black38,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             p.createdDate!,
-                            style: TextStyle(fontSize: 11, color: isDark ? Colors.white38 : Colors.black45),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? Colors.white38 : Colors.black45,
+                            ),
                           ),
                         ],
                       ),
@@ -1303,9 +1486,15 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0A0E17) : const Color(0xFFF8FAFC),
+                color: isDark
+                    ? const Color(0xFF0A0E17)
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: isDark ? const Color(0xFF1E2638) : const Color(0xFFE2E8F0)),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF1E2638)
+                      : const Color(0xFFE2E8F0),
+                ),
               ),
               child: Text(
                 p.bio!.trim(),
@@ -1328,25 +1517,35 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
               runSpacing: 8,
               children: p.stats.entries.map((entry) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: p.brandColor.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: p.brandColor.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: p.brandColor.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         '${entry.key}: ',
-                        style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? Colors.white60 : Colors.black54,
+                        ),
                       ),
                       Text(
                         entry.value,
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
                         ),
                       ),
                     ],
@@ -1371,54 +1570,64 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            ...p.recentPosts.map((post) => InkWell(
-                  onTap: post.url != null ? () => _openUrl(post.url!) : null,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(top: 4),
-                          child: Icon(Icons.arrow_right_rounded, size: 16, color: Color(0xFF2979FF)),
+            ...p.recentPosts.map(
+              (post) => InkWell(
+                onTap: post.url != null ? () => _openUrl(post.url!) : null,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Icon(
+                          Icons.arrow_right_rounded,
+                          size: 16,
+                          color: Color(0xFF2979FF),
                         ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              post.title,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: post.url != null
+                                    ? (isDark
+                                          ? const Color(0xFF82B1FF)
+                                          : const Color(0xFF1565C0))
+                                    : (isDark ? Colors.white : Colors.black87),
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (post.subtitle != null) ...[
+                              const SizedBox(height: 2),
                               Text(
-                                post.title,
+                                post.subtitle!,
                                 style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: post.url != null
-                                      ? (isDark ? const Color(0xFF82B1FF) : const Color(0xFF1565C0))
-                                      : (isDark ? Colors.white : Colors.black87),
+                                  fontSize: 11,
+                                  color: isDark
+                                      ? Colors.white38
+                                      : Colors.black45,
                                 ),
-                                maxLines: 2,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (post.subtitle != null) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  post.subtitle!,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: isDark ? Colors.white38 : Colors.black45,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
                             ],
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                )),
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -1448,7 +1657,9 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
               color: isDark ? const Color(0xFF131926) : Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+                color: isDark
+                    ? const Color(0xFF232D42)
+                    : const Color(0xFFE2E8F0),
               ),
             ),
             child: Row(
@@ -1466,7 +1677,11 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Icon(Icons.open_in_new, size: 14, color: isDark ? Colors.white24 : Colors.black26),
+                Icon(
+                  Icons.open_in_new,
+                  size: 14,
+                  color: isDark ? Colors.white24 : Colors.black26,
+                ),
               ],
             ),
           ),
@@ -1489,11 +1704,19 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.security_update_warning_rounded, color: Colors.amber, size: 22),
+              Icon(
+                Icons.security_update_warning_rounded,
+                color: Colors.amber,
+                size: 22,
+              ),
               SizedBox(width: 8),
               Text(
                 'OSINT Hygiene & Defense',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.amber),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.amber,
+                ),
               ),
             ],
           ),
@@ -1521,16 +1744,27 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
       ),
       child: Column(
         children: [
-          Icon(Icons.search_off_rounded, size: 40, color: isDark ? Colors.white24 : Colors.black26),
+          Icon(
+            Icons.search_off_rounded,
+            size: 40,
+            color: isDark ? Colors.white24 : Colors.black26,
+          ),
           const SizedBox(height: 12),
           Text(
             'No Public Accounts Found on Core Index',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: isDark ? Colors.white70 : Colors.black87),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             'This handle does not appear publicly on Instagram, X, Threads, YouTube, Telegram, or GitHub.',
-            style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black45),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white38 : Colors.black45,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -1553,7 +1787,11 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           Expanded(
             child: Text(
               'Failed to complete OSINT scan. Check network connection and retry.',
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
             ),
           ),
         ],

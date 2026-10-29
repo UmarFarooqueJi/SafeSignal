@@ -52,27 +52,27 @@ class ThreatNode {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'type': type.name,
-        'value': value,
-        'metadata': metadata,
-        'threat_score': threatScore,
-        'first_seen': firstSeen.toIso8601String(),
-        'last_seen': lastSeen.toIso8601String(),
-      };
+    'id': id,
+    'type': type.name,
+    'value': value,
+    'metadata': metadata,
+    'threat_score': threatScore,
+    'first_seen': firstSeen.toIso8601String(),
+    'last_seen': lastSeen.toIso8601String(),
+  };
 
   factory ThreatNode.fromJson(Map<String, dynamic> json) => ThreatNode(
-        id: json['id'] as String,
-        type: ThreatNodeType.values.firstWhere(
-          (t) => t.name == json['type'],
-          orElse: () => ThreatNodeType.url,
-        ),
-        value: json['value'] as String,
-        metadata: Map<String, dynamic>.from(json['metadata'] as Map? ?? {}),
-        threatScore: json['threat_score'] as int? ?? 0,
-        firstSeen: DateTime.parse(json['first_seen'] as String),
-        lastSeen: DateTime.parse(json['last_seen'] as String),
-      );
+    id: json['id'] as String,
+    type: ThreatNodeType.values.firstWhere(
+      (t) => t.name == json['type'],
+      orElse: () => ThreatNodeType.url,
+    ),
+    value: json['value'] as String,
+    metadata: Map<String, dynamic>.from(json['metadata'] as Map? ?? {}),
+    threatScore: json['threat_score'] as int? ?? 0,
+    firstSeen: DateTime.parse(json['first_seen'] as String),
+    lastSeen: DateTime.parse(json['last_seen'] as String),
+  );
 }
 
 /// Directed relationship edge connecting two observable threat nodes
@@ -80,7 +80,8 @@ class ThreatEdge {
   final String id;
   final String sourceNodeId;
   final String targetNodeId;
-  final String relationship; // e.g. "impersonates", "drops_payload", "redirects_to"
+  final String
+  relationship; // e.g. "impersonates", "drops_payload", "redirects_to"
   final double confidence; // 0.0 - 1.0
   final DateTime timestamp;
 
@@ -94,22 +95,22 @@ class ThreatEdge {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'source_node_id': sourceNodeId,
-        'target_node_id': targetNodeId,
-        'relationship': relationship,
-        'confidence': confidence,
-        'timestamp': timestamp.toIso8601String(),
-      };
+    'id': id,
+    'source_node_id': sourceNodeId,
+    'target_node_id': targetNodeId,
+    'relationship': relationship,
+    'confidence': confidence,
+    'timestamp': timestamp.toIso8601String(),
+  };
 
   factory ThreatEdge.fromJson(Map<String, dynamic> json) => ThreatEdge(
-        id: json['id'] as String,
-        sourceNodeId: json['source_node_id'] as String,
-        targetNodeId: json['target_node_id'] as String,
-        relationship: json['relationship'] as String,
-        confidence: (json['confidence'] as num?)?.toDouble() ?? 1.0,
-        timestamp: DateTime.parse(json['timestamp'] as String),
-      );
+    id: json['id'] as String,
+    sourceNodeId: json['source_node_id'] as String,
+    targetNodeId: json['target_node_id'] as String,
+    relationship: json['relationship'] as String,
+    confidence: (json['confidence'] as num?)?.toDouble() ?? 1.0,
+    timestamp: DateTime.parse(json['timestamp'] as String),
+  );
 }
 
 /// Tamper-evident evidence block in an append-only SHA-256 cryptographic hash chain
@@ -137,30 +138,35 @@ class EvidenceBlock {
     return sha256.convert(utf8.encode(canonicalJson)).toString();
   }
 
-  static String calculateBlockHash(int index, DateTime timestamp, String dataHash, String previousHash) {
+  static String calculateBlockHash(
+    int index,
+    DateTime timestamp,
+    String dataHash,
+    String previousHash,
+  ) {
     final raw = '$index|${timestamp.toIso8601String()}|$dataHash|$previousHash';
     return sha256.convert(utf8.encode(raw)).toString();
   }
 
   Map<String, dynamic> toJson() => {
-        'index': index,
-        'timestamp': timestamp.toIso8601String(),
-        'event_type': eventType,
-        'payload': payload,
-        'data_hash': dataHash,
-        'previous_hash': previousHash,
-        'block_hash': blockHash,
-      };
+    'index': index,
+    'timestamp': timestamp.toIso8601String(),
+    'event_type': eventType,
+    'payload': payload,
+    'data_hash': dataHash,
+    'previous_hash': previousHash,
+    'block_hash': blockHash,
+  };
 
   factory EvidenceBlock.fromJson(Map<String, dynamic> json) => EvidenceBlock(
-        index: json['index'] as int,
-        timestamp: DateTime.parse(json['timestamp'] as String),
-        eventType: json['event_type'] as String,
-        payload: Map<String, dynamic>.from(json['payload'] as Map? ?? {}),
-        dataHash: json['data_hash'] as String,
-        previousHash: json['previous_hash'] as String,
-        blockHash: json['block_hash'] as String,
-      );
+    index: json['index'] as int,
+    timestamp: DateTime.parse(json['timestamp'] as String),
+    eventType: json['event_type'] as String,
+    payload: Map<String, dynamic>.from(json['payload'] as Map? ?? {}),
+    dataHash: json['data_hash'] as String,
+    previousHash: json['previous_hash'] as String,
+    blockHash: json['block_hash'] as String,
+  );
 }
 
 /// Service managing the in-memory and persistent Threat Graph and Cryptographic Evidence Chain
@@ -186,9 +192,15 @@ class ThreatGraphService {
         type: node.type,
         value: node.value,
         metadata: {...existing.metadata, ...node.metadata},
-        threatScore: node.threatScore > existing.threatScore ? node.threatScore : existing.threatScore,
-        firstSeen: existing.firstSeen.isBefore(node.firstSeen) ? existing.firstSeen : node.firstSeen,
-        lastSeen: node.lastSeen.isAfter(existing.lastSeen) ? node.lastSeen : existing.lastSeen,
+        threatScore: node.threatScore > existing.threatScore
+            ? node.threatScore
+            : existing.threatScore,
+        firstSeen: existing.firstSeen.isBefore(node.firstSeen)
+            ? existing.firstSeen
+            : node.firstSeen,
+        lastSeen: node.lastSeen.isAfter(existing.lastSeen)
+            ? node.lastSeen
+            : existing.lastSeen,
       );
     } else {
       _nodes[node.id] = node;
@@ -228,7 +240,12 @@ class ThreatGraphService {
         : _evidenceChain.last.blockHash;
 
     final dataHash = EvidenceBlock.calculateDataHash(payload);
-    final blockHash = EvidenceBlock.calculateBlockHash(index, timestamp, dataHash, previousHash);
+    final blockHash = EvidenceBlock.calculateBlockHash(
+      index,
+      timestamp,
+      dataHash,
+      previousHash,
+    );
 
     final block = EvidenceBlock(
       index: index,
@@ -260,7 +277,8 @@ class ThreatGraphService {
 
       // Verify link to previous block
       if (i == 0) {
-        if (current.previousHash != '0000000000000000000000000000000000000000000000000000000000000000') {
+        if (current.previousHash !=
+            '0000000000000000000000000000000000000000000000000000000000000000') {
           return false;
         }
       } else {
@@ -328,7 +346,8 @@ class ThreatGraphService {
 
     // Add nodes as STIX 2.1 Indicator objects with typed STIX patterns
     for (final node in _nodes.values) {
-      final indicatorId = 'indicator--${_generateDeterministicUuid("node_${node.id}")}';
+      final indicatorId =
+          'indicator--${_generateDeterministicUuid("node_${node.id}")}';
       objects.add({
         'type': 'indicator',
         'spec_version': '2.1',
@@ -349,10 +368,16 @@ class ThreatGraphService {
     // Add relationships as STIX 2.1 Relationship objects
     // STIX 2.1 Section 3.2 enforces relationship_type to match ^[a-z0-9-]+$
     for (final edge in _edges) {
-      final relationshipId = 'relationship--${_generateDeterministicUuid("edge_${edge.id}")}';
-      final sourceRef = 'indicator--${_generateDeterministicUuid("node_${edge.sourceNodeId}")}';
-      final targetRef = 'indicator--${_generateDeterministicUuid("node_${edge.targetNodeId}")}';
-      final normalizedRel = edge.relationship.toLowerCase().replaceAll('_', '-').trim();
+      final relationshipId =
+          'relationship--${_generateDeterministicUuid("edge_${edge.id}")}';
+      final sourceRef =
+          'indicator--${_generateDeterministicUuid("node_${edge.sourceNodeId}")}';
+      final targetRef =
+          'indicator--${_generateDeterministicUuid("node_${edge.targetNodeId}")}';
+      final normalizedRel = edge.relationship
+          .toLowerCase()
+          .replaceAll('_', '-')
+          .trim();
 
       objects.add({
         'type': 'relationship',
@@ -367,7 +392,8 @@ class ThreatGraphService {
       });
     }
 
-    final bundleId = 'bundle--${_generateDeterministicUuid("bundle_${_nodes.keys.join("_")}_${_edges.length}_${_evidenceChain.length}")}';
+    final bundleId =
+        'bundle--${_generateDeterministicUuid("bundle_${_nodes.keys.join("_")}_${_edges.length}_${_evidenceChain.length}")}';
 
     // In STIX 2.1 Section 4.1, Bundle objects do NOT carry a spec_version property.
     // Custom properties must carry the x_ prefix.

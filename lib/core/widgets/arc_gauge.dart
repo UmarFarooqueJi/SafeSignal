@@ -73,8 +73,10 @@ class _ArcGaugeState extends State<ArcGauge>
     return AnimatedBuilder(
       animation: _anim,
       builder: (context, _) {
-        final progress =
-            (_anim.value * widget.value / widget.maxValue).clamp(0.0, 1.0);
+        final progress = (_anim.value * widget.value / widget.maxValue).clamp(
+          0.0,
+          1.0,
+        );
         return CustomPaint(
           painter: _ArcPainter(
             progress: progress,
@@ -135,13 +137,7 @@ class _ArcPainter extends CustomPainter {
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round;
 
-      canvas.drawArc(
-        rect,
-        startRad,
-        sweepRad * progress,
-        false,
-        arcPaint,
-      );
+      canvas.drawArc(rect, startRad, sweepRad * progress, false, arcPaint);
     }
   }
 

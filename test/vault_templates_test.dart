@@ -4,40 +4,49 @@ import 'package:safesignal/features/vault/vault_screen.dart';
 
 void main() {
   group('Hardware Vault Forensic Templates & Password Generator Tests', () {
-    test('All 9 specialized forensic templates are defined with required attributes', () {
-      expect(VaultTemplates.all.length, equals(9));
+    test(
+      'All 9 specialized forensic templates are defined with required attributes',
+      () {
+        expect(VaultTemplates.all.length, equals(9));
 
-      final templateIds = VaultTemplates.all.map((t) => t.id).toSet();
-      expect(templateIds, containsAll([
-        'gmail',
-        'bank',
-        'card',
-        'upi',
-        'social',
-        'id',
-        'wifi',
-        'crypto',
-        'note',
-      ]));
+        final templateIds = VaultTemplates.all.map((t) => t.id).toSet();
+        expect(
+          templateIds,
+          containsAll([
+            'gmail',
+            'bank',
+            'card',
+            'upi',
+            'social',
+            'id',
+            'wifi',
+            'crypto',
+            'note',
+          ]),
+        );
 
-      for (final t in VaultTemplates.all) {
-        expect(t.name.isNotEmpty, isTrue);
-        expect(t.category.isNotEmpty, isTrue);
-        expect(t.description.isNotEmpty, isTrue);
-        expect(t.fields.isNotEmpty, isTrue);
-        expect(t.primaryFieldKey.isNotEmpty, isTrue);
-        expect(t.secretFieldKey.isNotEmpty, isTrue);
-      }
-    });
+        for (final t in VaultTemplates.all) {
+          expect(t.name.isNotEmpty, isTrue);
+          expect(t.category.isNotEmpty, isTrue);
+          expect(t.description.isNotEmpty, isTrue);
+          expect(t.fields.isNotEmpty, isTrue);
+          expect(t.primaryFieldKey.isNotEmpty, isTrue);
+          expect(t.secretFieldKey.isNotEmpty, isTrue);
+        }
+      },
+    );
 
-    test('VaultTemplates.findById retrieves correct template or falls back to note', () {
-      final gmail = VaultTemplates.findById('gmail');
-      expect(gmail.id, equals('gmail'));
-      expect(gmail.name, contains('Gmail'));
+    test(
+      'VaultTemplates.findById retrieves correct template or falls back to note',
+      () {
+        final gmail = VaultTemplates.findById('gmail');
+        expect(gmail.id, equals('gmail'));
+        expect(gmail.name, contains('Gmail'));
 
-      final fallback = VaultTemplates.findById('non_existent_template_id');
-      expect(fallback.id, equals('note'));
-    });
+        final fallback = VaultTemplates.findById('non_existent_template_id');
+        expect(fallback.id, equals('note'));
+      },
+    );
 
     test('VaultPasswordGenerator produces valid high-entropy passwords', () {
       final pass16 = VaultPasswordGenerator.generate(length: 16);
@@ -71,12 +80,18 @@ void main() {
       final strongPass = 'kP9#mX2\$vL8@qR4!';
       final entropy = VaultPasswordGenerator.calculateEntropy(strongPass);
       expect(entropy, greaterThanOrEqualTo(80.0));
-      expect(VaultPasswordGenerator.getEntropyRating(entropy), anyOf([contains('Strong'), contains('Military Grade')]));
+      expect(
+        VaultPasswordGenerator.getEntropyRating(entropy),
+        anyOf([contains('Strong'), contains('Military Grade')]),
+      );
 
       final weakPass = '123456';
       final weakEntropy = VaultPasswordGenerator.calculateEntropy(weakPass);
       expect(weakEntropy, lessThan(35.0));
-      expect(VaultPasswordGenerator.getEntropyRating(weakEntropy), contains('Weak'));
+      expect(
+        VaultPasswordGenerator.getEntropyRating(weakEntropy),
+        contains('Weak'),
+      );
     });
 
     test('VaultItem serialization preserves structured template fields', () {
@@ -109,44 +124,60 @@ void main() {
       expect(deserialized.secretValue, equals('SecretPass123!'));
     });
 
-    test('VaultItem deserialization backward compatibility for legacy records', () {
-      // Legacy JSON record with NO templateType and NO fields
-      final legacyJson = {
-        'id': 'legacy-999',
-        'title': 'SBI UPI PIN',
-        'category': 'Banking & UPI',
-        'secretValue': '491823',
-        'notes': 'Legacy vault record created prior to templates',
-        'createdAt': 1770000000000,
-        'type': 'text',
-      };
+    test(
+      'VaultItem deserialization backward compatibility for legacy records',
+      () {
+        // Legacy JSON record with NO templateType and NO fields
+        final legacyJson = {
+          'id': 'legacy-999',
+          'title': 'SBI UPI PIN',
+          'category': 'Banking & UPI',
+          'secretValue': '491823',
+          'notes': 'Legacy vault record created prior to templates',
+          'createdAt': 1770000000000,
+          'type': 'text',
+        };
 
-      final deserialized = VaultItem.fromJson(legacyJson);
-      expect(deserialized.id, equals('legacy-999'));
-      expect(deserialized.title, equals('SBI UPI PIN'));
-      expect(deserialized.secretValue, equals('491823'));
-      // Auto-inferred template from category 'Banking & UPI'
-      expect(deserialized.templateType, equals('bank'));
-      expect(deserialized.fields, isEmpty);
-      expect(deserialized.notes, equals('Legacy vault record created prior to templates'));
-    });
+        final deserialized = VaultItem.fromJson(legacyJson);
+        expect(deserialized.id, equals('legacy-999'));
+        expect(deserialized.title, equals('SBI UPI PIN'));
+        expect(deserialized.secretValue, equals('491823'));
+        // Auto-inferred template from category 'Banking & UPI'
+        expect(deserialized.templateType, equals('bank'));
+        expect(deserialized.fields, isEmpty);
+        expect(
+          deserialized.notes,
+          equals('Legacy vault record created prior to templates'),
+        );
+      },
+    );
 
     test('Deep-Link external scheme routing interceptor logic', () {
       String? redirectCheck(Uri uri) {
         final loc = uri.toString();
         final scheme = uri.scheme.toLowerCase();
-        if (scheme == 'http' || scheme == 'https' || loc.startsWith('http://') || loc.startsWith('https://')) {
+        if (scheme == 'http' ||
+            scheme == 'https' ||
+            loc.startsWith('http://') ||
+            loc.startsWith('https://')) {
           return '/url-scanner?url=${Uri.encodeComponent(loc)}';
         }
         return null;
       }
 
-      final spotifyUri = Uri.parse('https://open.spotify.com/playlist/3uMh36cKmCn4rmcsngjuS3?si=_VM_FgGUQDOlgRygDEnuzA');
+      final spotifyUri = Uri.parse(
+        'https://open.spotify.com/playlist/3uMh36cKmCn4rmcsngjuS3?si=_VM_FgGUQDOlgRygDEnuzA',
+      );
       final redirectRoute = redirectCheck(spotifyUri);
 
       expect(redirectRoute, isNotNull);
       expect(redirectRoute!.startsWith('/url-scanner?url='), isTrue);
-      expect(Uri.decodeComponent(redirectRoute.replaceFirst('/url-scanner?url=', '')), equals(spotifyUri.toString()));
+      expect(
+        Uri.decodeComponent(
+          redirectRoute.replaceFirst('/url-scanner?url=', ''),
+        ),
+        equals(spotifyUri.toString()),
+      );
 
       final internalUri = Uri.parse('/home');
       expect(redirectCheck(internalUri), isNull);

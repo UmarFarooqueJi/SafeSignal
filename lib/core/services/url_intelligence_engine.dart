@@ -2,20 +2,10 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 
 /// Verdict tier for URL security analysis
-enum UrlVerdict {
-  safe,
-  caution,
-  dangerous,
-}
+enum UrlVerdict { safe, caution, dangerous }
 
 /// Granular risk classification tier
-enum UrlRiskLevel {
-  lowRisk,
-  suspicious,
-  highRisk,
-  knownMalicious,
-  unknown,
-}
+enum UrlRiskLevel { lowRisk, suspicious, highRisk, knownMalicious, unknown }
 
 /// Input processing status distinguishing structural validity from threat classification
 enum UrlInputStatus {
@@ -186,9 +176,7 @@ class UrlResult {
       checks: const {},
       warnings: [message],
       positives: const [],
-      domainChecks: [
-        DomainCheckItem('Scan Status', false, message),
-      ],
+      domainChecks: [DomainCheckItem('Scan Status', false, message)],
       isVerifiedSafe: false,
       riskLevel: UrlRiskLevel.unknown,
       isExternalRedirect: false,
@@ -206,18 +194,30 @@ class UrlResult {
 /// Handles canonicalization, homograph/punycode attacks, brand impersonation,
 /// SSRF/private host validation, TLD risk, and privacy-preserving DNS-over-HTTPS.
 class UrlIntelligenceEngine {
-  static final Dio _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 4),
-    receiveTimeout: const Duration(seconds: 4),
-  ));
+  static final Dio _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 4),
+      receiveTimeout: const Duration(seconds: 4),
+    ),
+  );
 
   // ─── INSTITUTIONAL BRAND AUTHORITY REGISTRY ──────────────────────────────────
   // Maps target brands to all legitimate root domains.
   // Any domain matching these root domains is NEVER flagged as impersonating.
   static const Map<String, List<String>> brandRegistry = {
-    'sbi': ['sbi.co.in', 'onlinesbi.sbi', 'onlinesbi.com', 'statebankofindia.com'],
+    'sbi': [
+      'sbi.co.in',
+      'onlinesbi.sbi',
+      'onlinesbi.com',
+      'statebankofindia.com',
+    ],
     'hdfc': ['hdfcbank.com', 'hdfc.com', 'hdfcsec.com'],
-    'icici': ['icicibank.com', 'icicidirect.com', 'icicilombard.com', 'iciciprulife.com'],
+    'icici': [
+      'icicibank.com',
+      'icicidirect.com',
+      'icicilombard.com',
+      'iciciprulife.com',
+    ],
     'axis': ['axisbank.com', 'axisdirect.in'],
     'kotak': ['kotak.com', 'kotaksecurities.com'],
     'pnb': ['pnbindia.in', 'pnbnet.net.in'],
@@ -226,7 +226,15 @@ class UrlIntelligenceEngine {
     'paytm': ['paytm.com', 'paytmbank.com'],
     'phonepe': ['phonepe.com'],
     'gpay': ['google.com', 'google.co.in', 'gpay.app'],
-    'google': ['google.com', 'google.co.in', 'youtube.com', 'gmail.com', 'gstatic.com', 'android.com', 'withgoogle.com'],
+    'google': [
+      'google.com',
+      'google.co.in',
+      'youtube.com',
+      'gmail.com',
+      'gstatic.com',
+      'android.com',
+      'withgoogle.com',
+    ],
     'incometax': ['incometax.gov.in', 'incometaxindia.gov.in', 'tin-nsdl.com'],
     'uidai': ['uidai.gov.in', 'myaadhaar.uidai.gov.in'],
     'aadhaar': ['uidai.gov.in', 'myaadhaar.uidai.gov.in'],
@@ -237,7 +245,12 @@ class UrlIntelligenceEngine {
     'jio': ['jio.com', 'reliancedigital.in'],
     'airtel': ['airtel.in', 'airtel.com'],
     'vi': ['myvi.in'],
-    'amazon': ['amazon.in', 'amazon.com', 'media-amazon.com', 'ssl-images-amazon.com'],
+    'amazon': [
+      'amazon.in',
+      'amazon.com',
+      'media-amazon.com',
+      'ssl-images-amazon.com',
+    ],
     'flipkart': ['flipkart.com', 'flipkart.net'],
     'whatsapp': ['whatsapp.com', 'wa.me'],
     'netflix': ['netflix.com'],
@@ -248,24 +261,85 @@ class UrlIntelligenceEngine {
 
   // Verified Institutional Allowlist
   static const Set<String> institutionalAllowlist = {
-    'google.com', 'google.co.in', 'youtube.com', 'facebook.com', 'instagram.com', 'whatsapp.com',
-    'sbi.co.in', 'onlinesbi.sbi', 'onlinesbi.com', 'statebankofindia.com',
-    'hdfcbank.com', 'hdfc.com', 'icicibank.com', 'axisbank.com', 'kotak.com', 'pnbindia.in',
-    'amazon.in', 'amazon.com', 'flipkart.com', 'myntra.com', 'meesho.com',
-    'paytm.com', 'phonepe.com', 'gpay.app',
-    'incometax.gov.in', 'uidai.gov.in', 'npci.org.in', 'rbi.org.in',
-    'irctc.co.in', 'nic.in', 'gov.in', 'india.gov.in', 'passportindia.gov.in',
-    'epfindia.gov.in', 'parivahan.gov.in', 'indiapost.gov.in',
-    'bsnl.co.in', 'tatamotors.com', 'reliance.com', 'jio.com', 'airtel.in', 'myvi.in',
-    'microsoft.com', 'apple.com', 'linkedin.com', 'twitter.com', 'x.com', 'github.com',
-    'cloudflare.com', 'wikipedia.org', 'f-droid.org', 'signal.org',
+    'google.com',
+    'google.co.in',
+    'youtube.com',
+    'facebook.com',
+    'instagram.com',
+    'whatsapp.com',
+    'sbi.co.in',
+    'onlinesbi.sbi',
+    'onlinesbi.com',
+    'statebankofindia.com',
+    'hdfcbank.com',
+    'hdfc.com',
+    'icicibank.com',
+    'axisbank.com',
+    'kotak.com',
+    'pnbindia.in',
+    'amazon.in',
+    'amazon.com',
+    'flipkart.com',
+    'myntra.com',
+    'meesho.com',
+    'paytm.com',
+    'phonepe.com',
+    'gpay.app',
+    'incometax.gov.in',
+    'uidai.gov.in',
+    'npci.org.in',
+    'rbi.org.in',
+    'irctc.co.in',
+    'nic.in',
+    'gov.in',
+    'india.gov.in',
+    'passportindia.gov.in',
+    'epfindia.gov.in',
+    'parivahan.gov.in',
+    'indiapost.gov.in',
+    'bsnl.co.in',
+    'tatamotors.com',
+    'reliance.com',
+    'jio.com',
+    'airtel.in',
+    'myvi.in',
+    'microsoft.com',
+    'apple.com',
+    'linkedin.com',
+    'twitter.com',
+    'x.com',
+    'github.com',
+    'cloudflare.com',
+    'wikipedia.org',
+    'f-droid.org',
+    'signal.org',
   };
 
   // High-Risk TLDs
   static const Set<String> highRiskTlds = {
-    '.zip', '.mov', '.tk', '.ml', '.ga', '.cf', '.gq', '.top', '.xyz', '.work',
-    '.click', '.link', '.rest', '.country', '.stream', '.download', '.racing',
-    '.buzz', '.quest', '.icu', '.monster', '.cam', '.live',
+    '.zip',
+    '.mov',
+    '.tk',
+    '.ml',
+    '.ga',
+    '.cf',
+    '.gq',
+    '.top',
+    '.xyz',
+    '.work',
+    '.click',
+    '.link',
+    '.rest',
+    '.country',
+    '.stream',
+    '.download',
+    '.racing',
+    '.buzz',
+    '.quest',
+    '.icu',
+    '.monster',
+    '.cam',
+    '.live',
   };
 
   // Curated Command & Control (C2) / Banking Trojan Distribution Registry
@@ -337,15 +411,36 @@ class UrlIntelligenceEngine {
 
   // Dangerous File Extensions
   static const List<String> dangerousExtensions = [
-    '.apk', '.exe', '.dex', '.vbs', '.bat', '.scr', '.jar', '.msi', '.cmd', '.ps1',
+    '.apk',
+    '.exe',
+    '.dex',
+    '.vbs',
+    '.bat',
+    '.scr',
+    '.jar',
+    '.msi',
+    '.cmd',
+    '.ps1',
   ];
 
   // Suspicious Social Engineering Keywords
   static const List<String> urgencyKeywords = [
-    'kyc', 'pan-update', 'aadhaar-link', 'lottery', 'winner', 'jackpot',
-    'digital-arrest', 'police-fine', 'electricity-bill', 'power-cut',
-    'free-recharge', 'claim-reward', 'unblock-account', 'otp-verify',
-    'urgent-action', 'immediate-refund',
+    'kyc',
+    'pan-update',
+    'aadhaar-link',
+    'lottery',
+    'winner',
+    'jackpot',
+    'digital-arrest',
+    'police-fine',
+    'electricity-bill',
+    'power-cut',
+    'free-recharge',
+    'claim-reward',
+    'unblock-account',
+    'otp-verify',
+    'urgent-action',
+    'immediate-refund',
   ];
 
   /// Validates and parses an untrusted raw URL string, returning structured input status
@@ -367,7 +462,9 @@ class UrlIntelligenceEngine {
     }
 
     // Inspect scheme
-    final schemeMatch = RegExp(r'^([a-zA-Z][a-zA-Z0-9+.-]*):').firstMatch(rawTrimmed);
+    final schemeMatch = RegExp(
+      r'^([a-zA-Z][a-zA-Z0-9+.-]*):',
+    ).firstMatch(rawTrimmed);
     String effectiveUrl = rawTrimmed;
     if (schemeMatch != null) {
       final scheme = schemeMatch.group(1)!.toLowerCase();
@@ -375,7 +472,8 @@ class UrlIntelligenceEngine {
         return UrlValidationResult(
           status: UrlInputStatus.unsupportedScheme,
           detectedScheme: scheme,
-          errorMessage: 'Unsupported URI scheme ($scheme). Only HTTP and HTTPS schemes are supported.',
+          errorMessage:
+              'Unsupported URI scheme ($scheme). Only HTTP and HTTPS schemes are supported.',
         );
       }
     } else {
@@ -392,7 +490,8 @@ class UrlIntelligenceEngine {
     if (RegExp(r'%(?![0-9a-fA-F]{2})').hasMatch(effectiveUrl)) {
       return const UrlValidationResult(
         status: UrlInputStatus.invalidUrl,
-        errorMessage: 'Malformed percent-encoding in URL: incomplete or non-hexadecimal escape sequence.',
+        errorMessage:
+            'Malformed percent-encoding in URL: incomplete or non-hexadecimal escape sequence.',
       );
     }
 
@@ -423,24 +522,31 @@ class UrlIntelligenceEngine {
     final host = parsed.host;
 
     // Check port boundaries (1 - 65535)
-    final portMatch = RegExp(r':([0-9]+)(?:/|\?|#|$)').firstMatch(parsed.authority);
+    final portMatch = RegExp(
+      r':([0-9]+)(?:/|\?|#|$)',
+    ).firstMatch(parsed.authority);
     if (portMatch != null) {
       final parsedPort = int.tryParse(portMatch.group(1)!);
       if (parsedPort == null || parsedPort < 1 || parsedPort > 65535) {
         return UrlValidationResult(
           status: UrlInputStatus.invalidUrl,
-          errorMessage: 'Invalid network port specified in authority (${portMatch.group(1)}). Valid range is 1-65535.',
+          errorMessage:
+              'Invalid network port specified in authority (${portMatch.group(1)}). Valid range is 1-65535.',
         );
       }
     }
 
     // Check for malformed non-numeric port indicator (e.g. host:abc or host:::)
-    final authorityWithoutUser = parsed.authority.replaceFirst(RegExp(r'^[^@]+@'), '');
+    final authorityWithoutUser = parsed.authority.replaceFirst(
+      RegExp(r'^[^@]+@'),
+      '',
+    );
     if (RegExp(r':[^0-9/\\?#]+').hasMatch(authorityWithoutUser)) {
       if (!host.startsWith('[') || !host.endsWith(']')) {
         return const UrlValidationResult(
           status: UrlInputStatus.invalidUrl,
-          errorMessage: 'Authority contains malformed port delimiter or non-numeric port.',
+          errorMessage:
+              'Authority contains malformed port delimiter or non-numeric port.',
         );
       }
     }
@@ -464,17 +570,18 @@ class UrlIntelligenceEngine {
     }
 
     // Host structure checks: consecutive dots, leading/trailing dots, spaces
-    if (host.contains('..') || host.startsWith('.') || host.endsWith('.') || host.contains(' ')) {
+    if (host.contains('..') ||
+        host.startsWith('.') ||
+        host.endsWith('.') ||
+        host.contains(' ')) {
       return const UrlValidationResult(
         status: UrlInputStatus.invalidUrl,
-        errorMessage: 'Malformed host structure: invalid dot placement or whitespace in hostname.',
+        errorMessage:
+            'Malformed host structure: invalid dot placement or whitespace in hostname.',
       );
     }
 
-    return UrlValidationResult(
-      status: UrlInputStatus.validUrl,
-      uri: parsed,
-    );
+    return UrlValidationResult(status: UrlInputStatus.validUrl, uri: parsed);
   }
 
   /// Canonicalizes an input string into a standard URI (returns null if invalid or unsupported)
@@ -486,7 +593,10 @@ class UrlIntelligenceEngine {
   /// Verifies if a hostname is private, loopback, or reserved (SSRF guard)
   static bool isPrivateOrReservedHost(String host) {
     final lower = host.toLowerCase().trim();
-    if (lower == 'localhost' || lower == '127.0.0.1' || lower == '::1' || lower == '0.0.0.0') {
+    if (lower == 'localhost' ||
+        lower == '127.0.0.1' ||
+        lower == '::1' ||
+        lower == '0.0.0.0') {
       return true;
     }
 
@@ -497,10 +607,11 @@ class UrlIntelligenceEngine {
         final n0 = nums[0]!;
         final n1 = nums[1]!;
         if (n0 == 127) return true; // Loopback
-        if (n0 == 10) return true;  // 10.0.0.0/8
+        if (n0 == 10) return true; // 10.0.0.0/8
         if (n0 == 172 && n1 >= 16 && n1 <= 31) return true; // 172.16.0.0/12
         if (n0 == 192 && n1 == 168) return true; // 192.168.0.0/16
-        if (n0 == 169 && n1 == 254) return true; // Link-local (AWS/cloud metadata)
+        if (n0 == 169 && n1 == 254)
+          return true; // Link-local (AWS/cloud metadata)
         if (n0 == 0) return true;
         if (n0 >= 224) return true; // Multicast / Class E reserved
       }
@@ -517,8 +628,20 @@ class UrlIntelligenceEngine {
     // Two-level ccTLDs (e.g. .co.in, .gov.in, .nic.in, .org.in, .net.in, .co.uk)
     final lastTwo = '${parts[parts.length - 2]}.${parts.last}';
     final specialTwoLevelTlds = {
-      'co.in', 'gov.in', 'nic.in', 'org.in', 'net.in', 'ac.in', 'edu.in',
-      'co.uk', 'org.uk', 'com.au', 'net.au', 'co.nz', 'co.jp', 'com.br',
+      'co.in',
+      'gov.in',
+      'nic.in',
+      'org.in',
+      'net.in',
+      'ac.in',
+      'edu.in',
+      'co.uk',
+      'org.uk',
+      'com.au',
+      'net.au',
+      'co.nz',
+      'co.jp',
+      'com.br',
     };
 
     if (specialTwoLevelTlds.contains(lastTwo) && parts.length >= 3) {
@@ -577,7 +700,11 @@ class UrlIntelligenceEngine {
 
     // Whole script imitation in standard Latin context (e.g. entire domain host in Cyrillic like "сби.com")
     if ((hasCyrillic || hasGreek) &&
-        (lower.endsWith('.com') || lower.endsWith('.in') || lower.endsWith('.org') || lower.endsWith('.net') || lower.endsWith('.co.in'))) {
+        (lower.endsWith('.com') ||
+            lower.endsWith('.in') ||
+            lower.endsWith('.org') ||
+            lower.endsWith('.net') ||
+            lower.endsWith('.co.in'))) {
       return true;
     }
 
@@ -599,7 +726,9 @@ class UrlIntelligenceEngine {
     for (int i = 0; i < maxHops; i++) {
       try {
         final parsed = Uri.tryParse(currentUrl);
-        if (parsed == null || !parsed.hasScheme || (parsed.scheme != 'http' && parsed.scheme != 'https')) {
+        if (parsed == null ||
+            !parsed.hasScheme ||
+            (parsed.scheme != 'http' && parsed.scheme != 'https')) {
           break;
         }
 
@@ -616,7 +745,8 @@ class UrlIntelligenceEngine {
             sendTimeout: timeout,
             receiveTimeout: timeout,
             headers: {
-              'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko)',
+              'User-Agent':
+                  'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko)',
             },
           ),
         );
@@ -651,9 +781,24 @@ class UrlIntelligenceEngine {
     required String baseDomain,
   }) {
     final candidateKeys = {
-      'url', 'redirect', 'redirect_url', 'redirect_uri', 'next', 'return_to',
-      'return', 'dest', 'destination', 'target', 'link', 'r', 'u', 'goto',
-      'continue', 'forward', 'out', 'to'
+      'url',
+      'redirect',
+      'redirect_url',
+      'redirect_uri',
+      'next',
+      'return_to',
+      'return',
+      'dest',
+      'destination',
+      'target',
+      'link',
+      'r',
+      'u',
+      'goto',
+      'continue',
+      'forward',
+      'out',
+      'to',
     };
 
     String? foundTarget;
@@ -714,7 +859,8 @@ class UrlIntelligenceEngine {
           targetHost: uri.host,
           targetBaseDomain: baseDomain,
           redirectRiskDelta: 0,
-          description: 'URL contains internal relative redirection ($foundKey=$decoded).',
+          description:
+              'URL contains internal relative redirection ($foundKey=$decoded).',
         );
       } else {
         // e.g. "phishing.example/login" without scheme
@@ -728,11 +874,14 @@ class UrlIntelligenceEngine {
         rawTarget: decoded,
         targetHost: 'malformed_destination',
         redirectRiskDelta: 30,
-        description: 'URL contains malformed or obfuscated redirect parameter ($foundKey).',
+        description:
+            'URL contains malformed or obfuscated redirect parameter ($foundKey).',
       );
     }
 
-    if (targetUri == null || !targetUri.hasAuthority || targetUri.host.isEmpty) {
+    if (targetUri == null ||
+        !targetUri.hasAuthority ||
+        targetUri.host.isEmpty) {
       return RedirectAnalysis(
         hasRedirect: true,
         isExternal: false,
@@ -741,13 +890,15 @@ class UrlIntelligenceEngine {
         targetHost: uri.host,
         targetBaseDomain: baseDomain,
         redirectRiskDelta: 0,
-        description: 'URL contains benign parameter without external authority.',
+        description:
+            'URL contains benign parameter without external authority.',
       );
     }
 
     final targetHost = targetUri.host.toLowerCase();
     final targetBase = extractBaseDomain(targetHost);
-    final isExternal = (targetBase != baseDomain && !targetHost.endsWith('.$baseDomain'));
+    final isExternal =
+        (targetBase != baseDomain && !targetHost.endsWith('.$baseDomain'));
 
     if (!isExternal) {
       return RedirectAnalysis(
@@ -759,16 +910,19 @@ class UrlIntelligenceEngine {
         targetBaseDomain: targetBase,
         targetUri: targetUri,
         redirectRiskDelta: 0,
-        description: 'URL contains internal redirect parameter pointing within the same domain hierarchy ($targetHost).',
+        description:
+            'URL contains internal redirect parameter pointing within the same domain hierarchy ($targetHost).',
       );
     }
 
     // External target detected: inspect destination properties
     final hasHighRiskTld = highRiskTlds.any((tld) => targetHost.endsWith(tld));
     final isSsrf = isPrivateOrReservedHost(targetHost);
-    final isDropper = dangerousExtensions.any((ext) =>
-        (targetUri?.path.toLowerCase().endsWith(ext) ?? false) ||
-        (targetUri?.query.toLowerCase().contains(ext) ?? false));
+    final isDropper = dangerousExtensions.any(
+      (ext) =>
+          (targetUri?.path.toLowerCase().endsWith(ext) ?? false) ||
+          (targetUri?.query.toLowerCase().contains(ext) ?? false),
+    );
     final brandSpoof = detectBrandImpersonation(targetHost);
 
     int riskDelta = 25; // Base uncertainty for unverified external destination
@@ -777,7 +931,8 @@ class UrlIntelligenceEngine {
     if (isDropper) riskDelta += 50;
     if (brandSpoof != null) riskDelta += 35;
 
-    final String desc = 'URL contains parameter ($foundKey) directing to external host ($targetHost).'
+    final String desc =
+        'URL contains parameter ($foundKey) directing to external host ($targetHost).'
         ' Redirection destination is unverified; caution advised.';
 
     return RedirectAnalysis(
@@ -830,11 +985,13 @@ class UrlIntelligenceEngine {
     final isSsrfHost = isPrivateOrReservedHost(rawHost);
     if (isSsrfHost) {
       riskScore = 80;
-      domainChecks.add(DomainCheckItem(
-        'SSRF & Internal Host Guard',
-        false,
-        'Target points to a loopback, link-local, or private RFC-1918 internal address ($domain). Outbound scraping blocked.',
-      ));
+      domainChecks.add(
+        DomainCheckItem(
+          'SSRF & Internal Host Guard',
+          false,
+          'Target points to a loopback, link-local, or private RFC-1918 internal address ($domain). Outbound scraping blocked.',
+        ),
+      );
       return UrlResult(
         url: rawUrl,
         domain: domain,
@@ -851,21 +1008,25 @@ class UrlIntelligenceEngine {
         serverIp: domain,
         riskLevel: UrlRiskLevel.knownMalicious,
         isExternalRedirect: false,
-        riskExplanation: 'Target points to private RFC-1918 or loopback internal network address.',
+        riskExplanation:
+            'Target points to private RFC-1918 or loopback internal network address.',
         threatType: MalwareThreatType.unknownThreat,
         threatCategoryBadge: 'INTERNAL NETWORK TARGET (SSRF)',
-        threatForensicDetails: 'Target points to private RFC-1918 or loopback internal network address. Outbound connection blocked.',
+        threatForensicDetails:
+            'Target points to private RFC-1918 or loopback internal network address. Outbound connection blocked.',
       );
     }
 
     // ─── 1. HTTP BASIC AUTH SPOOFING CHECK ───────────────────────────────────
     if (uri.userInfo.isNotEmpty) {
       riskScore += 65;
-      domainChecks.add(DomainCheckItem(
-        'URL Credential Deception',
-        false,
-        'URL utilizes HTTP Basic Auth prefix (${uri.userInfo}@) to disguise real target host: $rawHost.',
-      ));
+      domainChecks.add(
+        DomainCheckItem(
+          'URL Credential Deception',
+          false,
+          'URL utilizes HTTP Basic Auth prefix (${uri.userInfo}@) to disguise real target host: $rawHost.',
+        ),
+      );
     }
 
     // ─── 2. INSTITUTIONAL ALLOWLIST CHECK ────────────────────────────────────
@@ -874,25 +1035,33 @@ class UrlIntelligenceEngine {
         domain.endsWith('.gov.in') ||
         domain.endsWith('.nic.in')) {
       isAllowlisted = true;
-      domainChecks.add(DomainCheckItem(
-        'Trusted Institutional Registry',
-        true,
-        'Verified in SafeSignal on-device registry of authenticated institutional domains ($domain).',
-      ));
+      domainChecks.add(
+        DomainCheckItem(
+          'Trusted Institutional Registry',
+          true,
+          'Verified in SafeSignal on-device registry of authenticated institutional domains ($domain).',
+        ),
+      );
     } else {
-      domainChecks.add(DomainCheckItem(
-        'Institutional Registry',
-        null,
-        'Not in local allowlist of verified institutional domains (Neutral).',
-      ));
+      domainChecks.add(
+        DomainCheckItem(
+          'Institutional Registry',
+          null,
+          'Not in local allowlist of verified institutional domains (Neutral).',
+        ),
+      );
     }
 
     // ─── 2.1 COMMAND & CONTROL (C2) / THREAT INTEL CHECK ────────────────────
-    final isKnownC2 = knownC2Domains.contains(domain) || knownC2Domains.contains(baseDomain);
+    final isKnownC2 =
+        knownC2Domains.contains(domain) || knownC2Domains.contains(baseDomain);
     bool isDynamicDnsC2 = false;
     for (final suffix in highRiskDynamicDnsSuffixes) {
       if (domain.endsWith(suffix) &&
-          (urlPath.contains('.apk') || urlPath.contains('payload') || urlPath.contains('c2') || urlPath.contains('bot'))) {
+          (urlPath.contains('.apk') ||
+              urlPath.contains('payload') ||
+              urlPath.contains('c2') ||
+              urlPath.contains('bot'))) {
         isDynamicDnsC2 = true;
         break;
       }
@@ -917,11 +1086,13 @@ class UrlIntelligenceEngine {
       if (unraveledChain.length > 1) {
         final destinationUrl = unraveledChain.last;
         final destUri = Uri.tryParse(destinationUrl);
-        final destHost = destUri?.host.toLowerCase().replaceAll(RegExp(r'^www\.'), '') ?? '';
+        final destHost =
+            destUri?.host.toLowerCase().replaceAll(RegExp(r'^www\.'), '') ?? '';
         final destPath = destUri?.path.toLowerCase() ?? '';
 
         final destIsC2 = knownC2Domains.contains(destHost);
-        final destIsApk = destPath.endsWith('.apk') || destinationUrl.contains('.apk?');
+        final destIsApk =
+            destPath.endsWith('.apk') || destinationUrl.contains('.apk?');
 
         if (destIsC2 || destIsApk) {
           riskScore += 75;
@@ -934,11 +1105,13 @@ class UrlIntelligenceEngine {
             ),
           );
         } else {
-          domainChecks.add(DomainCheckItem(
-            'Shortened URL Resolution',
-            true,
-            'Safely unraveled ${unraveledChain.length - 1} redirect hop(s) to destination: $destinationUrl.',
-          ));
+          domainChecks.add(
+            DomainCheckItem(
+              'Shortened URL Resolution',
+              true,
+              'Safely unraveled ${unraveledChain.length - 1} redirect hop(s) to destination: $destinationUrl.',
+            ),
+          );
         }
       }
     }
@@ -947,18 +1120,23 @@ class UrlIntelligenceEngine {
     final brandSpoof = detectBrandImpersonation(domain);
     if (brandSpoof != null) {
       riskScore += 60;
-      domainChecks.insert(0, DomainCheckItem('Phishing & Brand Impersonation', false, brandSpoof));
+      domainChecks.insert(
+        0,
+        DomainCheckItem('Phishing & Brand Impersonation', false, brandSpoof),
+      );
     }
 
     // ─── 4. HOMOGRAPH & PUNYCODE SPOOFING ────────────────────────────────────
     final isHomograph = detectHomographAttack(domain);
     if (isHomograph) {
       riskScore += 60;
-      domainChecks.add(DomainCheckItem(
-        'Homograph Spoofing Attack',
-        false,
-        'Punycode or mixed-character lookalike domain detected ($domain). High probability of visual deception.',
-      ));
+      domainChecks.add(
+        DomainCheckItem(
+          'Homograph Spoofing Attack',
+          false,
+          'Punycode or mixed-character lookalike domain detected ($domain). High probability of visual deception.',
+        ),
+      );
     }
 
     // ─── 5. HIGH RISK TLD PROFILING ──────────────────────────────────────────
@@ -967,35 +1145,44 @@ class UrlIntelligenceEngine {
       if (domain.endsWith(tld)) {
         hasHighRiskTld = true;
         riskScore += 25;
-        domainChecks.add(DomainCheckItem(
-          'Top-Level Domain (TLD) Reputation',
-          false,
-          'Uses high-abuse free or disposable TLD ($tld). Frequently utilized by cybercrime syndicates.',
-        ));
+        domainChecks.add(
+          DomainCheckItem(
+            'Top-Level Domain (TLD) Reputation',
+            false,
+            'Uses high-abuse free or disposable TLD ($tld). Frequently utilized by cybercrime syndicates.',
+          ),
+        );
         break;
       }
     }
     if (!hasHighRiskTld) {
-      domainChecks.add(DomainCheckItem(
-        'Top-Level Domain (TLD) Reputation',
-        true,
-        'Standard commercial or institutional top-level domain.',
-      ));
+      domainChecks.add(
+        DomainCheckItem(
+          'Top-Level Domain (TLD) Reputation',
+          true,
+          'Standard commercial or institutional top-level domain.',
+        ),
+      );
     }
 
     // ─── 6. SOCIAL ENGINEERING / URGENCY KEYWORDS ────────────────────────────
-    final matchedUrgency = urgencyKeywords.where((kw) => urlPath.contains(kw) || urlQuery.contains(kw)).toList();
+    final matchedUrgency = urgencyKeywords
+        .where((kw) => urlPath.contains(kw) || urlQuery.contains(kw))
+        .toList();
     if (matchedUrgency.isNotEmpty) {
       riskScore += 20;
-      domainChecks.add(DomainCheckItem(
-        'Social Engineering Signatures',
-        false,
-        'Urgency or scam trigger keywords found in path/query: ${matchedUrgency.join(', ')}.',
-      ));
+      domainChecks.add(
+        DomainCheckItem(
+          'Social Engineering Signatures',
+          false,
+          'Urgency or scam trigger keywords found in path/query: ${matchedUrgency.join(', ')}.',
+        ),
+      );
     }
 
     // ─── 7. EXECUTABLE & MOBILE PAYLOAD INSPECTION ───────────────────────────
-    final bool isDesktopExecutable = urlPath.endsWith('.exe') ||
+    final bool isDesktopExecutable =
+        urlPath.endsWith('.exe') ||
         urlPath.endsWith('.bat') ||
         urlPath.endsWith('.cmd') ||
         urlPath.endsWith('.vbs') ||
@@ -1005,18 +1192,44 @@ class UrlIntelligenceEngine {
         urlPath.endsWith('.dex') ||
         urlPath.endsWith('.jar');
 
-    final bool isDirectApk = urlPath.endsWith('.apk') ||
+    final bool isDirectApk =
+        urlPath.endsWith('.apk') ||
         urlPath.endsWith('.xapk') ||
         urlPath.endsWith('.apks') ||
         RegExp(r'\.apk(?:$|[?#])').hasMatch(urlPath);
 
     final ratSignatures = [
-      'rat', 'spynote', 'craxs', 'anatsa', 'cerberus', 'teabot', 'hydra',
-      'sova', 'alien', 'ermac', 'hook', 'vultur', 'chameleon', 'flubot',
-      'brata', 'gustuff', 'triada', 'stealer', 'keylogger', 'screenlogger',
-      'screen-share', 'remote-control', 'remote-admin', 'c2-server', 'botnet',
-      'quicksupport', 'anydesk-support', 'teamviewer-support', 'screenshare',
-      'auto-clicker', 'bank-bot'
+      'rat',
+      'spynote',
+      'craxs',
+      'anatsa',
+      'cerberus',
+      'teabot',
+      'hydra',
+      'sova',
+      'alien',
+      'ermac',
+      'hook',
+      'vultur',
+      'chameleon',
+      'flubot',
+      'brata',
+      'gustuff',
+      'triada',
+      'stealer',
+      'keylogger',
+      'screenlogger',
+      'screen-share',
+      'remote-control',
+      'remote-admin',
+      'c2-server',
+      'botnet',
+      'quicksupport',
+      'anydesk-support',
+      'teamviewer-support',
+      'screenshare',
+      'auto-clicker',
+      'bank-bot',
     ];
 
     final isDoubleExtDropper = RegExp(
@@ -1024,68 +1237,89 @@ class UrlIntelligenceEngine {
       caseSensitive: false,
     ).hasMatch(urlPath);
 
-    final bool hasRatKeyword = ratSignatures.any((sig) =>
-      urlPath.contains(sig) || urlQuery.contains(sig) || domain.contains(sig)
+    final bool hasRatKeyword = ratSignatures.any(
+      (sig) =>
+          urlPath.contains(sig) ||
+          urlQuery.contains(sig) ||
+          domain.contains(sig),
     );
 
     bool isRatDropper = false;
     bool isMaliciousDropper = false;
     bool isUnverifiedApk = false;
 
-    if ((isDirectApk || isDesktopExecutable) && (hasRatKeyword || isDoubleExtDropper)) {
+    if ((isDirectApk || isDesktopExecutable) &&
+        (hasRatKeyword || isDoubleExtDropper)) {
       isRatDropper = true;
       isMaliciousDropper = true;
       riskScore += 75;
-      domainChecks.insert(0, DomainCheckItem(
-        'Remote Access Trojan (RAT) Vector',
-        false,
-        'CRITICAL: Remote Access Trojan (RAT), spyware payload, or stealth double-extension executable dropper signature identified in target path.',
-      ));
+      domainChecks.insert(
+        0,
+        DomainCheckItem(
+          'Remote Access Trojan (RAT) Vector',
+          false,
+          'CRITICAL: Remote Access Trojan (RAT), spyware payload, or stealth double-extension executable dropper signature identified in target path.',
+        ),
+      );
     } else if (isDesktopExecutable) {
       isMaliciousDropper = true;
       riskScore += 65;
-      domainChecks.insert(0, DomainCheckItem(
-        'Malicious Executable Dropper',
-        false,
-        'CRITICAL: URL directly downloads desktop executable or script binary. Extreme malware dropper risk on mobile device.',
-      ));
+      domainChecks.insert(
+        0,
+        DomainCheckItem(
+          'Malicious Executable Dropper',
+          false,
+          'CRITICAL: URL directly downloads desktop executable or script binary. Extreme malware dropper risk on mobile device.',
+        ),
+      );
     } else if (isDirectApk) {
-      final isVerifiedPublisher = verifiedApkPublishers.contains(domain) ||
+      final isVerifiedPublisher =
+          verifiedApkPublishers.contains(domain) ||
           verifiedApkPublishers.contains(baseDomain);
 
       if (brandSpoof != null) {
         isMaliciousDropper = true;
         riskScore += 70;
-        domainChecks.insert(0, DomainCheckItem(
-          'Brand Impersonation & Trojan Dropper',
-          false,
-          'CRITICAL: Deceptive brand-impersonating domain directly distributing an Android APK payload. High probability of banking Trojan or spyware.',
-        ));
+        domainChecks.insert(
+          0,
+          DomainCheckItem(
+            'Brand Impersonation & Trojan Dropper',
+            false,
+            'CRITICAL: Deceptive brand-impersonating domain directly distributing an Android APK payload. High probability of banking Trojan or spyware.',
+          ),
+        );
       } else if (hasHighRiskTld || matchedUrgency.isNotEmpty) {
         isMaliciousDropper = true;
         riskScore += 60;
-        domainChecks.insert(0, DomainCheckItem(
-          'High-Risk Mobile Malware Dropper',
-          false,
-          'CRITICAL: Android APK payload hosted on high-risk disposable TLD or social engineering lure. Probable malicious dropper.',
-        ));
+        domainChecks.insert(
+          0,
+          DomainCheckItem(
+            'High-Risk Mobile Malware Dropper',
+            false,
+            'CRITICAL: Android APK payload hosted on high-risk disposable TLD or social engineering lure. Probable malicious dropper.',
+          ),
+        );
       } else if (isVerifiedPublisher) {
         // Recognized open-source or official release platform (e.g. Signal, F-Droid, GitHub)
         riskScore += 10;
-        domainChecks.add(DomainCheckItem(
-          'Verified Software Repository APK',
-          true,
-          'APK package hosted on recognized open-source or official release platform ($baseDomain). Binary contents not dynamically inspected; verify cryptographic signature before installation.',
-        ));
+        domainChecks.add(
+          DomainCheckItem(
+            'Verified Software Repository APK',
+            true,
+            'APK package hosted on recognized open-source or official release platform ($baseDomain). Binary contents not dynamically inspected; verify cryptographic signature before installation.',
+          ),
+        );
       } else {
         // Unverified APK from standard or unknown third-party domain
         isUnverifiedApk = true;
         riskScore += 35;
-        domainChecks.add(DomainCheckItem(
-          'Unverified APK Download',
-          null,
-          'APK download detected; file security has not been verified. Sideloading applications from third-party sources carries security risks.',
-        ));
+        domainChecks.add(
+          DomainCheckItem(
+            'Unverified APK Download',
+            null,
+            'APK download detected; file security has not been verified. Sideloading applications from third-party sources carries security risks.',
+          ),
+        );
       }
     }
 
@@ -1098,17 +1332,21 @@ class UrlIntelligenceEngine {
     if (redirectAnalysis.hasRedirect) {
       if (redirectAnalysis.isExternal) {
         riskScore += redirectAnalysis.redirectRiskDelta;
-        domainChecks.add(DomainCheckItem(
-          'Open Redirect & Destination Vector',
-          false,
-          redirectAnalysis.description,
-        ));
+        domainChecks.add(
+          DomainCheckItem(
+            'Open Redirect & Destination Vector',
+            false,
+            redirectAnalysis.description,
+          ),
+        );
       } else {
-        domainChecks.add(DomainCheckItem(
-          'Redirection Integrity',
-          true,
-          redirectAnalysis.description,
-        ));
+        domainChecks.add(
+          DomainCheckItem(
+            'Redirection Integrity',
+            true,
+            redirectAnalysis.description,
+          ),
+        );
       }
     }
 
@@ -1117,22 +1355,26 @@ class UrlIntelligenceEngine {
     final dotCount = domain.split('.').length - 1;
     if (hyphenCount >= 3 || dotCount >= 4) {
       riskScore += 20;
-      domainChecks.add(DomainCheckItem(
-        'Domain Structure & Entropy',
-        false,
-        'Unusually high complexity ($hyphenCount hyphens, $dotCount dots). Typical of disposable phishing hosts.',
-      ));
+      domainChecks.add(
+        DomainCheckItem(
+          'Domain Structure & Entropy',
+          false,
+          'Unusually high complexity ($hyphenCount hyphens, $dotCount dots). Typical of disposable phishing hosts.',
+        ),
+      );
     }
 
     // ─── 10. RAW IP ADDRESS AS HOST ──────────────────────────────────────────
     final ipRegex = RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$');
     if (ipRegex.hasMatch(domain)) {
       riskScore += 30;
-      domainChecks.add(DomainCheckItem(
-        'Host Identification',
-        false,
-        'Using raw IP address instead of registered domain name. Evades domain reputation blocklists.',
-      ));
+      domainChecks.add(
+        DomainCheckItem(
+          'Host Identification',
+          false,
+          'Using raw IP address instead of registered domain name. Evades domain reputation blocklists.',
+        ),
+      );
     }
 
     // ─── 11. PRIVACY-PRESERVING DNS-OVER-HTTPS (CLOUDFLARE 1.1.1.1) ──────────
@@ -1152,43 +1394,55 @@ class UrlIntelligenceEngine {
       aRecords = dnsFutures[0];
       mxRecords = dnsFutures[1];
       nsRecords = dnsFutures[2];
-      hasDmarc = dnsFutures[3].any((txt) => txt.toLowerCase().contains('v=dmarc1'));
+      hasDmarc = dnsFutures[3].any(
+        (txt) => txt.toLowerCase().contains('v=dmarc1'),
+      );
 
       if (aRecords.isEmpty && !isSsrfHost) {
         riskScore += 15;
-        domainChecks.add(DomainCheckItem(
-          'DNS Host Resolution',
-          false,
-          'Domain has no active A records (Unresolvable / Dead Host).',
-        ));
+        domainChecks.add(
+          DomainCheckItem(
+            'DNS Host Resolution',
+            false,
+            'Domain has no active A records (Unresolvable / Dead Host).',
+          ),
+        );
       } else {
-        domainChecks.add(DomainCheckItem(
-          'DNS Host Resolution',
-          true,
-          'Active A records resolved via DNS-over-HTTPS (${aRecords.take(2).join(', ')}).',
-        ));
+        domainChecks.add(
+          DomainCheckItem(
+            'DNS Host Resolution',
+            true,
+            'Active A records resolved via DNS-over-HTTPS (${aRecords.take(2).join(', ')}).',
+          ),
+        );
       }
 
       if (hasDmarc) {
-        domainChecks.add(DomainCheckItem(
-          'Email DMARC Security',
-          true,
-          'DMARC email authentication policy published. Protected against spoofed emails.',
-        ));
+        domainChecks.add(
+          DomainCheckItem(
+            'Email DMARC Security',
+            true,
+            'DMARC email authentication policy published. Protected against spoofed emails.',
+          ),
+        );
       }
 
       if (mxRecords.isNotEmpty) {
-        domainChecks.add(DomainCheckItem(
-          'Mail Server Infrastructure (MX)',
-          true,
-          'Valid mail exchange infrastructure configured (${mxRecords.first}).',
-        ));
+        domainChecks.add(
+          DomainCheckItem(
+            'Mail Server Infrastructure (MX)',
+            true,
+            'Valid mail exchange infrastructure configured (${mxRecords.first}).',
+          ),
+        );
       } else if (!isAllowlisted && !hasHighRiskTld) {
-        domainChecks.add(DomainCheckItem(
-          'Mail Server Infrastructure (MX)',
-          null,
-          'No mail server records configured (Neutral).',
-        ));
+        domainChecks.add(
+          DomainCheckItem(
+            'Mail Server Infrastructure (MX)',
+            null,
+            'No mail server records configured (Neutral).',
+          ),
+        );
       }
     } catch (_) {
       // Offline or DoH blocked
@@ -1198,21 +1452,26 @@ class UrlIntelligenceEngine {
     bool isHttps = uri.scheme == 'https';
     if (!isHttps) {
       riskScore += 25;
-      domainChecks.add(DomainCheckItem(
-        'Transport Security',
-        false,
-        'Unencrypted HTTP transport. Traffic can be intercepted or manipulated in transit.',
-      ));
+      domainChecks.add(
+        DomainCheckItem(
+          'Transport Security',
+          false,
+          'Unencrypted HTTP transport. Traffic can be intercepted or manipulated in transit.',
+        ),
+      );
     } else {
-      domainChecks.add(DomainCheckItem(
-        'Transport Security',
-        true,
-        'Standard HTTPS transport configured.',
-      ));
+      domainChecks.add(
+        DomainCheckItem(
+          'Transport Security',
+          true,
+          'Standard HTTPS transport configured.',
+        ),
+      );
     }
 
     // ─── VERDICT CALIBRATION & RISK LEVEL CLASSIFICATION ─────────────────────
-    final bool hasCriticalThreats = isRatDropper ||
+    final bool hasCriticalThreats =
+        isRatDropper ||
         isMaliciousDropper ||
         isDesktopExecutable ||
         brandSpoof != null ||
@@ -1236,12 +1495,20 @@ class UrlIntelligenceEngine {
     final verdict = riskScore >= 51
         ? UrlVerdict.dangerous
         : riskScore >= 21
-            ? UrlVerdict.caution
-            : UrlVerdict.safe;
+        ? UrlVerdict.caution
+        : UrlVerdict.safe;
 
     final UrlRiskLevel riskLevel;
     if (riskScore >= 75) {
-      riskLevel = (isKnownC2 || isDynamicDnsC2 || isRatDropper || isMaliciousDropper || isDesktopExecutable || brandSpoof != null || isHomograph || redirectAnalysis.isTargetDropper)
+      riskLevel =
+          (isKnownC2 ||
+              isDynamicDnsC2 ||
+              isRatDropper ||
+              isMaliciousDropper ||
+              isDesktopExecutable ||
+              brandSpoof != null ||
+              isHomograph ||
+              redirectAnalysis.isTargetDropper)
           ? UrlRiskLevel.knownMalicious
           : UrlRiskLevel.highRisk;
     } else if (riskScore >= 21) {
@@ -1258,13 +1525,16 @@ class UrlIntelligenceEngine {
           ? 'Active Command & Control (C2) threat intelligence match.'
           : 'Dynamic DNS C2 tunnel endpoint detected.';
     } else if (isRatDropper) {
-      riskExplanation = 'Remote Access Trojan (RAT) / C2 surveillance payload dropper detected.';
+      riskExplanation =
+          'Remote Access Trojan (RAT) / C2 surveillance payload dropper detected.';
     } else if (redirectAnalysis.hasRedirect && redirectAnalysis.isExternal) {
-      riskExplanation = 'Potential unverified external redirect to ${redirectAnalysis.targetHost}.';
+      riskExplanation =
+          'Potential unverified external redirect to ${redirectAnalysis.targetHost}.';
     } else if (isMaliciousDropper || isDesktopExecutable) {
       riskExplanation = 'Executable mobile/binary malware dropper detected.';
     } else if (isUnverifiedApk) {
-      riskExplanation = 'APK download detected; file security has not been verified.';
+      riskExplanation =
+          'APK download detected; file security has not been verified.';
     } else if (brandSpoof != null) {
       riskExplanation = brandSpoof;
     } else if (isHomograph) {
@@ -1272,11 +1542,13 @@ class UrlIntelligenceEngine {
     } else if (uri.userInfo.isNotEmpty) {
       riskExplanation = 'URL credential deception (HTTP basic auth prefix).';
     } else if (isAllowlisted && riskScore == 0) {
-      riskExplanation = 'Verified institutional domain with valid security profile.';
+      riskExplanation =
+          'Verified institutional domain with valid security profile.';
     } else if (verdict == UrlVerdict.safe) {
       riskExplanation = 'Standard low-risk domain with no anomalies.';
     } else {
-      riskExplanation = 'Elevated risk factors detected (${domainChecks.where((c) => c.passed == false).length} warnings).';
+      riskExplanation =
+          'Elevated risk factors detected (${domainChecks.where((c) => c.passed == false).length} warnings).';
     }
 
     final MalwareThreatType threatType;
@@ -1285,30 +1557,38 @@ class UrlIntelligenceEngine {
 
     if (isKnownC2 || isDynamicDnsC2) {
       threatType = MalwareThreatType.bankingTrojan;
-      threatCategoryBadge = isKnownC2 ? 'COMMAND & CONTROL (C2) INFRASTRUCTURE' : 'DYNAMIC DNS C2 ENDPOINT';
+      threatCategoryBadge = isKnownC2
+          ? 'COMMAND & CONTROL (C2) INFRASTRUCTURE'
+          : 'DYNAMIC DNS C2 ENDPOINT';
       threatForensicDetails = isKnownC2
           ? 'Domain matches active Command & Control (C2) botnet or banking trojan distribution node.'
           : 'Dynamic DNS tunnel endpoint hosting unauthorized executable payload.';
-    } else if (isRatDropper || (hasRatKeyword && (isMaliciousDropper || hasHighRiskTld))) {
+    } else if (isRatDropper ||
+        (hasRatKeyword && (isMaliciousDropper || hasHighRiskTld))) {
       threatType = MalwareThreatType.ratDropper;
       threatCategoryBadge = 'REMOTE ACCESS TROJAN (RAT) DROPPER';
-      threatForensicDetails = 'This link directly distributes a remote surveillance or Remote Access Trojan (RAT) payload designed to seize administrative device control, record screen activity, and intercept OTPs/banking credentials.';
+      threatForensicDetails =
+          'This link directly distributes a remote surveillance or Remote Access Trojan (RAT) payload designed to seize administrative device control, record screen activity, and intercept OTPs/banking credentials.';
     } else if (isDirectApk && brandSpoof != null) {
       threatType = MalwareThreatType.bankingTrojan;
       threatCategoryBadge = 'BANKING TROJAN / UPI PHISHING';
-      threatForensicDetails = 'This deceptive domain impersonates a financial institution or payment service to distribute an unauthorized Android banking APK dropper.';
+      threatForensicDetails =
+          'This deceptive domain impersonates a financial institution or payment service to distribute an unauthorized Android banking APK dropper.';
     } else if (isDesktopExecutable) {
       threatType = MalwareThreatType.apkDropper;
       threatCategoryBadge = 'EXECUTABLE BINARY / SCRIPT DROPPER';
-      threatForensicDetails = 'URL directly delivers desktop executable or script binary payload ($urlPath). High malware dropper risk on mobile device.';
+      threatForensicDetails =
+          'URL directly delivers desktop executable or script binary payload ($urlPath). High malware dropper risk on mobile device.';
     } else if (isDirectApk && (hasHighRiskTld || matchedUrgency.isNotEmpty)) {
       threatType = MalwareThreatType.apkDropper;
       threatCategoryBadge = 'MALWARE APK DROPPER';
-      threatForensicDetails = 'Android APK payload hosted alongside disposable high-risk TLD or social engineering lure. Probable malicious dropper.';
+      threatForensicDetails =
+          'Android APK payload hosted alongside disposable high-risk TLD or social engineering lure. Probable malicious dropper.';
     } else if (isUnverifiedApk) {
       threatType = MalwareThreatType.apkDropper;
       threatCategoryBadge = 'UNVERIFIED APK PACKAGE';
-      threatForensicDetails = 'Direct APK download detected from an unverified third-party host. Sideloading applications outside official stores carries security risks.';
+      threatForensicDetails =
+          'Direct APK download detected from an unverified third-party host. Sideloading applications outside official stores carries security risks.';
     } else if (brandSpoof != null) {
       threatType = MalwareThreatType.phishingScam;
       threatCategoryBadge = 'PHISHING & BRAND IMPERSONATION';
@@ -1316,31 +1596,38 @@ class UrlIntelligenceEngine {
     } else if (isHomograph) {
       threatType = MalwareThreatType.phishingScam;
       threatCategoryBadge = 'HOMOGRAPH VISUAL DECEPTION';
-      threatForensicDetails = 'Punycode or mixed-character lookalike domain detected ($domain). High probability of visual brand spoofing.';
+      threatForensicDetails =
+          'Punycode or mixed-character lookalike domain detected ($domain). High probability of visual brand spoofing.';
     } else if (uri.userInfo.isNotEmpty) {
       threatType = MalwareThreatType.credentialHarvester;
       threatCategoryBadge = 'CREDENTIAL HARVESTING ATTEMPT';
-      threatForensicDetails = 'URL utilizes HTTP Basic Auth prefix (${uri.userInfo}@) to disguise real target destination: $rawHost.';
+      threatForensicDetails =
+          'URL utilizes HTTP Basic Auth prefix (${uri.userInfo}@) to disguise real target destination: $rawHost.';
     } else if (redirectAnalysis.hasRedirect && redirectAnalysis.isExternal) {
       threatType = MalwareThreatType.suspiciousRedirect;
       threatCategoryBadge = 'UNVERIFIED EXTERNAL REDIRECT';
-      threatForensicDetails = 'URL contains open redirection parameter pointing to an unverified external destination (${redirectAnalysis.targetHost}).';
+      threatForensicDetails =
+          'URL contains open redirection parameter pointing to an unverified external destination (${redirectAnalysis.targetHost}).';
     } else if (isAllowlisted && riskScore <= 20) {
       threatType = MalwareThreatType.clean;
       threatCategoryBadge = 'VERIFIED AUTHENTIC & SAFE';
-      threatForensicDetails = 'Verified institutional domain with authenticated security profile.';
+      threatForensicDetails =
+          'Verified institutional domain with authenticated security profile.';
     } else if (verdict == UrlVerdict.dangerous) {
       threatType = MalwareThreatType.unknownThreat;
       threatCategoryBadge = 'HIGH-RISK SUSPICIOUS DOMAIN';
-      threatForensicDetails = 'Multiple anomalous threat signals detected across domain registration, transport security, and host records.';
+      threatForensicDetails =
+          'Multiple anomalous threat signals detected across domain registration, transport security, and host records.';
     } else if (verdict == UrlVerdict.caution) {
       threatType = MalwareThreatType.unknownThreat;
       threatCategoryBadge = 'CAUTIONARY DOMAIN';
-      threatForensicDetails = 'Domain exhibits minor risk indicators or unverified reputation.';
+      threatForensicDetails =
+          'Domain exhibits minor risk indicators or unverified reputation.';
     } else {
       threatType = MalwareThreatType.clean;
       threatCategoryBadge = 'CLEAN STANDARD DOMAIN';
-      threatForensicDetails = 'No malicious indicators or spoofing patterns detected.';
+      threatForensicDetails =
+          'No malicious indicators or spoofing patterns detected.';
     }
 
     return UrlResult(
@@ -1378,20 +1665,21 @@ class UrlIntelligenceEngine {
     try {
       final res = await _dio.get(
         'https://cloudflare-dns.com/dns-query',
-        queryParameters: {
-          'name': host,
-          'type': type,
-        },
+        queryParameters: {'name': host, 'type': type},
         options: Options(
           headers: {'accept': 'application/dns-json'},
           receiveTimeout: const Duration(seconds: 3),
         ),
       );
 
-      if (res.statusCode == 200 && res.data is Map && res.data['Answer'] is List) {
+      if (res.statusCode == 200 &&
+          res.data is Map &&
+          res.data['Answer'] is List) {
         final answers = res.data['Answer'] as List;
         return answers
-            .map((ans) => ans['data']?.toString().replaceAll('"', '').trim() ?? '')
+            .map(
+              (ans) => ans['data']?.toString().replaceAll('"', '').trim() ?? '',
+            )
             .where((s) => s.isNotEmpty)
             .toList();
       }

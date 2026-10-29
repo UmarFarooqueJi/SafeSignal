@@ -5,12 +5,13 @@ import '../services/ai_expert_service.dart';
 /// Reusable "Ask AI Expert" bottom sheet widget.
 /// Used across URL Scanner, WiFi, App Audit, Device Audit, Breach Scanner, UPI Scanner.
 class AiExpertPanel extends StatefulWidget {
-  final String domain;       // 'url' | 'wifi' | 'app' | 'device' | 'breach' | 'upi' | 'sms'
-  final String context;      // The data/report string to analyze
+  final String
+  domain; // 'url' | 'wifi' | 'app' | 'device' | 'breach' | 'upi' | 'sms'
+  final String context; // The data/report string to analyze
   final bool isDark;
   final Color accentColor;
-  final String expertName;   // Shown in the UI (e.g. "WebGuard AI")
-  final String expertIcon;   // Emoji icon for the expert
+  final String expertName; // Shown in the UI (e.g. "WebGuard AI")
+  final String expertIcon; // Emoji icon for the expert
 
   const AiExpertPanel({
     super.key,
@@ -160,7 +161,10 @@ class _AiExpertPanelState extends State<AiExpertPanel> {
                   onTap: _toggleLanguage,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: widget.accentColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -233,17 +237,18 @@ class _AiExpertPanelState extends State<AiExpertPanel> {
           // Shimmer lines
           ...List.generate(
             4,
-            (i) => Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              height: 14,
-              decoration: BoxDecoration(
-                color: (widget.isDark ? Colors.white : Colors.black)
-                    .withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(7),
-              ),
-            ).animate(delay: Duration(milliseconds: 100 * i)).shimmer(
-                  color: widget.accentColor.withValues(alpha: 0.1),
-                ),
+            (i) =>
+                Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: (widget.isDark ? Colors.white : Colors.black)
+                            .withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    )
+                    .animate(delay: Duration(milliseconds: 100 * i))
+                    .shimmer(color: widget.accentColor.withValues(alpha: 0.1)),
           ),
           const SizedBox(height: 20),
         ],
@@ -297,43 +302,48 @@ class _AiExpertPanelState extends State<AiExpertPanel> {
         ...lines.asMap().entries.map((entry) {
           final i = entry.key;
           final line = entry.value.trim();
-          final isBullet = line.startsWith('•') ||
+          final isBullet =
+              line.startsWith('•') ||
               line.startsWith('-') ||
               line.startsWith('*');
           final cleanLine = isBullet ? line.substring(1).trim() : line;
 
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isBullet) ...[
-                  Container(
-                    margin: const EdgeInsets.only(top: 5),
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: widget.accentColor,
-                      shape: BoxShape.circle,
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isBullet) ...[
+                      Container(
+                        margin: const EdgeInsets.only(top: 5),
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: widget.accentColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    Expanded(
+                      child: Text(
+                        cleanLine,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          height: 1.55,
+                          color: textColor.withValues(alpha: 0.85),
+                          fontWeight: isBullet
+                              ? FontWeight.w500
+                              : FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                ],
-                Expanded(
-                  child: Text(
-                    cleanLine,
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      height: 1.55,
-                      color: textColor.withValues(alpha: 0.85),
-                      fontWeight:
-                          isBullet ? FontWeight.w500 : FontWeight.w700,
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ).animate(delay: Duration(milliseconds: 80 * i)).fadeIn().slideX(begin: -0.05);
+              )
+              .animate(delay: Duration(milliseconds: 80 * i))
+              .fadeIn()
+              .slideX(begin: -0.05);
         }),
         const SizedBox(height: 8),
         // Powered by badge
@@ -343,12 +353,18 @@ class _AiExpertPanelState extends State<AiExpertPanel> {
             decoration: BoxDecoration(
               color: widget.accentColor.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: widget.accentColor.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: widget.accentColor.withValues(alpha: 0.2),
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.verified_user_rounded, color: widget.accentColor, size: 14),
+                Icon(
+                  Icons.verified_user_rounded,
+                  color: widget.accentColor,
+                  size: 14,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   'Umar Farooque',

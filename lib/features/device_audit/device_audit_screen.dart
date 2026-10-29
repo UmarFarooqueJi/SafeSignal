@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // ─── Enums & Models ──────────────────────────────────────────────────────────
 enum _IssueCategory { apps, device, permissions }
+
 enum _IssueSeverity { critical, high, medium, low }
 
 class _AuditIssue {
@@ -155,16 +156,81 @@ bool _isVerifiedEcosystem(String pkg) {
 
 // ─── Citizen Lab & Stalkerware IOCs ──────────────────────────────────────────
 const _stalkerSignatures = [
-  'mspy', 'flexispy', 'cerberus', 'spyic', 'hoverwatch', 'trackview',
-  'spymaster', 'kidsguard', 'thetruthspy', 'cocospy', 'coplug', 'ikeymonitor',
-  'mobistealth', 'spybubble', 'xnspy', 'onespy', 'spyzie'
+  'mspy',
+  'flexispy',
+  'cerberus',
+  'spyic',
+  'hoverwatch',
+  'trackview',
+  'spymaster',
+  'kidsguard',
+  'thetruthspy',
+  'cocospy',
+  'coplug',
+  'ikeymonitor',
+  'mobistealth',
+  'spybubble',
+  'xnspy',
+  'onespy',
+  'spyzie',
 ];
 
-const _cameraApps = ['camera', 'photo', 'selfie', 'snap', 'instagram', 'tiktok', 'reels', 'zoom', 'meet', 'skype'];
-const _smsApps = ['sms', 'message', 'whatsapp', 'telegram', 'signal', 'truecaller', 'loan', 'bank', 'financial'];
-const _contactApps = ['truecaller', 'contact', 'dialer', 'phone', 'call', 'sync', 'backup'];
-const _micApps = ['voice', 'record', 'mic', 'audio', 'music', 'podcast', 'zoom', 'meet', 'discord', 'clubhouse'];
-const _locationApps = ['map', 'gps', 'uber', 'ola', 'rapido', 'delivery', 'swiggy', 'zomato', 'track', 'navigate'];
+const _cameraApps = [
+  'camera',
+  'photo',
+  'selfie',
+  'snap',
+  'instagram',
+  'tiktok',
+  'reels',
+  'zoom',
+  'meet',
+  'skype',
+];
+const _smsApps = [
+  'sms',
+  'message',
+  'whatsapp',
+  'telegram',
+  'signal',
+  'truecaller',
+  'loan',
+  'bank',
+  'financial',
+];
+const _contactApps = [
+  'truecaller',
+  'contact',
+  'dialer',
+  'phone',
+  'call',
+  'sync',
+  'backup',
+];
+const _micApps = [
+  'voice',
+  'record',
+  'mic',
+  'audio',
+  'music',
+  'podcast',
+  'zoom',
+  'meet',
+  'discord',
+  'clubhouse',
+];
+const _locationApps = [
+  'map',
+  'gps',
+  'uber',
+  'ola',
+  'rapido',
+  'delivery',
+  'swiggy',
+  'zomato',
+  'track',
+  'navigate',
+];
 
 class DeviceAuditScreen extends StatefulWidget {
   const DeviceAuditScreen({super.key});
@@ -223,7 +289,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
 
   Future<void> _openAppSettings(String packageName) async {
     try {
-      await _scannerChannel.invokeMethod('openAppSettings', {'package': packageName});
+      await _scannerChannel.invokeMethod('openAppSettings', {
+        'package': packageName,
+      });
     } catch (_) {}
   }
 
@@ -269,7 +337,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(success == true ? 'Uninstalling ${app.name}...' : 'Uninstall triggered for ${app.name}'),
+            content: Text(
+              success == true
+                  ? 'Uninstalling ${app.name}...'
+                  : 'Uninstall triggered for ${app.name}',
+            ),
             backgroundColor: const Color(0xFF0F172A),
             behavior: SnackBarBehavior.floating,
           ),
@@ -282,7 +354,10 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not uninstall: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Could not uninstall: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -311,7 +386,10 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           children: [
             Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
             SizedBox(width: 8),
-            Text('Delete File?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(
+              'Delete File?',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
           ],
         ),
         content: Text(
@@ -337,12 +415,22 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
 
     if (confirmed == true) {
       try {
-        final deleted = await _scannerChannel.invokeMethod<bool>('deleteSuspiciousFile', {'path': path}) ?? false;
+        final deleted =
+            await _scannerChannel.invokeMethod<bool>('deleteSuspiciousFile', {
+              'path': path,
+            }) ??
+            false;
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(deleted ? 'File deleted successfully.' : 'Could not delete file (permission restricted).'),
-              backgroundColor: deleted ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+              content: Text(
+                deleted
+                    ? 'File deleted successfully.'
+                    : 'Could not delete file (permission restricted).',
+              ),
+              backgroundColor: deleted
+                  ? const Color(0xFF10B981)
+                  : const Color(0xFFEF4444),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -351,7 +439,10 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Delete error: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Delete error: $e'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
@@ -376,7 +467,10 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       _updateStage(2, 38);
       List<AppInfo> allApps = [];
       try {
-        allApps = await InstalledApps.getInstalledApps(excludeSystemApps: true, withIcon: true);
+        allApps = await InstalledApps.getInstalledApps(
+          excludeSystemApps: true,
+          withIcon: true,
+        );
       } catch (e) {
         debugPrint('InstalledApps error: $e');
       }
@@ -388,7 +482,8 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
 
       Map<String, dynamic> dangerousSettings = {};
       try {
-        final rawDanger = await _scannerChannel.invokeMethod<Map<dynamic, dynamic>>('getDangerousSettings');
+        final rawDanger = await _scannerChannel
+            .invokeMethod<Map<dynamic, dynamic>>('getDangerousSettings');
         if (rawDanger != null) {
           dangerousSettings = Map<String, dynamic>.from(rawDanger);
         }
@@ -400,25 +495,32 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       bool adbEnabled = dangerousSettings['adbEnabled'] == true;
       bool isDeviceSecure = dangerousSettings['isDeviceSecure'] != false;
       bool selinuxEnforcing = dangerousSettings['selinuxEnforcing'] != false;
-      int patchAgeDays = (dangerousSettings['patchAgeDays'] as num?)?.toInt() ?? 0;
-      bool isEol = dangerousSettings['isEol'] == true || (sdkInt > 0 && sdkInt < 33);
-      final accessibilityAbusers = (dangerousSettings['accessibilityAbusers'] as List?)
+      int patchAgeDays =
+          (dangerousSettings['patchAgeDays'] as num?)?.toInt() ?? 0;
+      bool isEol =
+          dangerousSettings['isEol'] == true || (sdkInt > 0 && sdkInt < 33);
+      final accessibilityAbusers =
+          (dangerousSettings['accessibilityAbusers'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
           [];
-      final overlayAbusers = (dangerousSettings['overlayAbusers'] as List?)
+      final overlayAbusers =
+          (dangerousSettings['overlayAbusers'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
           [];
-      final notificationListeners = (dangerousSettings['notificationListeners'] as List?)
+      final notificationListeners =
+          (dangerousSettings['notificationListeners'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
           [];
-      final deviceAdmins = (dangerousSettings['deviceAdmins'] as List?)
+      final deviceAdmins =
+          (dangerousSettings['deviceAdmins'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
           [];
-      final sideloadAllowedApps = (dangerousSettings['sideloadAllowedApps'] as List?)
+      final sideloadAllowedApps =
+          (dangerousSettings['sideloadAllowedApps'] as List?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
           [];
@@ -428,7 +530,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       _updateStage(4, 68);
       if (!devOptionsEnabled) {
         try {
-          devOptionsEnabled = await _scannerChannel.invokeMethod<bool>('isDeveloperOptionsEnabled') ?? false;
+          devOptionsEnabled =
+              await _scannerChannel.invokeMethod<bool>(
+                'isDeveloperOptionsEnabled',
+              ) ??
+              false;
         } catch (_) {}
       }
 
@@ -437,12 +543,18 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       Map<String, List<String>> appPermMap = {};
       Set<String> sideloadedPkgs = {};
       try {
-        final rawApps = await _scannerChannel.invokeMethod<List<dynamic>>('getInstalledApps');
+        final rawApps = await _scannerChannel.invokeMethod<List<dynamic>>(
+          'getInstalledApps',
+        );
         if (rawApps != null) {
           for (final raw in rawApps) {
             if (raw is Map) {
               final pkg = raw['package']?.toString() ?? '';
-              final perms = (raw['permissions'] as List?)?.map((e) => e.toString().toUpperCase()).toList() ?? [];
+              final perms =
+                  (raw['permissions'] as List?)
+                      ?.map((e) => e.toString().toUpperCase())
+                      .toList() ??
+                  [];
               appPermMap[pkg] = perms;
               final installer = raw['installer']?.toString() ?? '';
               final isStore = _storeNames.containsKey(installer);
@@ -470,7 +582,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       final smsApps = allApps.where((app) {
         final perms = appPermMap[app.packageName];
         if (perms != null && perms.isNotEmpty) {
-          return perms.any((p) => p.contains('SMS') || p.contains('RECEIVE_MMS'));
+          return perms.any(
+            (p) => p.contains('SMS') || p.contains('RECEIVE_MMS'),
+          );
         }
         final p = app.packageName.toLowerCase();
         final n = app.name.toLowerCase();
@@ -500,7 +614,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       final locationApps = allApps.where((app) {
         final perms = appPermMap[app.packageName];
         if (perms != null && perms.isNotEmpty) {
-          return perms.any((p) => p.contains('ACCESS_FINE_LOCATION') || p.contains('ACCESS_COARSE_LOCATION'));
+          return perms.any(
+            (p) =>
+                p.contains('ACCESS_FINE_LOCATION') ||
+                p.contains('ACCESS_COARSE_LOCATION'),
+          );
         }
         final p = app.packageName.toLowerCase();
         final n = app.name.toLowerCase();
@@ -513,8 +631,12 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         final tags = deviceInfo?.tags ?? '';
         if (tags.contains('test-keys')) isRooted = true;
         final suPaths = [
-          '/system/bin/su', '/system/xbin/su', '/sbin/su',
-          '/system/app/Superuser.apk', '/data/local/xbin/su', '/data/local/bin/su'
+          '/system/bin/su',
+          '/system/xbin/su',
+          '/sbin/su',
+          '/system/app/Superuser.apk',
+          '/data/local/xbin/su',
+          '/data/local/bin/su',
         ];
         for (final p in suPaths) {
           if (File(p).existsSync()) {
@@ -530,7 +652,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         final nameLower = app.name.toLowerCase();
 
         // 1. Direct Stalkerware Signatures (Citizen Lab / Amnesty International)
-        final matchesStalker = _stalkerSignatures.any((k) => pkgLower.contains(k) || nameLower.contains(k));
+        final matchesStalker = _stalkerSignatures.any(
+          (k) => pkgLower.contains(k) || nameLower.contains(k),
+        );
         if (matchesStalker) return true;
 
         // 2. Verified ecosystems are never flagged as malware
@@ -539,10 +663,14 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         // 3. Untrusted sideloaded APK with dangerous permissions combination
         final isSideloaded = sideloadedPkgs.contains(app.packageName);
         final perms = appPermMap[app.packageName] ?? [];
-        final hasDangerous = perms.any((p) =>
-            p.contains('SMS') ||
-            p.contains('BIND_ACCESSIBILITY_SERVICE') ||
-            (p.contains('CAMERA') && p.contains('RECORD_AUDIO') && p.contains('SYSTEM_ALERT_WINDOW')));
+        final hasDangerous = perms.any(
+          (p) =>
+              p.contains('SMS') ||
+              p.contains('BIND_ACCESSIBILITY_SERVICE') ||
+              (p.contains('CAMERA') &&
+                  p.contains('RECORD_AUDIO') &&
+                  p.contains('SYSTEM_ALERT_WINDOW')),
+        );
 
         return isSideloaded && hasDangerous;
       }).toList();
@@ -554,23 +682,31 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       List<Map<String, dynamic>> suspiciousFiles = [];
 
       try {
-        final mem = await _scannerChannel.invokeMethod<Map<dynamic, dynamic>>('getMemoryInfo');
+        final mem = await _scannerChannel.invokeMethod<Map<dynamic, dynamic>>(
+          'getMemoryInfo',
+        );
         if (mem != null) memoryInfo = Map<String, dynamic>.from(mem);
       } catch (e) {
         debugPrint('Memory telemetry error: $e');
       }
 
       try {
-        final stor = await _scannerChannel.invokeMethod<Map<dynamic, dynamic>>('getStorageInfo');
+        final stor = await _scannerChannel.invokeMethod<Map<dynamic, dynamic>>(
+          'getStorageInfo',
+        );
         if (stor != null) storageInfo = Map<String, dynamic>.from(stor);
       } catch (e) {
         debugPrint('Storage telemetry error: $e');
       }
 
       try {
-        final files = await _scannerChannel.invokeMethod<List<dynamic>>('scanSuspiciousFiles');
+        final files = await _scannerChannel.invokeMethod<List<dynamic>>(
+          'scanSuspiciousFiles',
+        );
         if (files != null) {
-          suspiciousFiles = files.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          suspiciousFiles = files
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
         }
       } catch (e) {
         debugPrint('Suspicious file sweep error: $e');
@@ -582,7 +718,8 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       int score = 100;
       if (isRooted) score -= 40;
       if (!isDeviceSecure) score -= 20;
-      if (accessibilityAbusers.isNotEmpty) score -= (accessibilityAbusers.length * 15).clamp(15, 30);
+      if (accessibilityAbusers.isNotEmpty)
+        score -= (accessibilityAbusers.length * 15).clamp(15, 30);
       if (sideloadAllowedApps.isNotEmpty) score -= 15;
       if (notificationListeners.isNotEmpty) score -= 15;
       if (deviceAdmins.isNotEmpty) score -= 15;
@@ -593,7 +730,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         score -= (suspiciousFiles.length * 10).clamp(10, 30);
       }
       for (final app in riskyApps) {
-        final matchesStalker = _stalkerSignatures.any((k) => app.packageName.toLowerCase().contains(k));
+        final matchesStalker = _stalkerSignatures.any(
+          (k) => app.packageName.toLowerCase().contains(k),
+        );
         if (matchesStalker) {
           score -= 35;
         } else {
@@ -621,215 +760,271 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         final size = sf['size'] as num? ?? 0;
         final riskType = sf['riskType']?.toString() ?? 'Unverified File';
 
-        issues.add(_AuditIssue(
-          id: 'file_$path',
-          title: '$riskType: $name',
-          description: 'Found at: $path (${_formatBytes(size)})\nUnchecked binaries, APK droppers, or shell scripts in public directories can be exploited by rogue apps.',
-          category: _IssueCategory.device,
-          severity: severity,
-          actionLabel: 'Delete File',
-          actionIcon: Icons.delete_outline_rounded,
-          onAction: () => _confirmDeleteFile(path, name),
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'file_$path',
+            title: '$riskType: $name',
+            description:
+                'Found at: $path (${_formatBytes(size)})\nUnchecked binaries, APK droppers, or shell scripts in public directories can be exploited by rogue apps.',
+            category: _IssueCategory.device,
+            severity: severity,
+            actionLabel: 'Delete File',
+            actionIcon: Icons.delete_outline_rounded,
+            onAction: () => _confirmDeleteFile(path, name),
+          ),
+        );
       }
 
       // 1. Root
       if (isRooted) {
-        issues.add(_AuditIssue(
-          id: 'dev_root',
-          title: 'Rooted Kernel / Modified System',
-          description: 'Superuser or test-keys detected. System sandboxing is bypassed, leaving banking data vulnerable.',
-          category: _IssueCategory.device,
-          severity: _IssueSeverity.critical,
-          actionLabel: 'System Protection',
-          actionIcon: Icons.security_rounded,
-          onAction: () => _showRootAdviceDialog(),
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'dev_root',
+            title: 'Rooted Kernel / Modified System',
+            description:
+                'Superuser or test-keys detected. System sandboxing is bypassed, leaving banking data vulnerable.',
+            category: _IssueCategory.device,
+            severity: _IssueSeverity.critical,
+            actionLabel: 'System Protection',
+            actionIcon: Icons.security_rounded,
+            onAction: () => _showRootAdviceDialog(),
+          ),
+        );
       }
 
       // 2. Lock Screen Security Not Set
       if (!isDeviceSecure) {
-        issues.add(_AuditIssue(
-          id: 'dev_lock_screen',
-          title: 'Lock Screen Security Not Configured',
-          description: 'No PIN, Pattern, or Fingerprint lock is set. Physical access allows immediate extraction of private messages and banking data.',
-          category: _IssueCategory.device,
-          severity: _IssueSeverity.critical,
-          actionLabel: 'Set Screen Lock',
-          actionIcon: Icons.lock_outline_rounded,
-          onAction: _openSecuritySettings,
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'dev_lock_screen',
+            title: 'Lock Screen Security Not Configured',
+            description:
+                'No PIN, Pattern, or Fingerprint lock is set. Physical access allows immediate extraction of private messages and banking data.',
+            category: _IssueCategory.device,
+            severity: _IssueSeverity.critical,
+            actionLabel: 'Set Screen Lock',
+            actionIcon: Icons.lock_outline_rounded,
+            onAction: _openSecuritySettings,
+          ),
+        );
       }
 
       // 3. Accessibility Service Abusers (Banking Trojan Vector)
       for (final abuser in accessibilityAbusers) {
         final pkg = abuser['packageName']?.toString() ?? '';
         final appName = abuser['appName']?.toString() ?? pkg;
-        issues.add(_AuditIssue(
-          id: 'abuser_acc_$pkg',
-          title: 'Accessibility Trojan Vector: $appName',
-          description: 'Active accessibility service granted to non-system package ($pkg). This capability allows keystroke logging, credential harvesting, and automated tap hijacking.',
-          category: _IssueCategory.apps,
-          severity: _IssueSeverity.critical,
-          actionLabel: 'Revoke Access',
-          actionIcon: Icons.accessibility_new_rounded,
-          onAction: _openAccessibilitySettings,
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'abuser_acc_$pkg',
+            title: 'Accessibility Trojan Vector: $appName',
+            description:
+                'Active accessibility service granted to non-system package ($pkg). This capability allows keystroke logging, credential harvesting, and automated tap hijacking.',
+            category: _IssueCategory.apps,
+            severity: _IssueSeverity.critical,
+            actionLabel: 'Revoke Access',
+            actionIcon: Icons.accessibility_new_rounded,
+            onAction: _openAccessibilitySettings,
+          ),
+        );
       }
 
       // 3b. Screen Overlay Abusers (Banking Fake Dialog Vector)
       for (final abuser in overlayAbusers) {
         final pkg = abuser['packageName']?.toString() ?? '';
         final appName = abuser['appName']?.toString() ?? pkg;
-        issues.add(_AuditIssue(
-          id: 'abuser_overlay_$pkg',
-          title: 'Floating Screen Overlay: $appName',
-          description: 'Package ($pkg) holds draw-over-other-apps authority. Rogue apps can project transparent or deceptive dialogs over banking and UPI screens.',
-          category: _IssueCategory.apps,
-          severity: _IssueSeverity.medium,
-          actionLabel: 'App Info',
-          actionIcon: Icons.layers_clear_rounded,
-          onAction: () => _openAppSettings(pkg),
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'abuser_overlay_$pkg',
+            title: 'Floating Screen Overlay: $appName',
+            description:
+                'Package ($pkg) holds draw-over-other-apps authority. Rogue apps can project transparent or deceptive dialogs over banking and UPI screens.',
+            category: _IssueCategory.apps,
+            severity: _IssueSeverity.medium,
+            actionLabel: 'App Info',
+            actionIcon: Icons.layers_clear_rounded,
+            onAction: () => _openAppSettings(pkg),
+          ),
+        );
       }
 
       // 4. Notification Listeners (OTP & SMS Interception)
       for (final listener in notificationListeners) {
         final pkg = listener['packageName']?.toString() ?? '';
         final appName = listener['appName']?.toString() ?? pkg;
-        issues.add(_AuditIssue(
-          id: 'listener_notif_$pkg',
-          title: 'Notification Snooping Risk: $appName',
-          description: 'Package ($pkg) has full notification read access. Can intercept incoming two-factor authentication (2FA) SMS codes and transaction OTPs.',
-          category: _IssueCategory.permissions,
-          severity: _IssueSeverity.high,
-          actionLabel: 'Inspect Access',
-          actionIcon: Icons.notifications_paused_rounded,
-          onAction: _openNotificationSettings,
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'listener_notif_$pkg',
+            title: 'Notification Snooping Risk: $appName',
+            description:
+                'Package ($pkg) has full notification read access. Can intercept incoming two-factor authentication (2FA) SMS codes and transaction OTPs.',
+            category: _IssueCategory.permissions,
+            severity: _IssueSeverity.high,
+            actionLabel: 'Inspect Access',
+            actionIcon: Icons.notifications_paused_rounded,
+            onAction: _openNotificationSettings,
+          ),
+        );
       }
 
       // 5. Active Device Administrators
       for (final admin in deviceAdmins) {
         final pkg = admin['packageName']?.toString() ?? '';
         final appName = admin['appName']?.toString() ?? pkg;
-        issues.add(_AuditIssue(
-          id: 'admin_$pkg',
-          title: 'Device Admin Privilege: $appName',
-          description: 'Third-party package ($pkg) has active Device Administrator authority. Can enforce lock policies, wipe device data, and resist uninstallation.',
-          category: _IssueCategory.device,
-          severity: _IssueSeverity.high,
-          actionLabel: 'Review Admins',
-          actionIcon: Icons.admin_panel_settings_rounded,
-          onAction: _openDeviceAdminSettings,
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'admin_$pkg',
+            title: 'Device Admin Privilege: $appName',
+            description:
+                'Third-party package ($pkg) has active Device Administrator authority. Can enforce lock policies, wipe device data, and resist uninstallation.',
+            category: _IssueCategory.device,
+            severity: _IssueSeverity.high,
+            actionLabel: 'Review Admins',
+            actionIcon: Icons.admin_panel_settings_rounded,
+            onAction: _openDeviceAdminSettings,
+          ),
+        );
       }
 
       // 6. Unknown App Installation Privileges (Sideload Dropper Vector)
       for (final sl in sideloadAllowedApps) {
         final pkg = sl['packageName']?.toString() ?? '';
         final appName = sl['appName']?.toString() ?? pkg;
-        issues.add(_AuditIssue(
-          id: 'sideload_$pkg',
-          title: 'APK Installation Authority: $appName',
-          description: 'Non-system app ($pkg) is authorized to install unknown APK packages onto this device.',
-          category: _IssueCategory.apps,
-          severity: _IssueSeverity.high,
-          actionLabel: 'Revoke Permission',
-          actionIcon: Icons.install_mobile_rounded,
-          onAction: _openInstallUnknownAppsSettings,
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'sideload_$pkg',
+            title: 'APK Installation Authority: $appName',
+            description:
+                'Non-system app ($pkg) is authorized to install unknown APK packages onto this device.',
+            category: _IssueCategory.apps,
+            severity: _IssueSeverity.high,
+            actionLabel: 'Revoke Permission',
+            actionIcon: Icons.install_mobile_rounded,
+            onAction: _openInstallUnknownAppsSettings,
+          ),
+        );
       }
 
       // 7. Developer Options / USB Debugging
       if (devOptionsEnabled || adbEnabled) {
-        issues.add(_AuditIssue(
-          id: 'dev_options',
-          title: adbEnabled ? 'USB Debugging (ADB) Active' : 'Developer Options Enabled',
-          description: adbEnabled
-              ? 'ADB debugging is actively listening. Untrusted computers or public charging stations can execute arbitrary commands and extract databases.'
-              : 'Development settings are enabled on this device, exposing diagnostic interfaces.',
-          category: _IssueCategory.device,
-          severity: _IssueSeverity.high,
-          actionLabel: 'Disable in Settings',
-          actionIcon: Icons.developer_mode_rounded,
-          onAction: _openDeveloperSettings,
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'dev_options',
+            title: adbEnabled
+                ? 'USB Debugging (ADB) Active'
+                : 'Developer Options Enabled',
+            description: adbEnabled
+                ? 'ADB debugging is actively listening. Untrusted computers or public charging stations can execute arbitrary commands and extract databases.'
+                : 'Development settings are enabled on this device, exposing diagnostic interfaces.',
+            category: _IssueCategory.device,
+            severity: _IssueSeverity.high,
+            actionLabel: 'Disable in Settings',
+            actionIcon: Icons.developer_mode_rounded,
+            onAction: _openDeveloperSettings,
+          ),
+        );
       }
 
       // 8. Outdated Security Patch & EOL Status
       if (patchAgeDays > 180 || isEol) {
         final ageStr = patchAgeDays > 0 ? '$patchAgeDays days ago' : 'Legacy';
-        issues.add(_AuditIssue(
-          id: 'dev_os_outdated',
-          title: isEol ? 'OS End-Of-Life (Android ${_sdkToVersion(sdkInt)})' : 'Security Patch Outdated ($ageStr)',
-          description: 'Security patch: $securityPatch. Your device is missing modern monthly CVE vulnerability mitigations published in Android bulletins.',
-          category: _IssueCategory.device,
-          severity: patchAgeDays > 365 ? _IssueSeverity.critical : _IssueSeverity.high,
-          actionLabel: 'Check OTA Update',
-          actionIcon: Icons.system_update_rounded,
-          onAction: _openSystemUpdateSettings,
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'dev_os_outdated',
+            title: isEol
+                ? 'OS End-Of-Life (Android ${_sdkToVersion(sdkInt)})'
+                : 'Security Patch Outdated ($ageStr)',
+            description:
+                'Security patch: $securityPatch. Your device is missing modern monthly CVE vulnerability mitigations published in Android bulletins.',
+            category: _IssueCategory.device,
+            severity: patchAgeDays > 365
+                ? _IssueSeverity.critical
+                : _IssueSeverity.high,
+            actionLabel: 'Check OTA Update',
+            actionIcon: Icons.system_update_rounded,
+            onAction: _openSystemUpdateSettings,
+          ),
+        );
       }
 
       // 9. SELinux Permissive
       if (!selinuxEnforcing) {
-        issues.add(_AuditIssue(
-          id: 'dev_selinux',
-          title: 'SELinux Permissive / Disabled',
-          description: 'Security-Enhanced Linux kernel enforcement is off. Crucial sandboxing boundaries between apps are not being enforced.',
-          category: _IssueCategory.device,
-          severity: _IssueSeverity.critical,
-          actionLabel: 'Kernel Warning',
-          actionIcon: Icons.warning_rounded,
-          onAction: () => _showRootAdviceDialog(),
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'dev_selinux',
+            title: 'SELinux Permissive / Disabled',
+            description:
+                'Security-Enhanced Linux kernel enforcement is off. Crucial sandboxing boundaries between apps are not being enforced.',
+            category: _IssueCategory.device,
+            severity: _IssueSeverity.critical,
+            actionLabel: 'Kernel Warning',
+            actionIcon: Icons.warning_rounded,
+            onAction: () => _showRootAdviceDialog(),
+          ),
+        );
       }
 
       // 10. Risky & Sideloaded Apps
       for (final app in riskyApps) {
-        final matchesStalker = _stalkerSignatures.any((k) => app.packageName.toLowerCase().contains(k));
+        final matchesStalker = _stalkerSignatures.any(
+          (k) => app.packageName.toLowerCase().contains(k),
+        );
 
-        issues.add(_AuditIssue(
-          id: 'app_${app.packageName}',
-          title: matchesStalker ? 'Stalkerware Detected: ${app.name}' : 'Unverified Sideload: ${app.name}',
-          description: matchesStalker
-              ? 'Matches Citizen Lab stalkerware IOCs. Can monitor communications covertly.'
-              : 'Installed outside official store with sensitive hardware privileges. Package: ${app.packageName}',
-          category: _IssueCategory.apps,
-          severity: matchesStalker ? _IssueSeverity.critical : _IssueSeverity.medium,
-          actionLabel: matchesStalker ? 'Uninstall App' : 'Review App',
-          actionIcon: matchesStalker ? Icons.delete_forever_rounded : Icons.info_outline_rounded,
-          onAction: () => matchesStalker ? _uninstallApp(app) : _openAppSettings(app.packageName),
-          app: app,
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'app_${app.packageName}',
+            title: matchesStalker
+                ? 'Stalkerware Detected: ${app.name}'
+                : 'Unverified Sideload: ${app.name}',
+            description: matchesStalker
+                ? 'Matches Citizen Lab stalkerware IOCs. Can monitor communications covertly.'
+                : 'Installed outside official store with sensitive hardware privileges. Package: ${app.packageName}',
+            category: _IssueCategory.apps,
+            severity: matchesStalker
+                ? _IssueSeverity.critical
+                : _IssueSeverity.medium,
+            actionLabel: matchesStalker ? 'Uninstall App' : 'Review App',
+            actionIcon: matchesStalker
+                ? Icons.delete_forever_rounded
+                : Icons.info_outline_rounded,
+            onAction: () => matchesStalker
+                ? _uninstallApp(app)
+                : _openAppSettings(app.packageName),
+            app: app,
+          ),
+        );
       }
 
       // 11. Excessive Permissions Review (Informational, NOT uninstall)
       if (smsApps.length > 6) {
-        issues.add(_AuditIssue(
-          id: 'perm_sms',
-          title: '${smsApps.length} Apps Accessing SMS & OTP',
-          description: 'Multiple applications have access to SMS. Regularly review which apps require OTP access.',
-          category: _IssueCategory.permissions,
-          severity: _IssueSeverity.low,
-          actionLabel: 'Manage Access',
-          actionIcon: Icons.lock_open_rounded,
-          onAction: _openPermissionSettings,
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'perm_sms',
+            title: '${smsApps.length} Apps Accessing SMS & OTP',
+            description:
+                'Multiple applications have access to SMS. Regularly review which apps require OTP access.',
+            category: _IssueCategory.permissions,
+            severity: _IssueSeverity.low,
+            actionLabel: 'Manage Access',
+            actionIcon: Icons.lock_open_rounded,
+            onAction: _openPermissionSettings,
+          ),
+        );
       }
 
       if (cameraApps.length > 10) {
-        issues.add(_AuditIssue(
-          id: 'perm_camera',
-          title: '${cameraApps.length} Apps Accessing Camera',
-          description: 'Review optical sensor privileges across active installed packages.',
-          category: _IssueCategory.permissions,
-          severity: _IssueSeverity.low,
-          actionLabel: 'Manage Access',
-          actionIcon: Icons.lock_open_rounded,
-          onAction: _openPermissionSettings,
-        ));
+        issues.add(
+          _AuditIssue(
+            id: 'perm_camera',
+            title: '${cameraApps.length} Apps Accessing Camera',
+            description:
+                'Review optical sensor privileges across active installed packages.',
+            category: _IssueCategory.permissions,
+            severity: _IssueSeverity.low,
+            actionLabel: 'Manage Access',
+            actionIcon: Icons.lock_open_rounded,
+            onAction: _openPermissionSettings,
+          ),
+        );
       }
 
       final result = _AuditResult(
@@ -892,7 +1087,10 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         // First audit run: establish honest baseline across the window
         history = List.filled(7, currentScore);
       }
-      await prefs.setStringList('safesignal_score_history_7d', history.map((e) => e.toString()).toList());
+      await prefs.setStringList(
+        'safesignal_score_history_7d',
+        history.map((e) => e.toString()).toList(),
+      );
       return history;
     } catch (_) {
       return List.filled(7, currentScore);
@@ -931,7 +1129,10 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           children: [
             Icon(Icons.gpp_bad_rounded, color: Color(0xFFEF4444)),
             SizedBox(width: 8),
-            Text('Root Integrity Alert', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(
+              'Root Integrity Alert',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
           ],
         ),
         content: const Text(
@@ -942,7 +1143,10 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Understood', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Understood',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -967,7 +1171,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           backgroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0F172A), size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Color(0xFF0F172A),
+              size: 20,
+            ),
             onPressed: () => Navigator.of(context).pop(),
           ),
           title: const Text(
@@ -983,7 +1191,10 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           actions: [
             if (_scanComplete)
               IconButton(
-                icon: const Icon(Icons.refresh_rounded, color: Color(0xFF2563EB)),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: Color(0xFF2563EB),
+                ),
                 onPressed: _rescan,
                 tooltip: 'Run New Audit',
               ),
@@ -1006,17 +1217,33 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded, size: 64, color: Color(0xFFEF4444)),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 64,
+              color: Color(0xFFEF4444),
+            ),
             const SizedBox(height: 16),
-            const Text('Audit Encountered An Error', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Audit Encountered An Error',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
-            Text(_errorMsg, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
+            Text(
+              _errorMsg,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54),
+            ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _rescan,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+              ),
               icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-              label: const Text('Retry Scan', style: TextStyle(color: Colors.white)),
+              label: const Text(
+                'Retry Scan',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -1037,19 +1264,30 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
             child: Stack(
               alignment: Alignment.center,
               children: [
-                ...List.generate(3, (i) => Container(
-                  width: 80.0 + i * 40,
-                  height: 80.0 + i * 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25 - i * 0.07), width: 1.5),
-                  ),
-                ).animate(onPlay: (c) => c.repeat()).scale(
-                  begin: const Offset(0.9, 0.9),
-                  end: const Offset(1.05, 1.05),
-                  duration: Duration(milliseconds: 1400 + i * 300),
-                  curve: Curves.easeInOut,
-                )),
+                ...List.generate(
+                  3,
+                  (i) =>
+                      Container(
+                            width: 80.0 + i * 40,
+                            height: 80.0 + i * 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(
+                                  0xFF2563EB,
+                                ).withValues(alpha: 0.25 - i * 0.07),
+                                width: 1.5,
+                              ),
+                            ),
+                          )
+                          .animate(onPlay: (c) => c.repeat())
+                          .scale(
+                            begin: const Offset(0.9, 0.9),
+                            end: const Offset(1.05, 1.05),
+                            duration: Duration(milliseconds: 1400 + i * 300),
+                            curve: Curves.easeInOut,
+                          ),
+                ),
                 AnimatedBuilder(
                   animation: _radarController,
                   builder: (ctx, child) => Container(
@@ -1070,7 +1308,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.security, color: Colors.white, size: 40),
+                    child: const Icon(
+                      Icons.security,
+                      color: Colors.white,
+                      size: 40,
+                    ),
                   ),
                 ),
                 AnimatedBuilder(
@@ -1082,11 +1324,13 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                       height: 170,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: SweepGradient(colors: [
-                          const Color(0xFF2563EB).withValues(alpha: 0.0),
-                          const Color(0xFF2563EB).withValues(alpha: 0.35),
-                          const Color(0xFF2563EB).withValues(alpha: 0.0),
-                        ]),
+                        gradient: SweepGradient(
+                          colors: [
+                            const Color(0xFF2563EB).withValues(alpha: 0.0),
+                            const Color(0xFF2563EB).withValues(alpha: 0.35),
+                            const Color(0xFF2563EB).withValues(alpha: 0.0),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1111,12 +1355,20 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               Expanded(
                 child: Text(
                   _stages[_currentStage],
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF1D4ED8), fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF1D4ED8),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Text(
                 '${_scanProgress.toInt()}%',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
               ),
             ],
           ),
@@ -1176,7 +1428,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 16),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)]),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+              ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
@@ -1191,7 +1445,14 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               children: [
                 Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
                 SizedBox(width: 8),
-                Text('Run Fresh Security Audit', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                Text(
+                  'Run Fresh Security Audit',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1208,7 +1469,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 18, offset: const Offset(0, 6)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
         ],
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
@@ -1248,7 +1513,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                         ),
                         const Text(
                           '/ 100',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black45),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black45,
+                          ),
                         ),
                       ],
                     ),
@@ -1262,11 +1531,16 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: r.riskTierColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: r.riskTierColor.withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: r.riskTierColor.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1274,12 +1548,19 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                           Container(
                             width: 7,
                             height: 7,
-                            decoration: BoxDecoration(color: r.riskTierColor, shape: BoxShape.circle),
+                            decoration: BoxDecoration(
+                              color: r.riskTierColor,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                           const SizedBox(width: 6),
                           Text(
                             r.riskTierName,
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: r.riskTierColor),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              color: r.riskTierColor,
+                            ),
                           ),
                         ],
                       ),
@@ -1289,14 +1570,24 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                       r.safetyScore >= 70
                           ? 'Device Protected'
                           : (r.safetyScore >= 50
-                              ? 'Security Posture At Risk'
-                              : (r.safetyScore >= 30 ? 'Vulnerable To Exploits' : 'Critical Actions Required')),
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF0F172A)),
+                                ? 'Security Posture At Risk'
+                                : (r.safetyScore >= 30
+                                      ? 'Vulnerable To Exploits'
+                                      : 'Critical Actions Required')),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${r.issues.length} active risks identified across apps, permissions & OS settings.',
-                      style: const TextStyle(fontSize: 12, color: Colors.black54, height: 1.25),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                        height: 1.25,
+                      ),
                     ),
                   ],
                 ),
@@ -1312,8 +1603,23 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('CYBER RISK SPECTRUM', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.black45, letterSpacing: 0.5)),
-                  Text('${r.safetyScore} pts', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: r.riskTierColor)),
+                  const Text(
+                    'CYBER RISK SPECTRUM',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black45,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  Text(
+                    '${r.safetyScore} pts',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: r.riskTierColor,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -1327,13 +1633,25 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                       height: 8,
                       child: Row(
                         children: [
-                          Expanded(flex: 30, child: Container(color: const Color(0xFFEF4444))), // Critical 0-29
+                          Expanded(
+                            flex: 30,
+                            child: Container(color: const Color(0xFFEF4444)),
+                          ), // Critical 0-29
                           const SizedBox(width: 2),
-                          Expanded(flex: 20, child: Container(color: const Color(0xFFF97316))), // Vulnerable 30-49
+                          Expanded(
+                            flex: 20,
+                            child: Container(color: const Color(0xFFF97316)),
+                          ), // Vulnerable 30-49
                           const SizedBox(width: 2),
-                          Expanded(flex: 20, child: Container(color: const Color(0xFFF59E0B))), // At Risk 50-69
+                          Expanded(
+                            flex: 20,
+                            child: Container(color: const Color(0xFFF59E0B)),
+                          ), // At Risk 50-69
                           const SizedBox(width: 2),
-                          Expanded(flex: 30, child: Container(color: const Color(0xFF10B981))), // Secure 70-100
+                          Expanded(
+                            flex: 30,
+                            child: Container(color: const Color(0xFF10B981)),
+                          ), // Secure 70-100
                         ],
                       ),
                     ),
@@ -1350,7 +1668,10 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                         borderRadius: BorderRadius.circular(3),
                         border: Border.all(color: Colors.white, width: 1.5),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                          ),
                         ],
                       ),
                     ),
@@ -1362,10 +1683,42 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('CRITICAL\n0–29', textAlign: TextAlign.center, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFEF4444))),
-                  Text('VULNERABLE\n30–49', textAlign: TextAlign.center, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFF97316))),
-                  Text('AT RISK\n50–69', textAlign: TextAlign.center, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B))),
-                  Text('SECURE\n70–100', textAlign: TextAlign.center, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                  Text(
+                    'CRITICAL\n0–29',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFEF4444),
+                    ),
+                  ),
+                  Text(
+                    'VULNERABLE\n30–49',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFF97316),
+                    ),
+                  ),
+                  Text(
+                    'AT RISK\n50–69',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFF59E0B),
+                    ),
+                  ),
+                  Text(
+                    'SECURE\n70–100',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF10B981),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -1383,18 +1736,27 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
     final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final border = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
 
-    final criticalCount = r.issues.where((i) => i.severity == _IssueSeverity.critical).length;
-    final highCount = r.issues.where((i) => i.severity == _IssueSeverity.high).length;
+    final criticalCount = r.issues
+        .where((i) => i.severity == _IssueSeverity.critical)
+        .length;
+    final highCount = r.issues
+        .where((i) => i.severity == _IssueSeverity.high)
+        .length;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: criticalCount > 0 ? const Color(0xFFEF4444).withValues(alpha: 0.4) : border),
+        border: Border.all(
+          color: criticalCount > 0
+              ? const Color(0xFFEF4444).withValues(alpha: 0.4)
+              : border,
+        ),
         boxShadow: [
           BoxShadow(
-            color: (criticalCount > 0 ? const Color(0xFFEF4444) : Colors.black).withValues(alpha: 0.05),
+            color: (criticalCount > 0 ? const Color(0xFFEF4444) : Colors.black)
+                .withValues(alpha: 0.05),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -1408,12 +1770,18 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (criticalCount > 0 ? const Color(0xFFEF4444) : const Color(0xFFF59E0B)).withValues(alpha: 0.12),
+                  color:
+                      (criticalCount > 0
+                              ? const Color(0xFFEF4444)
+                              : const Color(0xFFF59E0B))
+                          .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.crisis_alert_rounded,
-                  color: criticalCount > 0 ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
+                  color: criticalCount > 0
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFFF59E0B),
                   size: 22,
                 ),
               ),
@@ -1437,8 +1805,12 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                           : '${r.issues.length} security recommendation(s)',
                       style: TextStyle(
                         fontSize: 11.5,
-                        color: criticalCount > 0 ? const Color(0xFFEF4444) : textSub,
-                        fontWeight: criticalCount > 0 ? FontWeight.bold : FontWeight.normal,
+                        color: criticalCount > 0
+                            ? const Color(0xFFEF4444)
+                            : textSub,
+                        fontWeight: criticalCount > 0
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     ),
                   ],
@@ -1447,7 +1819,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: (criticalCount > 0 ? const Color(0xFFEF4444) : const Color(0xFFF59E0B)).withValues(alpha: 0.12),
+                  color:
+                      (criticalCount > 0
+                              ? const Color(0xFFEF4444)
+                              : const Color(0xFFF59E0B))
+                          .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -1455,7 +1831,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: criticalCount > 0 ? const Color(0xFFEF4444) : const Color(0xFFD97706),
+                    color: criticalCount > 0
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFFD97706),
                   ),
                 ),
               ),
@@ -1488,7 +1866,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                color: isDark
+                    ? const Color(0xFF1E293B)
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: border),
               ),
@@ -1499,21 +1879,32 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: sevColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           sevLabel,
-                          style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: sevColor),
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                            color: sevColor,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           issue.title,
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textMain),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: textMain,
+                          ),
                         ),
                       ),
                     ],
@@ -1521,27 +1912,42 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                   const SizedBox(height: 6),
                   Text(
                     issue.description,
-                    style: TextStyle(fontSize: 11.5, color: textSub, height: 1.35),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: textSub,
+                      height: 1.35,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Align(
                     alignment: Alignment.centerRight,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: issue.severity == _IssueSeverity.critical
+                        backgroundColor:
+                            issue.severity == _IssueSeverity.critical
                             ? const Color(0xFFEF4444)
-                            : (issue.severity == _IssueSeverity.high ? const Color(0xFFF97316) : const Color(0xFF2563EB)),
+                            : (issue.severity == _IssueSeverity.high
+                                  ? const Color(0xFFF97316)
+                                  : const Color(0xFF2563EB)),
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         visualDensity: VisualDensity.compact,
                       ),
                       onPressed: issue.onAction,
                       icon: Icon(issue.actionIcon, size: 14),
                       label: Text(
                         issue.actionLabel,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -1588,7 +1994,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: border),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 18, offset: const Offset(0, 6)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
@@ -1602,7 +2012,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                   color: const Color(0xFF7C3AED).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.radar_rounded, color: Color(0xFF7C3AED), size: 22),
+                child: const Icon(
+                  Icons.radar_rounded,
+                  color: Color(0xFF7C3AED),
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1628,15 +2042,23 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: (riskySettingsCount > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)).withValues(alpha: 0.12),
+                  color:
+                      (riskySettingsCount > 0
+                              ? const Color(0xFFEF4444)
+                              : const Color(0xFF10B981))
+                          .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  riskySettingsCount > 0 ? '$riskySettingsCount RISKS' : 'HARDENED',
+                  riskySettingsCount > 0
+                      ? '$riskySettingsCount RISKS'
+                      : 'HARDENED',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
-                    color: riskySettingsCount > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                    color: riskySettingsCount > 0
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFF10B981),
                   ),
                 ),
               ),
@@ -1650,8 +2072,12 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
             title: 'USB Debugging & ADB',
             subtitle: adbActive
                 ? 'ADB actively listening for shell commands'
-                : (devOptions ? 'Developer options active on phone' : 'Turned off (Safe from cable injection)'),
-            status: adbActive ? 'ACTIVE (RISK)' : (devOptions ? 'ENABLED' : 'DISABLED'),
+                : (devOptions
+                      ? 'Developer options active on phone'
+                      : 'Turned off (Safe from cable injection)'),
+            status: adbActive
+                ? 'ACTIVE (RISK)'
+                : (devOptions ? 'ENABLED' : 'DISABLED'),
             isRisky: adbActive || devOptions,
             onTap: _openDeveloperSettings,
           ),
@@ -1675,7 +2101,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
             subtitle: accAbusers.isEmpty
                 ? '0 non-system apps with screen read privilege'
                 : '${accAbusers.length} third-party app(s) have screen read rights',
-            status: accAbusers.isEmpty ? 'CLEAN (0)' : '${accAbusers.length} ACTIVE',
+            status: accAbusers.isEmpty
+                ? 'CLEAN (0)'
+                : '${accAbusers.length} ACTIVE',
             isRisky: accAbusers.isNotEmpty,
             onTap: _openAccessibilitySettings,
           ),
@@ -1687,7 +2115,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
             subtitle: notifListeners.isEmpty
                 ? '0 third-party apps snooping notifications'
                 : '${notifListeners.length} app(s) can read incoming OTP SMS & alerts',
-            status: notifListeners.isEmpty ? 'CLEAN (0)' : '${notifListeners.length} ACTIVE',
+            status: notifListeners.isEmpty
+                ? 'CLEAN (0)'
+                : '${notifListeners.length} ACTIVE',
             isRisky: notifListeners.isNotEmpty,
             onTap: _openNotificationSettings,
           ),
@@ -1699,7 +2129,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
             subtitle: devAdmins.isEmpty
                 ? '0 non-OEM device admin packages'
                 : '${devAdmins.length} app(s) have device wipe/lock privileges',
-            status: devAdmins.isEmpty ? '0 NON-OEM' : '${devAdmins.length} ACTIVE',
+            status: devAdmins.isEmpty
+                ? '0 NON-OEM'
+                : '${devAdmins.length} ACTIVE',
             isRisky: devAdmins.isNotEmpty,
             onTap: _openDeviceAdminSettings,
           ),
@@ -1711,7 +2143,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
             subtitle: sideloadApps.isEmpty
                 ? 'Third-party APK installation blocked'
                 : '${sideloadApps.length} app(s) allowed to install raw APKs',
-            status: sideloadApps.isEmpty ? 'RESTRICTED' : '${sideloadApps.length} ALLOWED',
+            status: sideloadApps.isEmpty
+                ? 'RESTRICTED'
+                : '${sideloadApps.length} ALLOWED',
             isRisky: sideloadApps.isNotEmpty,
             onTap: _openInstallUnknownAppsSettings,
           ),
@@ -1754,7 +2188,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isRisky ? color.withValues(alpha: 0.3) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+            color: isRisky
+                ? color.withValues(alpha: 0.3)
+                : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
           ),
         ),
         child: Row(
@@ -1774,7 +2210,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                 children: [
                   Text(
                     title,
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textMain),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: textMain,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1795,11 +2235,19 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               ),
               child: Text(
                 status,
-                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: color),
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
               ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.arrow_forward_ios_rounded, size: 11, color: isRisky ? color : Colors.black38),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 11,
+              color: isRisky ? color : Colors.black38,
+            ),
           ],
         ),
       ),
@@ -1825,7 +2273,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
     final isPatchCriticallyOld = patchAgeDays > 180 || isEol;
     final patchColor = isPatchCriticallyOld
         ? const Color(0xFFEF4444)
-        : (patchAgeDays > 60 ? const Color(0xFFF59E0B) : const Color(0xFF10B981));
+        : (patchAgeDays > 60
+              ? const Color(0xFFF59E0B)
+              : const Color(0xFF10B981));
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1834,7 +2284,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: border),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 18, offset: const Offset(0, 6)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
@@ -1848,7 +2302,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                   color: const Color(0xFF0284C7).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.verified_rounded, color: Color(0xFF0284C7), size: 22),
+                child: const Icon(
+                  Icons.verified_rounded,
+                  color: Color(0xFF0284C7),
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1878,7 +2336,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  isEol ? 'EOL OS' : (isPatchCriticallyOld ? 'OUTDATED' : 'PROTECTED'),
+                  isEol
+                      ? 'EOL OS'
+                      : (isPatchCriticallyOld ? 'OUTDATED' : 'PROTECTED'),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
@@ -1897,24 +2357,39 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: border),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('PATCH DATE', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: textSub)),
+                      Text(
+                        'PATCH DATE',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                          color: textSub,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         patch,
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: patchColor),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: patchColor,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        patchAgeDays > 0 ? '$patchAgeDays days old' : 'Recent patch',
+                        patchAgeDays > 0
+                            ? '$patchAgeDays days old'
+                            : 'Recent patch',
                         style: TextStyle(fontSize: 10, color: textSub),
                       ),
                     ],
@@ -1926,21 +2401,37 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: border),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('ANDROID BUILD', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: textSub)),
+                      Text(
+                        'ANDROID BUILD',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                          color: textSub,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         'Android ${_sdkToVersion(sdk)}',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: textMain),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: textMain,
+                        ),
                       ),
                       const SizedBox(height: 2),
-                      Text('API Level $sdk', style: TextStyle(fontSize: 10, color: textSub)),
+                      Text(
+                        'API Level $sdk',
+                        style: TextStyle(fontSize: 10, color: textSub),
+                      ),
                     ],
                   ),
                 ),
@@ -1950,25 +2441,39 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: border),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('LIFECYCLE', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: textSub)),
+                      Text(
+                        'LIFECYCLE',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                          color: textSub,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         isEol ? 'End Of Life' : 'Active Support',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
-                          color: isEol ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                          color: isEol
+                              ? const Color(0xFFEF4444)
+                              : const Color(0xFF10B981),
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(isEol ? 'Legacy API' : 'Google Maintained', style: TextStyle(fontSize: 10, color: textSub)),
+                      Text(
+                        isEol ? 'Legacy API' : 'Google Maintained',
+                        style: TextStyle(fontSize: 10, color: textSub),
+                      ),
                     ],
                   ),
                 ),
@@ -1983,21 +2488,31 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
             decoration: BoxDecoration(
               color: isPatchCriticallyOld
                   ? (isDark ? const Color(0xFF280B0E) : const Color(0xFFFEF2F2))
-                  : (isDark ? const Color(0xFF062015) : const Color(0xFFF0FDF4)),
+                  : (isDark
+                        ? const Color(0xFF062015)
+                        : const Color(0xFFF0FDF4)),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isPatchCriticallyOld
-                    ? (isDark ? const Color(0xFF6B1D24) : const Color(0xFFFECACA))
-                    : (isDark ? const Color(0xFF0E4A30) : const Color(0xFFBBF7D0)),
+                    ? (isDark
+                          ? const Color(0xFF6B1D24)
+                          : const Color(0xFFFECACA))
+                    : (isDark
+                          ? const Color(0xFF0E4A30)
+                          : const Color(0xFFBBF7D0)),
               ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
-                  isPatchCriticallyOld ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
+                  isPatchCriticallyOld
+                      ? Icons.warning_amber_rounded
+                      : Icons.check_circle_rounded,
                   size: 18,
-                  color: isPatchCriticallyOld ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                  color: isPatchCriticallyOld
+                      ? const Color(0xFFDC2626)
+                      : const Color(0xFF16A34A),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -2008,8 +2523,12 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                     style: TextStyle(
                       fontSize: 11.5,
                       color: isPatchCriticallyOld
-                          ? (isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B))
-                          : (isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534)),
+                          ? (isDark
+                                ? const Color(0xFFFCA5A5)
+                                : const Color(0xFF991B1B))
+                          : (isDark
+                                ? const Color(0xFF86EFAC)
+                                : const Color(0xFF166534)),
                       height: 1.35,
                     ),
                   ),
@@ -2026,15 +2545,25 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 side: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: _openSystemUpdateSettings,
-              icon: const Icon(Icons.system_update_rounded, color: Color(0xFF2563EB), size: 18),
+              icon: const Icon(
+                Icons.system_update_rounded,
+                color: Color(0xFF2563EB),
+                size: 18,
+              ),
               label: const FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
                   'Check For Phone System Updates',
-                  style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 13),
+                  style: TextStyle(
+                    color: Color(0xFF2563EB),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ),
@@ -2052,7 +2581,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
     final textSub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final border = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
     final divider = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-    final progressBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+    final progressBg = isDark
+        ? const Color(0xFF1E293B)
+        : const Color(0xFFE2E8F0);
 
     final mem = r.memoryInfo;
     final stor = r.storageInfo;
@@ -2062,14 +2593,18 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
     final totalMem = (mem['totalMem'] as num?)?.toDouble() ?? 0;
     final usedMem = (mem['usedMem'] as num?)?.toDouble() ?? 0;
     final availMem = (mem['availMem'] as num?)?.toDouble() ?? 0;
-    final memPercent = totalMem > 0 ? (usedMem / totalMem).clamp(0.0, 1.0) : 0.0;
+    final memPercent = totalMem > 0
+        ? (usedMem / totalMem).clamp(0.0, 1.0)
+        : 0.0;
     final isLowMem = mem['lowMemory'] as bool? ?? false;
 
     // Storage stats
     final totalStor = (stor['totalStorage'] as num?)?.toDouble() ?? 0;
     final usedStor = (stor['usedStorage'] as num?)?.toDouble() ?? 0;
     final freeStor = (stor['freeStorage'] as num?)?.toDouble() ?? 0;
-    final storPercent = totalStor > 0 ? (usedStor / totalStor).clamp(0.0, 1.0) : 0.0;
+    final storPercent = totalStor > 0
+        ? (usedStor / totalStor).clamp(0.0, 1.0)
+        : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2096,7 +2631,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                   color: const Color(0xFF2563EB).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.memory_rounded, color: Color(0xFF2563EB), size: 22),
+                child: const Icon(
+                  Icons.memory_rounded,
+                  color: Color(0xFF2563EB),
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2133,7 +2672,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                   const SizedBox(width: 6),
                   Text(
                     'RAM Allocation',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textMain),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: textMain,
+                    ),
                   ),
                 ],
               ),
@@ -2144,7 +2687,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.bold,
-                  color: memPercent > 0.85 ? const Color(0xFFEF4444) : const Color(0xFF2563EB),
+                  color: memPercent > 0.85
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFF2563EB),
                 ),
               ),
             ],
@@ -2159,7 +2704,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               valueColor: AlwaysStoppedAnimation<Color>(
                 memPercent > 0.85
                     ? const Color(0xFFEF4444)
-                    : (memPercent > 0.70 ? const Color(0xFFF59E0B) : const Color(0xFF10B981)),
+                    : (memPercent > 0.70
+                          ? const Color(0xFFF59E0B)
+                          : const Color(0xFF10B981)),
               ),
             ),
           ),
@@ -2176,7 +2723,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: isLowMem ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                  color: isLowMem
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFF10B981),
                 ),
               ),
             ],
@@ -2196,7 +2745,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                   const SizedBox(width: 6),
                   Text(
                     'Internal Storage',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textMain),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: textMain,
+                    ),
                   ),
                 ],
               ),
@@ -2207,7 +2760,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.bold,
-                  color: storPercent > 0.90 ? const Color(0xFFEF4444) : textMain,
+                  color: storPercent > 0.90
+                      ? const Color(0xFFEF4444)
+                      : textMain,
                 ),
               ),
             ],
@@ -2222,7 +2777,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               valueColor: AlwaysStoppedAnimation<Color>(
                 storPercent > 0.90
                     ? const Color(0xFFEF4444)
-                    : (storPercent > 0.75 ? const Color(0xFFF59E0B) : const Color(0xFF3B82F6)),
+                    : (storPercent > 0.75
+                          ? const Color(0xFFF59E0B)
+                          : const Color(0xFF3B82F6)),
               ),
             ),
           ),
@@ -2239,7 +2796,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: storPercent > 0.90 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                  color: storPercent > 0.90
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFF10B981),
                 ),
               ),
             ],
@@ -2257,15 +2816,23 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                 child: Row(
                   children: [
                     Icon(
-                      suspicious.isEmpty ? Icons.verified_user_rounded : Icons.gpp_maybe_rounded,
+                      suspicious.isEmpty
+                          ? Icons.verified_user_rounded
+                          : Icons.gpp_maybe_rounded,
                       size: 16,
-                      color: suspicious.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                      color: suspicious.isEmpty
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEF4444),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         'Payload Integrity',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textMain),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: textMain,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -2276,15 +2843,23 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: (suspicious.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444)).withValues(alpha: 0.12),
+                  color:
+                      (suspicious.isEmpty
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFFEF4444))
+                          .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  suspicious.isEmpty ? 'CLEAN (0 Payloads)' : '${suspicious.length} SUSPICIOUS',
+                  suspicious.isEmpty
+                      ? 'CLEAN (0 Payloads)'
+                      : '${suspicious.length} SUSPICIOUS',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: suspicious.isEmpty ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                    color: suspicious.isEmpty
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFEF4444),
                   ),
                 ),
               ),
@@ -2295,20 +2870,32 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF062015) : const Color(0xFFF0FDF4),
+                color: isDark
+                    ? const Color(0xFF062015)
+                    : const Color(0xFFF0FDF4),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDark ? const Color(0xFF0E4A30) : const Color(0xFFBBF7D0)),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF0E4A30)
+                      : const Color(0xFFBBF7D0),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 18),
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: Color(0xFF16A34A),
+                    size: 18,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'No unverified APK droppers, disguised files (.pdf.apk), or hidden scripts found in storage.',
                       style: TextStyle(
                         fontSize: 11.5,
-                        color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
+                        color: isDark
+                            ? const Color(0xFF86EFAC)
+                            : const Color(0xFF166534),
                         height: 1.3,
                       ),
                     ),
@@ -2320,9 +2907,15 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF280B0E) : const Color(0xFFFEF2F2),
+                color: isDark
+                    ? const Color(0xFF280B0E)
+                    : const Color(0xFFFEF2F2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDark ? const Color(0xFF6B1D24) : const Color(0xFFFECACA)),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF6B1D24)
+                      : const Color(0xFFFECACA),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2332,50 +2925,68 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B),
+                      color: isDark
+                          ? const Color(0xFFFCA5A5)
+                          : const Color(0xFF991B1B),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ...suspicious.map((sf) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    sf['name']?.toString() ?? '',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textMain),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                  ...suspicious.map(
+                    (sf) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Color(0xFFDC2626),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  sf['name']?.toString() ?? '',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: textMain,
                                   ),
-                                  Text(
-                                    '${sf['riskType']} • ${_formatBytes(sf['size'] as num? ?? 0)}',
-                                    style: TextStyle(fontSize: 10.5, color: textSub),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  '${sf['riskType']} • ${_formatBytes(sf['size'] as num? ?? 0)}',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: textSub,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626), size: 20),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () => _confirmDeleteFile(
-                                sf['path']?.toString() ?? '',
-                                sf['name']?.toString() ?? '',
-                              ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: Color(0xFFDC2626),
+                              size: 20,
                             ),
-                          ],
-                        ),
-                      )),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => _confirmDeleteFile(
+                              sf['path']?.toString() ?? '',
+                              sf['name']?.toString() ?? '',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
           ],
-
         ],
       ),
     );
@@ -2392,7 +3003,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 14, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
         ],
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
@@ -2405,8 +3020,18 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Weekly Score Trend', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
-                  Text('7-day posture audit history', style: TextStyle(fontSize: 11, color: Colors.black45)),
+                  Text(
+                    'Weekly Score Trend',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  Text(
+                    '7-day posture audit history',
+                    style: TextStyle(fontSize: 11, color: Colors.black45),
+                  ),
                 ],
               ),
               Container(
@@ -2415,7 +3040,14 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                   color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('Recorded Audits', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                child: const Text(
+                  'Recorded Audits',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2563EB),
+                  ),
+                ),
               ),
             ],
           ),
@@ -2426,10 +3058,14 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: List.generate(7, (i) {
-                final dayScore = i < history.length ? history[i] : r.safetyScore;
+                final dayScore = i < history.length
+                    ? history[i]
+                    : r.safetyScore;
                 final isToday = i == 6;
                 final barHeight = (dayScore / 100 * 60).clamp(10.0, 60.0);
-                final barColor = isToday ? r.riskTierColor : const Color(0xFF94A3B8);
+                final barColor = isToday
+                    ? r.riskTierColor
+                    : const Color(0xFF94A3B8);
 
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -2449,7 +3085,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                       decoration: BoxDecoration(
                         color: barColor,
                         borderRadius: BorderRadius.circular(6),
-                        border: isToday ? Border.all(color: Colors.white, width: 1.5) : null,
+                        border: isToday
+                            ? Border.all(color: Colors.white, width: 1.5)
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -2458,7 +3096,9 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
-                        color: isToday ? const Color(0xFF0F172A) : Colors.black45,
+                        color: isToday
+                            ? const Color(0xFF0F172A)
+                            : Colors.black45,
                       ),
                     ),
                   ],
@@ -2517,32 +3157,50 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
           color: highlight ? const Color(0xFFFEF2F2) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: highlight ? const Color(0xFFFCA5A5) : const Color(0xFFCBD5E1),
+            color: highlight
+                ? const Color(0xFFFCA5A5)
+                : const Color(0xFFCBD5E1),
           ),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 6,
+            ),
           ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: highlight ? const Color(0xFFDC2626) : const Color(0xFF2563EB)),
+            Icon(
+              icon,
+              size: 16,
+              color: highlight
+                  ? const Color(0xFFDC2626)
+                  : const Color(0xFF2563EB),
+            ),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: highlight ? const Color(0xFFDC2626) : const Color(0xFF0F172A),
+                color: highlight
+                    ? const Color(0xFFDC2626)
+                    : const Color(0xFF0F172A),
               ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.arrow_forward_ios_rounded, size: 10, color: highlight ? const Color(0xFFDC2626) : Colors.black45),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 10,
+              color: highlight ? const Color(0xFFDC2626) : Colors.black45,
+            ),
           ],
         ),
       ),
     );
   }
+
   // ─── 5. Sensor Permissions Matrix (MobiArmor Avatar Stacking) ──────────────
   Widget _buildSensorPermissionsMatrix(_AuditResult r) {
     final permIcons = {
@@ -2559,7 +3217,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 14, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
         ],
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
@@ -2572,12 +3234,26 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Sensitive Sensor Access', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
-                  Text('Stacking apps with active sensor permissions', style: TextStyle(fontSize: 11, color: Colors.black45)),
+                  Text(
+                    'Sensitive Sensor Access',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  Text(
+                    'Stacking apps with active sensor permissions',
+                    style: TextStyle(fontSize: 11, color: Colors.black45),
+                  ),
                 ],
               ),
               IconButton(
-                icon: const Icon(Icons.settings_suggest_rounded, color: Color(0xFF2563EB), size: 20),
+                icon: const Icon(
+                  Icons.settings_suggest_rounded,
+                  color: Color(0xFF2563EB),
+                  size: 20,
+                ),
                 onPressed: _openPermissionSettings,
                 tooltip: 'System Permission Manager',
               ),
@@ -2605,16 +3281,27 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                     },
                     borderRadius: BorderRadius.circular(14),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 11,
+                      ),
                       child: Row(
                         children: [
-                          Icon(permIcons[entry.key] ?? Icons.lock_rounded, size: 17, color: const Color(0xFF2563EB)),
+                          Icon(
+                            permIcons[entry.key] ?? Icons.lock_rounded,
+                            size: 17,
+                            color: const Color(0xFF2563EB),
+                          ),
                           const SizedBox(width: 8),
                           SizedBox(
                             width: 74,
                             child: Text(
                               entry.key,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF0F172A)),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12.5,
+                                color: Color(0xFF0F172A),
+                              ),
                             ),
                           ),
                           const Spacer(),
@@ -2624,47 +3311,87 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                               width: (apps.take(4).length * 15.0) + 12,
                               height: 26,
                               child: Stack(
-                                children: apps.take(4).toList().asMap().entries.map((e) {
-                                  return Positioned(
-                                    left: e.key * 15.0,
-                                    child: Container(
-                                      width: 24,
-                                      height: 24,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 1.5),
-                                        boxShadow: [
-                                          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 2),
-                                        ],
-                                      ),
-                                      child: e.value.icon != null
-                                          ? ClipOval(child: Image.memory(e.value.icon!, fit: BoxFit.cover))
-                                          : const CircleAvatar(
-                                              backgroundColor: Color(0xFF94A3B8),
-                                              child: Icon(Icons.android, size: 10, color: Colors.white),
+                                children: apps
+                                    .take(4)
+                                    .toList()
+                                    .asMap()
+                                    .entries
+                                    .map((e) {
+                                      return Positioned(
+                                        left: e.key * 15.0,
+                                        child: Container(
+                                          width: 24,
+                                          height: 24,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 1.5,
                                             ),
-                                    ),
-                                  );
-                                }).toList(),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.1,
+                                                ),
+                                                blurRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                          child: e.value.icon != null
+                                              ? ClipOval(
+                                                  child: Image.memory(
+                                                    e.value.icon!,
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                                )
+                                              : const CircleAvatar(
+                                                  backgroundColor: Color(
+                                                    0xFF94A3B8,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.android,
+                                                    size: 10,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                        ),
+                                      );
+                                    })
+                                    .toList(),
                               ),
                             ),
                             const SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2.5,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE2E8F0),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
                                 '${apps.length}',
-                                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF334155),
+                                ),
                               ),
                             ),
                           ] else
-                            const Text('0 apps', style: TextStyle(fontSize: 12, color: Colors.black38)),
+                            const Text(
+                              '0 apps',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.black38,
+                              ),
+                            ),
                           const SizedBox(width: 6),
                           Icon(
-                            isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                            isExpanded
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
                             size: 18,
                             color: Colors.black45,
                           ),
@@ -2686,24 +3413,58 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
                                 if (app.icon != null)
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(6),
-                                    child: Image.memory(app.icon!, width: 24, height: 24, fit: BoxFit.cover),
+                                    child: Image.memory(
+                                      app.icon!,
+                                      width: 24,
+                                      height: 24,
+                                      fit: BoxFit.cover,
+                                    ),
                                   )
                                 else
-                                  const Icon(Icons.android_rounded, size: 24, color: Colors.grey),
+                                  const Icon(
+                                    Icons.android_rounded,
+                                    size: 24,
+                                    color: Colors.grey,
+                                  ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(app.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                      Text(app.packageName, style: const TextStyle(fontSize: 10, color: Colors.black45), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                      Text(
+                                        app.name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      Text(
+                                        app.packageName,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.black45,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ],
                                   ),
                                 ),
                                 TextButton(
-                                  onPressed: () => _openAppSettings(app.packageName),
-                                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                                  child: const Text('App Info', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                                  onPressed: () =>
+                                      _openAppSettings(app.packageName),
+                                  style: TextButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  child: const Text(
+                                    'App Info',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF2563EB),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -2731,7 +3492,11 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 14, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
         ],
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
@@ -2740,14 +3505,31 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
         children: [
           const Row(
             children: [
-              Icon(Icons.phone_android_rounded, color: Color(0xFF2563EB), size: 20),
+              Icon(
+                Icons.phone_android_rounded,
+                color: Color(0xFF2563EB),
+                size: 20,
+              ),
               SizedBox(width: 8),
-              Text('Device & OS Specification', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+              Text(
+                'Device & OS Specification',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),
-          _specRow('Model', '${dev?.brand ?? 'Android'} ${dev?.model ?? 'Device'}'),
-          _specRow('Android Version', 'Android ${_sdkToVersion(sdk)} (API $sdk)'),
+          _specRow(
+            'Model',
+            '${dev?.brand ?? 'Android'} ${dev?.model ?? 'Device'}',
+          ),
+          _specRow(
+            'Android Version',
+            'Android ${_sdkToVersion(sdk)} (API $sdk)',
+          ),
           _specRow('Security Patch', dev?.version.securityPatch ?? 'Unknown'),
           _specRow('Hardware', dev?.hardware ?? 'ARM64'),
           _specRow('Total Scanned Apps', '${r.allApps.length} packages'),
@@ -2762,15 +3544,35 @@ class _DeviceAuditScreenState extends State<DeviceAuditScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+            ),
+          ),
         ],
       ),
     );
   }
 
   String _sdkToVersion(int sdk) {
-    const map = {34: '14', 33: '13', 32: '12L', 31: '12', 30: '11', 29: '10', 28: '9', 27: '8.1', 26: '8.0'};
+    const map = {
+      34: '14',
+      33: '13',
+      32: '12L',
+      31: '12',
+      30: '11',
+      29: '10',
+      28: '9',
+      27: '8.1',
+      26: '8.0',
+    };
     return map[sdk] ?? sdk.toString();
   }
 

@@ -36,9 +36,11 @@ class _LanguageScreenState extends State<LanguageScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('🌐', style: TextStyle(fontSize: 64), textAlign: TextAlign.center)
-                  .animate()
-                  .scale(duration: 500.ms, curve: Curves.elasticOut),
+              const Text(
+                '🌐',
+                style: TextStyle(fontSize: 64),
+                textAlign: TextAlign.center,
+              ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
               const SizedBox(height: 24),
               Text(
                 'Apni Bhasha Chunein',
@@ -107,7 +109,9 @@ class _LangCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final activeColor = AppTheme.primary;
     final cardBg = selected
-        ? (isDark ? activeColor.withValues(alpha: 0.15) : const Color(0xFFEFF5FF))
+        ? (isDark
+              ? activeColor.withValues(alpha: 0.15)
+              : const Color(0xFFEFF5FF))
         : (isDark ? const Color(0xFF0F1724) : const Color(0xFFF8FAFC));
 
     final borderColor = selected
@@ -122,17 +126,14 @@ class _LangCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: cardBg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: borderColor,
-            width: selected ? 2 : 1.2,
-          ),
+          border: Border.all(color: borderColor, width: selected ? 2 : 1.2),
           boxShadow: selected
               ? [
                   BoxShadow(
                     color: activeColor.withValues(alpha: 0.15),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
-                  )
+                  ),
                 ]
               : [],
         ),
@@ -147,7 +148,7 @@ class _LangCard extends StatelessWidget {
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 6,
-                  )
+                  ),
                 ],
               ),
               child: Text(flag, style: const TextStyle(fontSize: 32)),

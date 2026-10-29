@@ -32,7 +32,9 @@ class ThreatReport {
       reporterCount: json['reporter_count'] as int? ?? 1,
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.5,
       status: json['status'] as String? ?? 'pending',
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(json['created_at'] as String? ?? '') ??
+          DateTime.now(),
     );
   }
 

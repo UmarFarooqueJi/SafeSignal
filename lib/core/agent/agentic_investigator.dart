@@ -31,13 +31,13 @@ class InvestigationStep {
   });
 
   Map<String, dynamic> toJson() => {
-        'step_number': stepNumber,
-        'action': action,
-        'tool_name': toolName,
-        'arguments': toolArguments,
-        'result': toolResult.toJson(),
-        'reasoning': reasoning,
-      };
+    'step_number': stepNumber,
+    'action': action,
+    'tool_name': toolName,
+    'arguments': toolArguments,
+    'result': toolResult.toJson(),
+    'reasoning': reasoning,
+  };
 }
 
 /// Comprehensive structured verdict of an agentic investigation
@@ -65,16 +65,16 @@ class InvestigationReport {
   });
 
   Map<String, dynamic> toJson() => {
-        'incident_id': incidentId,
-        'summary': summary,
-        'verdict': verdict,
-        'confidence': confidence,
-        'primary_findings': primaryFindings,
-        'recommended_actions': recommendedActions,
-        'audit_trace': auditTrace.map((s) => s.toJson()).toList(),
-        'evidence_chain_verified': evidenceChainVerified,
-        'completed_at': completedAt.toIso8601String(),
-      };
+    'incident_id': incidentId,
+    'summary': summary,
+    'verdict': verdict,
+    'confidence': confidence,
+    'primary_findings': primaryFindings,
+    'recommended_actions': recommendedActions,
+    'audit_trace': auditTrace.map((s) => s.toJson()).toList(),
+    'evidence_chain_verified': evidenceChainVerified,
+    'completed_at': completedAt.toIso8601String(),
+  };
 }
 
 /// Policy-constrained autonomous cyber investigation engine
@@ -87,8 +87,8 @@ class AgenticInvestigator {
     ToolRegistry? registry,
     ThreatGraphService? graph,
     this.maxExecutionSteps = 5,
-  })  : toolRegistry = registry ?? ToolRegistry(),
-        threatGraph = graph ?? ThreatGraphService();
+  }) : toolRegistry = registry ?? ToolRegistry(),
+       threatGraph = graph ?? ThreatGraphService();
 
   /// Execute a policy-constrained investigation on an untrusted input
   Future<InvestigationReport> investigate({
@@ -119,34 +119,43 @@ class AgenticInvestigator {
       final tool = toolRegistry.getTool('scan_url');
       if (tool != null) {
         final result = await tool.execute({'url': url});
-        trajectory.add(InvestigationStep(
-          stepNumber: stepCount,
-          action: 'Scan URL Intelligence',
-          toolName: 'scan_url',
-          toolArguments: {'url': url},
-          toolResult: result,
-          reasoning: 'Extracted active hyperlink from untrusted content for domain and threat analysis.',
-        ));
+        trajectory.add(
+          InvestigationStep(
+            stepNumber: stepCount,
+            action: 'Scan URL Intelligence',
+            toolName: 'scan_url',
+            toolArguments: {'url': url},
+            toolResult: result,
+            reasoning:
+                'Extracted active hyperlink from untrusted content for domain and threat analysis.',
+          ),
+        );
 
         if (result.success) {
           final isDangerous = result.data['verdict'] == 'dangerous';
           final isCaution = result.data['verdict'] == 'caution';
           final host = result.data['domain']?.toString() ?? url;
           final score = result.data['threat_score'] as int? ?? 0;
-          final warnings = List<String>.from(result.data['warnings'] as List? ?? []);
+          final warnings = List<String>.from(
+            result.data['warnings'] as List? ?? [],
+          );
 
-          threatGraph.addOrUpdateNode(ThreatNode(
-            id: 'url_${host.hashCode}',
-            type: ThreatNodeType.url,
-            value: url,
-            metadata: result.data,
-            threatScore: score,
-            firstSeen: DateTime.now(),
-            lastSeen: DateTime.now(),
-          ));
+          threatGraph.addOrUpdateNode(
+            ThreatNode(
+              id: 'url_${host.hashCode}',
+              type: ThreatNodeType.url,
+              value: url,
+              metadata: result.data,
+              threatScore: score,
+              firstSeen: DateTime.now(),
+              lastSeen: DateTime.now(),
+            ),
+          );
 
           if (isDangerous || isCaution) {
-            findings.add('Suspicious link detected ($url): ${warnings.isNotEmpty ? warnings.join("; ") : "Security flags raised"}');
+            findings.add(
+              'Suspicious link detected ($url): ${warnings.isNotEmpty ? warnings.join("; ") : "Security flags raised"}',
+            );
             actions.add('Do NOT click or navigate to $url.');
           }
         }
@@ -158,24 +167,34 @@ class AgenticInvestigator {
       stepCount++;
       final smsTool = toolRegistry.getTool('analyze_sms');
       if (smsTool != null) {
-        final result = await smsTool.execute({'text': isolatedContent, 'sender': sender});
-        trajectory.add(InvestigationStep(
-          stepNumber: stepCount,
-          action: 'Analyze Message Content',
-          toolName: 'analyze_sms',
-          toolArguments: {'text': '[QUARANTINED_BODY]', 'sender': sender},
-          toolResult: result,
-          reasoning: 'Evaluate semantic coercion, urgency triggers, and TRAI sender legitimacy.',
-        ));
+        final result = await smsTool.execute({
+          'text': isolatedContent,
+          'sender': sender,
+        });
+        trajectory.add(
+          InvestigationStep(
+            stepNumber: stepCount,
+            action: 'Analyze Message Content',
+            toolName: 'analyze_sms',
+            toolArguments: {'text': '[QUARANTINED_BODY]', 'sender': sender},
+            toolResult: result,
+            reasoning:
+                'Evaluate semantic coercion, urgency triggers, and TRAI sender legitimacy.',
+          ),
+        );
 
         if (result.success) {
           final isSmsScam = result.data['verdict'] == 'SCAM';
           final isSmsSuspicious = result.data['verdict'] == 'SUSPICIOUS';
-          final reasons = List<String>.from(result.data['reasons'] as List? ?? []);
+          final reasons = List<String>.from(
+            result.data['reasons'] as List? ?? [],
+          );
 
           if (isSmsScam || isSmsSuspicious) {
             findings.addAll(reasons);
-            final whatToDo = List<String>.from(result.data['what_to_do'] as List? ?? []);
+            final whatToDo = List<String>.from(
+              result.data['what_to_do'] as List? ?? [],
+            );
             actions.addAll(whatToDo);
           }
         }
@@ -190,18 +209,23 @@ class AgenticInvestigator {
       final upiTool = toolRegistry.getTool('verify_upi');
       if (upiTool != null) {
         final result = await upiTool.execute({'vpa': vpa});
-        trajectory.add(InvestigationStep(
-          stepNumber: stepCount,
-          action: 'Audit UPI VPA',
-          toolName: 'verify_upi',
-          toolArguments: {'vpa': vpa},
-          toolResult: result,
-          reasoning: 'Verify Virtual Payment Address against payment social engineering patterns.',
-        ));
+        trajectory.add(
+          InvestigationStep(
+            stepNumber: stepCount,
+            action: 'Audit UPI VPA',
+            toolName: 'verify_upi',
+            toolArguments: {'vpa': vpa},
+            toolResult: result,
+            reasoning:
+                'Verify Virtual Payment Address against payment social engineering patterns.',
+          ),
+        );
 
         if (result.success && result.data['is_suspicious'] == true) {
           findings.add('Deceptive UPI address ($vpa) flagged.');
-          actions.add('Never enter UPI PIN to receive money or refunds from $vpa.');
+          actions.add(
+            'Never enter UPI PIN to receive money or refunds from $vpa.',
+          );
         }
       }
     }
@@ -218,14 +242,19 @@ class AgenticInvestigator {
     );
 
     // 5. Final Synthesis
-    final isScam = findings.any((f) => f.contains('🚨') || f.contains('CRITICAL') || f.contains('MALWARE'));
+    final isScam = findings.any(
+      (f) =>
+          f.contains('🚨') || f.contains('CRITICAL') || f.contains('MALWARE'),
+    );
     final isSuspicious = !isScam && findings.isNotEmpty;
 
     final verdict = isScam ? 'CRITICAL' : (isSuspicious ? 'HIGH' : 'SAFE');
     final confidence = isScam ? 95 : (isSuspicious ? 75 : 98);
 
     if (actions.isEmpty) {
-      actions.add('No immediate threat detected. Always verify unexpected payment requests.');
+      actions.add(
+        'No immediate threat detected. Always verify unexpected payment requests.',
+      );
     }
 
     return InvestigationReport(
@@ -233,8 +262,8 @@ class AgenticInvestigator {
       summary: isScam
           ? 'Autonomous investigation confirmed high-confidence fraud or cyber attack indicators.'
           : (isSuspicious
-              ? 'Potential threat indicators detected. Proceed with caution.'
-              : 'Investigation completed with clean integrity checks.'),
+                ? 'Potential threat indicators detected. Proceed with caution.'
+                : 'Investigation completed with clean integrity checks.'),
       verdict: verdict,
       confidence: confidence,
       primaryFindings: findings.toSet().toList(),
@@ -253,16 +282,28 @@ class AgenticInvestigator {
 
     // Neutralize common prompt-injection delimiters and instruction-override lures
     final injectionPatterns = [
-      RegExp(r'(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions|prompts|rules)', caseSensitive: false),
+      RegExp(
+        r'(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions|prompts|rules)',
+        caseSensitive: false,
+      ),
       RegExp(r'system\s+prompt', caseSensitive: false),
-      RegExp(r'you\s+are\s+now\s+(?:dan|developer\s+mode|unrestricted|jailbroken)', caseSensitive: false),
-      RegExp(r'reveal\s+(?:your\s+)?(?:system\s+)?(?:instructions|prompt|api\s+keys)', caseSensitive: false),
+      RegExp(
+        r'you\s+are\s+now\s+(?:dan|developer\s+mode|unrestricted|jailbroken)',
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'reveal\s+(?:your\s+)?(?:system\s+)?(?:instructions|prompt|api\s+keys)',
+        caseSensitive: false,
+      ),
       RegExp(r'new\s+rule:', caseSensitive: false),
       RegExp(r'assistant\s+must\s+say', caseSensitive: false),
     ];
 
     for (final pattern in injectionPatterns) {
-      sanitized = sanitized.replaceAllMapped(pattern, (match) => '[NEUTRALIZED_INJECTION_ATTEMPT: "${match.group(0)}"]');
+      sanitized = sanitized.replaceAllMapped(
+        pattern,
+        (match) => '[NEUTRALIZED_INJECTION_ATTEMPT: "${match.group(0)}"]',
+      );
     }
 
     return sanitized;

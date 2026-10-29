@@ -84,15 +84,15 @@ class _VaultLockScreenState extends State<VaultLockScreen> {
             const SizedBox(height: 12),
             const Text(
               'Use your fingerprint or face to unlock',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white70,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.white70),
             ),
             const SizedBox(height: 40),
             if (_errorMsg.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 16,
+                ),
                 child: Text(
                   _errorMsg,
                   textAlign: TextAlign.center,
@@ -103,13 +103,27 @@ class _VaultLockScreenState extends State<VaultLockScreen> {
               onPressed: _isAuthenticating ? null : _authenticate,
               icon: _isAuthenticating
                   ? const SizedBox(
-                      width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : const Icon(Icons.fingerprint, color: Colors.white),
-              label: Text(_isAuthenticating ? 'Unlocking...' : 'Unlock Now', style: const TextStyle(color: Colors.white, fontSize: 16)),
+              label: Text(
+                _isAuthenticating ? 'Unlocking...' : 'Unlock Now',
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
               ),
             ),
           ],

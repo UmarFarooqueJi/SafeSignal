@@ -15,10 +15,10 @@ class ScoreReason {
   });
 
   Map<String, dynamic> toJson() => {
-        'label': label,
-        'points': points,
-        'isPositive': isPositive,
-      };
+    'label': label,
+    'points': points,
+    'isPositive': isPositive,
+  };
 }
 
 class AuthenticityAssessment {
@@ -83,7 +83,8 @@ class DiscoveredAccount {
 
 class TimelineEvent {
   final String title;
-  final String category; // 'Platform Registration', 'Breach Incident', 'Infostealer Log'
+  final String
+  category; // 'Platform Registration', 'Breach Incident', 'Infostealer Log'
   final String dateString;
   final String source;
   final String description;
@@ -180,19 +181,20 @@ class LiveOsintService {
   final Dio _dio;
 
   LiveOsintService({Dio? dio})
-      : _dio = dio ??
-            Dio(
-              BaseOptions(
-                connectTimeout: const Duration(seconds: 4),
-                receiveTimeout: const Duration(seconds: 4),
-                headers: {
-                  'User-Agent':
-                      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SafeSignal/1.3.0 LiveOSINT',
-                  'Accept': 'application/json',
-                },
-                validateStatus: (status) => true,
-              ),
-            );
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 4),
+              receiveTimeout: const Duration(seconds: 4),
+              headers: {
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SafeSignal/1.3.0 LiveOSINT',
+                'Accept': 'application/json',
+              },
+              validateStatus: (status) => true,
+            ),
+          );
 
   static const Set<String> _disposableDomains = {
     '10minutemail.com',
@@ -374,7 +376,9 @@ class LiveOsintService {
   /// Probes Gravatar public identity API via MD5 hash
   Future<DiscoveredAccount?> _probeGravatar(String email) async {
     try {
-      final emailHash = md5.convert(utf8.encode(email.trim().toLowerCase())).toString();
+      final emailHash = md5
+          .convert(utf8.encode(email.trim().toLowerCase()))
+          .toString();
       final url = 'https://en.gravatar.com/$emailHash.json';
 
       final res = await _dio.get(url);
@@ -383,13 +387,16 @@ class LiveOsintService {
         if (data is String) {
           data = jsonDecode(data);
         }
-        if (data is Map && data['entry'] is List && (data['entry'] as List).isNotEmpty) {
+        if (data is Map &&
+            data['entry'] is List &&
+            (data['entry'] as List).isNotEmpty) {
           final entry = (data['entry'] as List).first as Map;
           final username = entry['preferredUsername']?.toString();
           final displayName = entry['displayName']?.toString();
           final aboutMe = entry['aboutMe']?.toString();
           final loc = entry['currentLocation']?.toString();
-          final thumb = entry['thumbnailUrl']?.toString() ??
+          final thumb =
+              entry['thumbnailUrl']?.toString() ??
               'https://www.gravatar.com/avatar/$emailHash?s=256&d=mp';
 
           return DiscoveredAccount(
@@ -399,7 +406,9 @@ class LiveOsintService {
             username: username,
             displayName: displayName,
             avatarUrl: thumb,
-            profileUrl: entry['profileUrl']?.toString() ?? 'https://gravatar.com/$username',
+            profileUrl:
+                entry['profileUrl']?.toString() ??
+                'https://gravatar.com/$username',
             bio: aboutMe,
             location: loc,
             extraData: {
@@ -425,7 +434,9 @@ class LiveOsintService {
       if (res.statusCode == 200 && res.data != null) {
         dynamic data = res.data;
         if (data is String) data = jsonDecode(data);
-        if (data is Map && data['items'] is List && (data['items'] as List).isNotEmpty) {
+        if (data is Map &&
+            data['items'] is List &&
+            (data['items'] as List).isNotEmpty) {
           final userItem = (data['items'] as List).first as Map;
           final login = userItem['login']?.toString();
           if (login != null) {
@@ -492,7 +503,9 @@ class LiveOsintService {
     final isDisposable = _disposableDomains.contains(domain);
     final isFree = _freeProviders.containsKey(domain);
     final isRole = _rolePrefixes.contains(localPart);
-    final providerName = _freeProviders[domain] ?? (isDisposable ? 'Disposable Mail Service' : 'Corporate / Custom MX');
+    final providerName =
+        _freeProviders[domain] ??
+        (isDisposable ? 'Disposable Mail Service' : 'Corporate / Custom MX');
 
     return DomainIntelligence(
       domain: domain,
@@ -519,8 +532,16 @@ class LiveOsintService {
         band: 'very_low',
         label: 'Disposable Mailbox',
         reasons: [
-          const ScoreReason(label: 'Identified as throwaway disposable email service', points: -60, isPositive: false),
-          const ScoreReason(label: 'Domain expires within minutes', points: -28, isPositive: false),
+          const ScoreReason(
+            label: 'Identified as throwaway disposable email service',
+            points: -60,
+            isPositive: false,
+          ),
+          const ScoreReason(
+            label: 'Domain expires within minutes',
+            points: -28,
+            isPositive: false,
+          ),
         ],
       );
     }
@@ -531,7 +552,13 @@ class LiveOsintService {
     if (accounts.isNotEmpty) {
       final pts = (accounts.length * 15).clamp(15, 30);
       score += pts;
-      reasons.add(ScoreReason(label: 'Registered and verified on ${accounts.length} live platform(s)', points: pts));
+      reasons.add(
+        ScoreReason(
+          label:
+              'Registered and verified on ${accounts.length} live platform(s)',
+          points: pts,
+        ),
+      );
     }
 
     if (firstSeenYear != null) {
@@ -539,31 +566,59 @@ class LiveOsintService {
       final yearsInUse = DateTime.now().year - yr;
       if (yearsInUse >= 4) {
         score += 25;
-        reasons.add(ScoreReason(label: 'In digital use since $firstSeenYear ($yearsInUse+ years active)', points: 25));
+        reasons.add(
+          ScoreReason(
+            label:
+                'In digital use since $firstSeenYear ($yearsInUse+ years active)',
+            points: 25,
+          ),
+        );
       } else if (yearsInUse >= 2) {
         score += 15;
-        reasons.add(ScoreReason(label: 'In digital use since $firstSeenYear', points: 15));
+        reasons.add(
+          ScoreReason(label: 'In digital use since $firstSeenYear', points: 15),
+        );
       }
     }
 
     if (breachesCount > 0) {
       score += 12;
-      reasons.add(ScoreReason(label: 'Historical footprint across $breachesCount data breaches', points: 12));
+      reasons.add(
+        ScoreReason(
+          label: 'Historical footprint across $breachesCount data breaches',
+          points: 12,
+        ),
+      );
     }
 
     if (domainIntel.acceptsMail) {
       score += 10;
-      reasons.add(const ScoreReason(label: 'Mailbox domain accepts incoming mail (valid MX)', points: 10));
+      reasons.add(
+        const ScoreReason(
+          label: 'Mailbox domain accepts incoming mail (valid MX)',
+          points: 10,
+        ),
+      );
     }
 
     if (domainIntel.publishesSpfDmarc) {
       score += 5;
-      reasons.add(const ScoreReason(label: 'Domain publishes SPF/DMARC anti-spoofing policies', points: 5));
+      reasons.add(
+        const ScoreReason(
+          label: 'Domain publishes SPF/DMARC anti-spoofing policies',
+          points: 5,
+        ),
+      );
     }
 
     if (!domainIntel.isRoleAddress) {
       score += 5;
-      reasons.add(const ScoreReason(label: 'Personal individual mailbox, not a generic role address', points: 5));
+      reasons.add(
+        const ScoreReason(
+          label: 'Personal individual mailbox, not a generic role address',
+          points: 5,
+        ),
+      );
     }
 
     score = score.clamp(10, 99);
@@ -604,8 +659,14 @@ class LiveOsintService {
         band: 'clean',
         label: 'Clean / Uncompromised',
         reasons: [
-          ScoreReason(label: 'No known exposures found in indexed breach corpora', points: 0),
-          ScoreReason(label: 'Zero credentials detected in infostealer malware logs', points: 0),
+          ScoreReason(
+            label: 'No known exposures found in indexed breach corpora',
+            points: 0,
+          ),
+          ScoreReason(
+            label: 'Zero credentials detected in infostealer malware logs',
+            points: 0,
+          ),
         ],
       );
     }
@@ -616,52 +677,68 @@ class LiveOsintService {
     // Stealer log threat
     if (stealerReport.hasStealerExposure) {
       score += 40;
-      reasons.add(const ScoreReason(
-        label: 'Credentials detected in Infostealer malware log (RedLine/Lumma/Vidar)',
-        points: 40,
-        isPositive: false,
-      ));
+      reasons.add(
+        const ScoreReason(
+          label:
+              'Credentials detected in Infostealer malware log (RedLine/Lumma/Vidar)',
+          points: 40,
+          isPositive: false,
+        ),
+      );
     }
 
     // Password reuse
     if (passwordReuseCount > 1) {
       score += 18;
-      reasons.add(ScoreReason(
-        label: 'Reused passwords detected across $passwordReuseCount breach sources',
-        points: 18,
-        isPositive: false,
-      ));
+      reasons.add(
+        ScoreReason(
+          label:
+              'Reused passwords detected across $passwordReuseCount breach sources',
+          points: 18,
+          isPositive: false,
+        ),
+      );
     }
 
     // Plaintext password exposure
-    final hasPlaintext = breaches.any((b) => b.passwordRisk.toLowerCase().contains('plain'));
+    final hasPlaintext = breaches.any(
+      (b) => b.passwordRisk.toLowerCase().contains('plain'),
+    );
     if (hasPlaintext) {
       score += 20;
-      reasons.add(const ScoreReason(
-        label: 'Plaintext passwords exposed directly without hashing',
-        points: 20,
-        isPositive: false,
-      ));
+      reasons.add(
+        const ScoreReason(
+          label: 'Plaintext passwords exposed directly without hashing',
+          points: 20,
+          isPositive: false,
+        ),
+      );
     } else {
-      final hasHash = breaches.any((b) => b.dataClasses.any((c) => c.toLowerCase().contains('password')));
+      final hasHash = breaches.any(
+        (b) => b.dataClasses.any((c) => c.toLowerCase().contains('password')),
+      );
       if (hasHash) {
         score += 12;
-        reasons.add(const ScoreReason(
-          label: 'Password hashes exposed in corporate database breaches',
-          points: 12,
-          isPositive: false,
-        ));
+        reasons.add(
+          const ScoreReason(
+            label: 'Password hashes exposed in corporate database breaches',
+            points: 12,
+            isPositive: false,
+          ),
+        );
       }
     }
 
     // Base breach count
     final breachPoints = (breaches.length * 6).clamp(6, 22);
     score += breachPoints;
-    reasons.add(ScoreReason(
-      label: 'Appears in ${breaches.length} historical data breach incidents',
-      points: breachPoints,
-      isPositive: false,
-    ));
+    reasons.add(
+      ScoreReason(
+        label: 'Appears in ${breaches.length} historical data breach incidents',
+        points: breachPoints,
+        isPositive: false,
+      ),
+    );
 
     score = score.clamp(15, 98);
 
@@ -690,7 +767,9 @@ class LiveOsintService {
   }
 
   /// Identifies Infostealer malware compromises (RedLine, Lumma, Vidar, Stealc)
-  InfostealerThreatReport _analyzeInfostealerExposure(List<BreachInfo> breaches) {
+  InfostealerThreatReport _analyzeInfostealerExposure(
+    List<BreachInfo> breaches,
+  ) {
     bool hasStealer = false;
     final families = <String>{};
     final dataTypes = <String>{};
@@ -716,9 +795,12 @@ class LiveOsintService {
       for (final dc in b.dataClasses) {
         final dcl = dc.toLowerCase();
         if (dcl.contains('password')) dataTypes.add('Stored Browser Passwords');
-        if (dcl.contains('address') || dcl.contains('geographic')) dataTypes.add('Autofill Address Data');
-        if (dcl.contains('ip') || dcl.contains('device')) dataTypes.add('Victim Machine IP & Hardware ID');
-        if (dcl.contains('cookie') || dcl.contains('session')) dataTypes.add('Active Session Tokens');
+        if (dcl.contains('address') || dcl.contains('geographic'))
+          dataTypes.add('Autofill Address Data');
+        if (dcl.contains('ip') || dcl.contains('device'))
+          dataTypes.add('Victim Machine IP & Hardware ID');
+        if (dcl.contains('cookie') || dcl.contains('session'))
+          dataTypes.add('Active Session Tokens');
       }
     }
 
@@ -750,25 +832,31 @@ class LiveOsintService {
 
     for (final acc in accounts) {
       if (acc.creationDate != null) {
-        list.add(TimelineEvent(
-          title: '${acc.formattedName} Account Created',
-          category: 'Platform Registration',
-          dateString: acc.creationDate!.split('T').first,
-          source: acc.formattedName,
-          description: 'User registered on ${acc.formattedName} as @${acc.username ?? acc.displayName}',
-        ));
+        list.add(
+          TimelineEvent(
+            title: '${acc.formattedName} Account Created',
+            category: 'Platform Registration',
+            dateString: acc.creationDate!.split('T').first,
+            source: acc.formattedName,
+            description:
+                'User registered on ${acc.formattedName} as @${acc.username ?? acc.displayName}',
+          ),
+        );
       }
     }
 
     for (final b in breaches) {
-      list.add(TimelineEvent(
-        title: '${b.title} Breach Exposure',
-        category: 'Breach Incident',
-        dateString: b.breachDate,
-        source: b.title,
-        description: 'Exposed ${b.dataClasses.join(', ')} (${b.pwnCount > 0 ? "${(b.pwnCount / 1000000).toStringAsFixed(1)}M victims" : "Verified compromise"})',
-        isBreach: true,
-      ));
+      list.add(
+        TimelineEvent(
+          title: '${b.title} Breach Exposure',
+          category: 'Breach Incident',
+          dateString: b.breachDate,
+          source: b.title,
+          description:
+              'Exposed ${b.dataClasses.join(', ')} (${b.pwnCount > 0 ? "${(b.pwnCount / 1000000).toStringAsFixed(1)}M victims" : "Verified compromise"})',
+          isBreach: true,
+        ),
+      );
     }
 
     list.sort((a, b) => b.dateString.compareTo(a.dateString));

@@ -311,16 +311,33 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
 
   // ─── On-Device Agentic Forensic Analysis ───────────────────────────────────
 
-  String _generateOnDeviceExpertAnalysis(String domain, String context, String language) {
+  String _generateOnDeviceExpertAnalysis(
+    String domain,
+    String context,
+    String language,
+  ) {
     final lower = context.toLowerCase();
     final isHi = language == 'hi';
 
     switch (domain) {
       case 'url':
-        final isDangerous = lower.contains('dangerous') || lower.contains('unsafe') || lower.contains('scam') || lower.contains('phishing');
-        final isImpersonation = lower.contains('impersonat') || lower.contains('deceptive') || lower.contains('typosquat');
-        final isDropper = lower.contains('dropper') || lower.contains('.apk') || lower.contains('executable');
-        final isVerified = lower.contains('verified') || lower.contains('authentic') || lower.contains('safe');
+        final isDangerous =
+            lower.contains('dangerous') ||
+            lower.contains('unsafe') ||
+            lower.contains('scam') ||
+            lower.contains('phishing');
+        final isImpersonation =
+            lower.contains('impersonat') ||
+            lower.contains('deceptive') ||
+            lower.contains('typosquat');
+        final isDropper =
+            lower.contains('dropper') ||
+            lower.contains('.apk') ||
+            lower.contains('executable');
+        final isVerified =
+            lower.contains('verified') ||
+            lower.contains('authentic') ||
+            lower.contains('safe');
 
         if (isDropper) {
           return isHi
@@ -347,9 +364,17 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
             : '• CAUTION / UNVERIFIED HOST: This domain is not present in verified institutional registries.\n• Neutral infrastructure with unverified reputation.\n• Exercise caution before submitting personal, banking, or sensitive identity details.';
 
       case 'wifi':
-        final isOpen = lower.contains('open') || lower.contains('none') || lower.contains('wep');
-        final isCaptive = lower.contains('captive') || lower.contains('intercept');
-        final isTlsIssue = lower.contains('ssl') && (lower.contains('tamper') || lower.contains('strip') || lower.contains('fail'));
+        final isOpen =
+            lower.contains('open') ||
+            lower.contains('none') ||
+            lower.contains('wep');
+        final isCaptive =
+            lower.contains('captive') || lower.contains('intercept');
+        final isTlsIssue =
+            lower.contains('ssl') &&
+            (lower.contains('tamper') ||
+                lower.contains('strip') ||
+                lower.contains('fail'));
 
         if (isTlsIssue) {
           return isHi
@@ -371,9 +396,16 @@ When analyzing a phone number telemetry report, explain in 3-4 bullets:
             : '• ENCRYPTED WIRELESS LINK: Network utilizes standard WPA2/WPA3 AES encryption.\n• Over-the-air frames are protected; maintain updated router firmware and strong credentials.';
 
       case 'app':
-        final isStalkerware = lower.contains('stalkerware') || lower.contains('spyware') || lower.contains('critical');
-        final isSideloaded = lower.contains('sideload') || lower.contains('unknown source');
-        final hasDangerousPerms = lower.contains('sms') || lower.contains('accessibility') || lower.contains('overlay');
+        final isStalkerware =
+            lower.contains('stalkerware') ||
+            lower.contains('spyware') ||
+            lower.contains('critical');
+        final isSideloaded =
+            lower.contains('sideload') || lower.contains('unknown source');
+        final hasDangerousPerms =
+            lower.contains('sms') ||
+            lower.contains('accessibility') ||
+            lower.contains('overlay');
 
         if (isStalkerware) {
           return isHi

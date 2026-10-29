@@ -21,9 +21,11 @@ void main() async {
   // Initialize Local Hive Storage safely
   try {
     await Hive.initFlutter();
-    if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(VerdictModelAdapter());
+    if (!Hive.isAdapterRegistered(0))
+      Hive.registerAdapter(VerdictModelAdapter());
     if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(AlertModelAdapter());
-    if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(CheckHistoryModelAdapter());
+    if (!Hive.isAdapterRegistered(2))
+      Hive.registerAdapter(CheckHistoryModelAdapter());
   } catch (e) {
     debugPrint('SafeSignal: Hive initialization error: $e');
   }
@@ -58,10 +60,7 @@ class SafeSignalApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('en'),
-        Locale('hi'),
-      ],
+      supportedLocales: const [Locale('en'), Locale('hi')],
     );
   }
 }

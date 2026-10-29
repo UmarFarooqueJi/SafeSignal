@@ -36,7 +36,12 @@ void main() {
       );
       expect(sbiDebit.isSafe, isTrue);
       expect(sbiDebit.riskScore, equals(0));
-      expect(sbiDebit.reasons.first, contains('Verified legitimate Indian banking transactional notification'));
+      expect(
+        sbiDebit.reasons.first,
+        contains(
+          'Verified legitimate Indian banking transactional notification',
+        ),
+      );
 
       final hdfcCredit = engine.analyze(
         'Rs 15,000.00 credited with Rs to your HDFC Bank A/C ending 9012 on 21-OCT-26 via NEFT transfer. Avl Bal: Rs 1,20,500.00. Ref no 987654321',
@@ -46,15 +51,18 @@ void main() {
       expect(hdfcCredit.riskScore, equals(0));
     });
 
-    test('Flags spoofed bank notifications sent from personal mobile numbers', () {
-      final spoofedBank = engine.analyze(
-        'Dear customer your SBI NetBanking account will be blocked today due to pending KYC update immediately.',
-        sender: '+919876543210',
-      );
-      expect(spoofedBank.isScam, isTrue);
-      expect(spoofedBank.riskScore, greaterThanOrEqualTo(55));
-      expect(spoofedBank.reasons.first, contains('SENDER SPOOFING'));
-    });
+    test(
+      'Flags spoofed bank notifications sent from personal mobile numbers',
+      () {
+        final spoofedBank = engine.analyze(
+          'Dear customer your SBI NetBanking account will be blocked today due to pending KYC update immediately.',
+          sender: '+919876543210',
+        );
+        expect(spoofedBank.isScam, isTrue);
+        expect(spoofedBank.riskScore, greaterThanOrEqualTo(55));
+        expect(spoofedBank.reasons.first, contains('SENDER SPOOFING'));
+      },
+    );
 
     test('Detects call forwarding hijack codes', () {
       final forwarding = engine.analyze(

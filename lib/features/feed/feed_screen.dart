@@ -24,14 +24,14 @@ class _FeedScreenState extends State<FeedScreen> {
 
   // Category definitions: (id, display label, emoji)
   static const _categoryDefs = [
-    ('all',            'All Alerts',       '🔔'),
-    ('new',            'Latest',           '⚡'),
-    ('digital_arrest', 'Digital Arrest',   '⚖️'),
-    ('investment',     'Investment Fraud', '📈'),
-    ('otp',            'OTP & SIM Swap',   '📱'),
-    ('lottery',        'Lottery Scams',    '🎁'),
-    ('phishing',       'Phishing Links',   '🎣'),
-    ('general',        'Cyber Intel',      '🛡️'),
+    ('all', 'All Alerts', '🔔'),
+    ('new', 'Latest', '⚡'),
+    ('digital_arrest', 'Digital Arrest', '⚖️'),
+    ('investment', 'Investment Fraud', '📈'),
+    ('otp', 'OTP & SIM Swap', '📱'),
+    ('lottery', 'Lottery Scams', '🎁'),
+    ('phishing', 'Phishing Links', '🎣'),
+    ('general', 'Cyber Intel', '🛡️'),
   ];
 
   @override
@@ -53,22 +53,25 @@ class _FeedScreenState extends State<FeedScreen> {
     });
 
     try {
-      final dio = Dio(BaseOptions(
-        connectTimeout: const Duration(seconds: 12),
-        receiveTimeout: const Duration(seconds: 14),
-        headers: {
-          'User-Agent':
-              'Mozilla/5.0 (Linux; Android 11; RMX3268) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-          'Accept':
-              'application/rss+xml, application/xml, text/xml, application/json, */*',
-        },
-      ));
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 12),
+          receiveTimeout: const Duration(seconds: 14),
+          headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Linux; Android 11; RMX3268) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+            'Accept':
+                'application/rss+xml, application/xml, text/xml, application/json, */*',
+          },
+        ),
+      );
 
       final allParsed = <AlertModel>[];
 
       // 1. Direct Indian Cyber Threat Google News RSS XML
       try {
-        const directRss = 'https://news.google.com/rss/search?q=cyber+crime+india+OR+"digital+arrest"+OR+"online+fraud"+when:7d&hl=en-IN&gl=IN&ceid=IN:en';
+        const directRss =
+            'https://news.google.com/rss/search?q=cyber+crime+india+OR+"digital+arrest"+OR+"online+fraud"+when:7d&hl=en-IN&gl=IN&ceid=IN:en';
         final rssRes = await dio.get(
           directRss,
           options: Options(responseType: ResponseType.plain),
@@ -103,9 +106,15 @@ class _FeedScreenState extends State<FeedScreen> {
       // 3. Fallback to public RSS JSON gateway if XML was blocked
       if (allParsed.isEmpty) {
         try {
-          final inQuery = Uri.encodeComponent('https://news.google.com/rss/search?q=cyber+scam+OR+fraud+OR+"digital+arrest"+india&hl=en-IN&gl=IN&ceid=IN:en');
-          final r = await dio.get('https://api.rss2json.com/v1/api.json?rss_url=$inQuery');
-          if (r.statusCode == 200 && r.data != null && r.data['status'] == 'ok') {
+          final inQuery = Uri.encodeComponent(
+            'https://news.google.com/rss/search?q=cyber+scam+OR+fraud+OR+"digital+arrest"+india&hl=en-IN&gl=IN&ceid=IN:en',
+          );
+          final r = await dio.get(
+            'https://api.rss2json.com/v1/api.json?rss_url=$inQuery',
+          );
+          if (r.statusCode == 200 &&
+              r.data != null &&
+              r.data['status'] == 'ok') {
             final items = r.data['items'] as List? ?? [];
             if (items.isNotEmpty) {
               allParsed.addAll(_NewsDataParser.parse(items));
@@ -131,7 +140,9 @@ class _FeedScreenState extends State<FeedScreen> {
         // Cache the latest 30 articles locally for offline availability
         try {
           final prefs = await SharedPreferences.getInstance();
-          final cacheJson = jsonEncode(uniqueList.take(30).map((a) => a.toJson()).toList());
+          final cacheJson = jsonEncode(
+            uniqueList.take(30).map((a) => a.toJson()).toList(),
+          );
           await prefs.setString('cached_threat_feed', cacheJson);
         } catch (_) {}
 
@@ -154,7 +165,9 @@ class _FeedScreenState extends State<FeedScreen> {
         final cached = prefs.getString('cached_threat_feed');
         if (cached != null && cached.isNotEmpty) {
           final decoded = jsonDecode(cached) as List<dynamic>;
-          fallbackAlerts = decoded.map((item) => AlertModel.fromJson(item as Map<String, dynamic>)).toList();
+          fallbackAlerts = decoded
+              .map((item) => AlertModel.fromJson(item as Map<String, dynamic>))
+              .toList();
         }
       } catch (_) {}
 
@@ -166,7 +179,8 @@ class _FeedScreenState extends State<FeedScreen> {
         setState(() {
           _alerts = fallbackAlerts;
           _loading = false;
-          _errorMessage = 'Offline mode: Showing verified cyber advisories & cached alerts.';
+          _errorMessage =
+              'Offline mode: Showing verified cyber advisories & cached alerts.';
         });
       }
     }
@@ -184,13 +198,15 @@ class _FeedScreenState extends State<FeedScreen> {
 
     if (_searchQuery.trim().isEmpty) return base;
     final q = _searchQuery.toLowerCase().trim();
-    return base.where((a) =>
-      a.headline.toLowerCase().contains(q) ||
-      a.summary.toLowerCase().contains(q) ||
-      a.category.toLowerCase().contains(q)
-    ).toList();
+    return base
+        .where(
+          (a) =>
+              a.headline.toLowerCase().contains(q) ||
+              a.summary.toLowerCase().contains(q) ||
+              a.category.toLowerCase().contains(q),
+        )
+        .toList();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +241,10 @@ class _FeedScreenState extends State<FeedScreen> {
         actions: [
           IconButton(
             onPressed: _fetchNews,
-            icon: Icon(Icons.refresh, color: isDark ? Colors.white70 : Colors.black87),
+            icon: Icon(
+              Icons.refresh,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
             tooltip: 'Refresh',
           ),
           const SizedBox(width: 8),
@@ -261,7 +280,10 @@ class _FeedScreenState extends State<FeedScreen> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
                     margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       gradient: isSelected
                           ? const LinearGradient(
@@ -272,15 +294,27 @@ class _FeedScreenState extends State<FeedScreen> {
                           : null,
                       color: isSelected
                           ? null
-                          : (isDark ? const Color(0xFF131D32) : const Color(0xFFF1F5F9)),
+                          : (isDark
+                                ? const Color(0xFF131D32)
+                                : const Color(0xFFF1F5F9)),
                       borderRadius: BorderRadius.circular(50),
                       border: Border.all(
                         color: isSelected
                             ? const Color(0xFF3B82F6)
-                            : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+                            : (isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFE2E8F0)),
                       ),
                       boxShadow: isSelected
-                          ? [BoxShadow(color: const Color(0xFF2563EB).withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))]
+                          ? [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF2563EB,
+                                ).withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
                           : [],
                     ),
                     child: Row(
@@ -291,7 +325,11 @@ class _FeedScreenState extends State<FeedScreen> {
                         Text(
                           cat.$2,
                           style: TextStyle(
-                            color: isSelected ? Colors.white : (isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF334155)),
+                            color: isSelected
+                                ? Colors.white
+                                : (isDark
+                                      ? Colors.white.withValues(alpha: 0.8)
+                                      : const Color(0xFF334155)),
                             fontWeight: FontWeight.w800,
                             fontSize: 13,
                           ),
@@ -299,15 +337,26 @@ class _FeedScreenState extends State<FeedScreen> {
                         if (!_loading && count > 0) ...[
                           const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
-                              color: isSelected ? Colors.white.withValues(alpha: 0.22) : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+                              color: isSelected
+                                  ? Colors.white.withValues(alpha: 0.22)
+                                  : (isDark
+                                        ? const Color(0xFF1E293B)
+                                        : const Color(0xFFE2E8F0)),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
                               '$count',
                               style: TextStyle(
-                                color: isSelected ? Colors.white : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569)),
+                                color: isSelected
+                                    ? Colors.white
+                                    : (isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF475569)),
                                 fontWeight: FontWeight.w900,
                                 fontSize: 11,
                               ),
@@ -322,7 +371,6 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ),
         ),
-
       ),
       body: Column(
         children: [
@@ -338,7 +386,11 @@ class _FeedScreenState extends State<FeedScreen> {
                   Expanded(
                     child: Text(
                       _errorMessage!,
-                      style: const TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -350,19 +402,36 @@ class _FeedScreenState extends State<FeedScreen> {
             child: Container(
               height: 44,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0D1424) : const Color(0xFFF1F5F9),
+                color: isDark
+                    ? const Color(0xFF0D1424)
+                    : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                  color: isDark
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFFE2E8F0),
                 ),
               ),
               child: TextField(
                 controller: _searchCtrl,
-                style: TextStyle(color: textThemeColor, fontSize: 13, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: textThemeColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Search threat alerts, UPI, banking, arrest...',
-                  hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 12),
-                  prefixIcon: Icon(Icons.search, size: 18, color: isDark ? const Color(0xFF00E676) : const Color(0xFF2563EB)),
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.black38,
+                    fontSize: 12,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: 18,
+                    color: isDark
+                        ? const Color(0xFF00E676)
+                        : const Color(0xFF2563EB),
+                  ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear, size: 16),
@@ -387,11 +456,16 @@ class _FeedScreenState extends State<FeedScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const CircularProgressIndicator(color: Color(0xFF2563EB)),
+                        const CircularProgressIndicator(
+                          color: Color(0xFF2563EB),
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'Aggregating real-time cyber threat feeds...',
-                          style: TextStyle(color: isDark ? Colors.white60 : Colors.black54, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: isDark ? Colors.white60 : Colors.black54,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -404,17 +478,31 @@ class _FeedScreenState extends State<FeedScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.newspaper_rounded, size: 48, color: isDark ? Colors.white24 : Colors.black26),
+                                Icon(
+                                  Icons.newspaper_rounded,
+                                  size: 48,
+                                  color: isDark
+                                      ? Colors.white24
+                                      : Colors.black26,
+                                ),
                                 const SizedBox(height: 16),
                                 Text(
                                   'No threat advisories found in this category',
-                                  style: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 16),
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white38
+                                        : Colors.black38,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ],
                             ),
                           )
                         : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             physics: const BouncingScrollPhysics(),
                             itemCount: _filtered.length,
                             itemBuilder: (context, i) => _AlertCard(
@@ -437,7 +525,11 @@ class _AlertCard extends StatelessWidget {
   final int index;
   final bool isDark;
 
-  const _AlertCard({required this.alert, required this.index, required this.isDark});
+  const _AlertCard({
+    required this.alert,
+    required this.index,
+    required this.isDark,
+  });
 
   Color get _categoryColor {
     switch (alert.category) {
@@ -505,7 +597,8 @@ class _AlertCard extends StatelessWidget {
   }
 
   void _shareNews(BuildContext context) {
-    final shareText = '🚨 ${alert.headline}\n\n${alert.summary.substring(0, alert.summary.length.clamp(0, 80))}...\n\n🔗 ${alert.sourceUrl ?? 'SafeSignal App'}\n\nStay safe with SafeSignal!';
+    final shareText =
+        '🚨 ${alert.headline}\n\n${alert.summary.substring(0, alert.summary.length.clamp(0, 80))}...\n\n🔗 ${alert.sourceUrl ?? 'SafeSignal App'}\n\nStay safe with SafeSignal!';
     Clipboard.setData(ClipboardData(text: shareText));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -513,7 +606,10 @@ class _AlertCard extends StatelessWidget {
           children: [
             Icon(Icons.check_circle, color: Colors.white, size: 18),
             SizedBox(width: 8),
-            Text('News link clipboard mein copy ho gaya!', style: TextStyle(fontWeight: FontWeight.w700)),
+            Text(
+              'News link clipboard mein copy ho gaya!',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ],
         ),
         backgroundColor: const Color(0xFF2E7D32),
@@ -529,174 +625,207 @@ class _AlertCard extends StatelessWidget {
     final color = _categoryColor;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF161B27) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? const Color(0xFF30363D) : const Color(0xFFE8EEF8),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Banner row
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: isDark ? 0.15 : 0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161B27) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? const Color(0xFF30363D) : const Color(0xFFE8EEF8),
             ),
-            child: Row(
-              children: [
-                Icon(_categoryIcon, size: 18, color: color),
-                const SizedBox(width: 8),
-                Text(
-                  _categoryLabel.toUpperCase(),
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-                const Spacer(),
-                if (alert.isNew)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'NEW',
-                      style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
-                    ),
-                  ),
-              ],
-            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-
-          ClipRRect(
-            child: alert.imageUrl != null 
-              ? Image.network(
-                  alert.imageUrl!,
-                  height: 160,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (ctx, err, stack) => Image.asset(
-                    'assets/images/news_fallback.png',
-                    height: 160,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Image.asset(
-                  'assets/images/news_fallback.png',
-                  height: 160,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Banner row
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
                 ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  alert.headline,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    height: 1.35,
-                    color: isDark ? Colors.white : const Color(0xFF0D1117),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: isDark ? 0.15 : 0.1),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  alert.summary,
-                  style: TextStyle(
-                    color: isDark ? Colors.white70 : Colors.black87,
-                    fontSize: 13.5,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Row(
+                child: Row(
                   children: [
-                    Icon(Icons.access_time, size: 14, color: isDark ? Colors.white30 : Colors.black38),
-                    const SizedBox(width: 4),
+                    Icon(_categoryIcon, size: 18, color: color),
+                    const SizedBox(width: 8),
                     Text(
-                      _timeAgo(alert.publishedAt),
+                      _categoryLabel.toUpperCase(),
                       style: TextStyle(
-                        color: isDark ? Colors.white30 : Colors.black38,
+                        color: color,
+                        fontWeight: FontWeight.w900,
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.6,
                       ),
                     ),
                     const Spacer(),
-                    // Share button
-                    InkWell(
-                      onTap: () => _shareNews(context),
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.share_outlined, size: 14, color: isDark ? Colors.white38 : Colors.black38),
-                            const SizedBox(width: 3),
-                            Text(
-                              'Share',
-                              style: TextStyle(
-                                color: isDark ? Colors.white38 : Colors.black38,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                    if (alert.isNew)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
                         ),
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'NEW',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              ClipRRect(
+                child: alert.imageUrl != null
+                    ? Image.network(
+                        alert.imageUrl!,
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, stack) => Image.asset(
+                          'assets/images/news_fallback.png',
+                          height: 160,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Image.asset(
+                        'assets/images/news_fallback.png',
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      alert.headline,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        height: 1.35,
+                        color: isDark ? Colors.white : const Color(0xFF0D1117),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    // Read More action link
-                    InkWell(
-                      onTap: () => _openNews(context),
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Poori Padhein',
-                              style: TextStyle(
-                                color: color,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(width: 3),
-                            Icon(Icons.open_in_new, size: 13, color: color),
-                          ],
-                        ),
+                    const SizedBox(height: 8),
+                    Text(
+                      alert.summary,
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        fontSize: 13.5,
+                        height: 1.5,
                       ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: isDark ? Colors.white30 : Colors.black38,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _timeAgo(alert.publishedAt),
+                          style: TextStyle(
+                            color: isDark ? Colors.white30 : Colors.black38,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        // Share button
+                        InkWell(
+                          onTap: () => _shareNews(context),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 4,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.share_outlined,
+                                  size: 14,
+                                  color: isDark
+                                      ? Colors.white38
+                                      : Colors.black38,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'Share',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white38
+                                        : Colors.black38,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        // Read More action link
+                        InkWell(
+                          onTap: () => _openNews(context),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Poori Padhein',
+                                  style: TextStyle(
+                                    color: color,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(width: 3),
+                                Icon(Icons.open_in_new, size: 13, color: color),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ).animate().fadeIn(delay: Duration(milliseconds: index * 40)).slideY(begin: 0.1);
+        )
+        .animate()
+        .fadeIn(delay: Duration(milliseconds: index * 40))
+        .slideY(begin: 0.1);
   }
 }
 
@@ -729,8 +858,18 @@ class _NewsDataParser {
     // 2. Try RFC 822 / RFC 1123 (e.g. "Sun, 25 Oct 2026 07:15:23 GMT" or "25 Oct 2026 07:15:23 +0530")
     try {
       const months = {
-        'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-        'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+        'jan': 1,
+        'feb': 2,
+        'mar': 3,
+        'apr': 4,
+        'may': 5,
+        'jun': 6,
+        'jul': 7,
+        'aug': 8,
+        'sep': 9,
+        'oct': 10,
+        'nov': 11,
+        'dec': 12,
       };
       final match = RegExp(
         r'(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?',
@@ -760,7 +899,8 @@ class _NewsDataParser {
     for (final item in results) {
       if (item is! Map) continue;
 
-      final id = item['guid']?.toString() ??
+      final id =
+          item['guid']?.toString() ??
           item['article_id']?.toString() ??
           item['link']?.toString() ??
           'news_${count++}';
@@ -770,18 +910,22 @@ class _NewsDataParser {
       final rawTitle = item['title']?.toString() ?? 'Scam Alert';
       final title = _cleanText(rawTitle);
 
-      final rawDesc = item['description']?.toString() ?? item['content']?.toString() ?? '';
+      final rawDesc =
+          item['description']?.toString() ?? item['content']?.toString() ?? '';
       final description = _cleanText(rawDesc);
 
       final link = item['link']?.toString();
       final pubDateStr = item['pubDate']?.toString();
 
       String? imageUrl;
-      if (item['image_url'] != null && item['image_url'].toString().isNotEmpty) {
+      if (item['image_url'] != null &&
+          item['image_url'].toString().isNotEmpty) {
         imageUrl = item['image_url'].toString();
-      } else if (item['enclosure'] is Map && item['enclosure']['link'] != null) {
+      } else if (item['enclosure'] is Map &&
+          item['enclosure']['link'] != null) {
         imageUrl = item['enclosure']['link'].toString();
-      } else if (item['thumbnail'] != null && item['thumbnail'].toString().isNotEmpty) {
+      } else if (item['thumbnail'] != null &&
+          item['thumbnail'].toString().isNotEmpty) {
         imageUrl = item['thumbnail'].toString();
       }
 
@@ -804,15 +948,34 @@ class _NewsDataParser {
       // Category detection — check both title and description
       final lowerText = '${title.toLowerCase()} ${description.toLowerCase()}';
       String category = 'general';
-      if (lowerText.contains('arrest') || lowerText.contains('digital arrest') || lowerText.contains('cbi') || lowerText.contains('police call')) {
+      if (lowerText.contains('arrest') ||
+          lowerText.contains('digital arrest') ||
+          lowerText.contains('cbi') ||
+          lowerText.contains('police call')) {
         category = 'digital_arrest';
-      } else if (lowerText.contains('phishing') || lowerText.contains('fake website') || lowerText.contains('fake bank') || lowerText.contains('clone site')) {
+      } else if (lowerText.contains('phishing') ||
+          lowerText.contains('fake website') ||
+          lowerText.contains('fake bank') ||
+          lowerText.contains('clone site')) {
         category = 'phishing';
-      } else if (lowerText.contains('otp') || lowerText.contains('sim swap') || lowerText.contains('sms scam') || lowerText.contains('sim cloning') || lowerText.contains('aadhaar link')) {
+      } else if (lowerText.contains('otp') ||
+          lowerText.contains('sim swap') ||
+          lowerText.contains('sms scam') ||
+          lowerText.contains('sim cloning') ||
+          lowerText.contains('aadhaar link')) {
         category = 'otp';
-      } else if (lowerText.contains('invest') || lowerText.contains('trading') || lowerText.contains('earn') || lowerText.contains('profit') || lowerText.contains('crypto') || lowerText.contains('return')) {
+      } else if (lowerText.contains('invest') ||
+          lowerText.contains('trading') ||
+          lowerText.contains('earn') ||
+          lowerText.contains('profit') ||
+          lowerText.contains('crypto') ||
+          lowerText.contains('return')) {
         category = 'investment';
-      } else if (lowerText.contains('lottery') || lowerText.contains('won') || lowerText.contains('prize') || lowerText.contains('kbc') || lowerText.contains('lucky winner')) {
+      } else if (lowerText.contains('lottery') ||
+          lowerText.contains('won') ||
+          lowerText.contains('prize') ||
+          lowerText.contains('kbc') ||
+          lowerText.contains('lucky winner')) {
         category = 'lottery';
       }
 
@@ -847,18 +1010,30 @@ class _NewsDataParser {
     for (final m in matches) {
       final block = m.group(1) ?? '';
 
-      final titleMatch = RegExp(r'<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</title>', caseSensitive: false).firstMatch(block);
+      final titleMatch = RegExp(
+        r'<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</title>',
+        caseSensitive: false,
+      ).firstMatch(block);
       final rawTitle = titleMatch?.group(1) ?? 'Scam Alert';
       final title = _cleanText(rawTitle);
 
-      final descMatch = RegExp(r'<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</description>', caseSensitive: false).firstMatch(block);
+      final descMatch = RegExp(
+        r'<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</description>',
+        caseSensitive: false,
+      ).firstMatch(block);
       final rawDesc = descMatch?.group(1) ?? '';
       final description = _cleanText(rawDesc);
 
-      final linkMatch = RegExp(r'<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</link>', caseSensitive: false).firstMatch(block);
+      final linkMatch = RegExp(
+        r'<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</link>',
+        caseSensitive: false,
+      ).firstMatch(block);
       final link = linkMatch?.group(1)?.trim();
 
-      final pubDateMatch = RegExp(r'<pubDate>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</pubDate>', caseSensitive: false).firstMatch(block);
+      final pubDateMatch = RegExp(
+        r'<pubDate>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</pubDate>',
+        caseSensitive: false,
+      ).firstMatch(block);
       final pubDateStr = pubDateMatch?.group(1)?.trim();
 
       final publishedAt = _parseDate(pubDateStr, count);
@@ -866,15 +1041,31 @@ class _NewsDataParser {
 
       final lowerText = '${title.toLowerCase()} ${description.toLowerCase()}';
       String category = 'general';
-      if (lowerText.contains('arrest') || lowerText.contains('digital arrest') || lowerText.contains('cbi') || lowerText.contains('police')) {
+      if (lowerText.contains('arrest') ||
+          lowerText.contains('digital arrest') ||
+          lowerText.contains('cbi') ||
+          lowerText.contains('police')) {
         category = 'digital_arrest';
-      } else if (lowerText.contains('phishing') || lowerText.contains('fake website') || lowerText.contains('fake bank') || lowerText.contains('clone site')) {
+      } else if (lowerText.contains('phishing') ||
+          lowerText.contains('fake website') ||
+          lowerText.contains('fake bank') ||
+          lowerText.contains('clone site')) {
         category = 'phishing';
-      } else if (lowerText.contains('otp') || lowerText.contains('sim swap') || lowerText.contains('sms scam') || lowerText.contains('aadhaar')) {
+      } else if (lowerText.contains('otp') ||
+          lowerText.contains('sim swap') ||
+          lowerText.contains('sms scam') ||
+          lowerText.contains('aadhaar')) {
         category = 'otp';
-      } else if (lowerText.contains('invest') || lowerText.contains('trading') || lowerText.contains('earn') || lowerText.contains('crypto') || lowerText.contains('task')) {
+      } else if (lowerText.contains('invest') ||
+          lowerText.contains('trading') ||
+          lowerText.contains('earn') ||
+          lowerText.contains('crypto') ||
+          lowerText.contains('task')) {
         category = 'investment';
-      } else if (lowerText.contains('lottery') || lowerText.contains('won') || lowerText.contains('prize') || lowerText.contains('kbc')) {
+      } else if (lowerText.contains('lottery') ||
+          lowerText.contains('won') ||
+          lowerText.contains('prize') ||
+          lowerText.contains('kbc')) {
         category = 'lottery';
       }
 

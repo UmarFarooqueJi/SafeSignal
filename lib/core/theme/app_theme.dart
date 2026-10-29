@@ -2,40 +2,40 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // ─── Brand Palette ────────────────────────────────────────────
-  static const Color primary      = Color(0xFF2979FF);
-  static const Color primaryDeep  = Color(0xFF1565C0);
-  static const Color accent       = Color(0xFF7C4DFF);
-  static const Color accentTeal   = Color(0xFF00BCD4);
+  static const Color primary = Color(0xFF2979FF);
+  static const Color primaryDeep = Color(0xFF1565C0);
+  static const Color accent = Color(0xFF7C4DFF);
+  static const Color accentTeal = Color(0xFF00BCD4);
 
   // ─── Verdict Colors ───────────────────────────────────────────
-  static const Color scamRed      = Color(0xFFEF5350);
-  static const Color scamRedBg    = Color(0xFFFFEBEE);
-  static const Color scamRedDark  = Color(0xFF4A0000);
+  static const Color scamRed = Color(0xFFEF5350);
+  static const Color scamRedBg = Color(0xFFFFEBEE);
+  static const Color scamRedDark = Color(0xFF4A0000);
 
   static const Color cautionAmber = Color(0xFFFFB300);
-  static const Color cautionBg    = Color(0xFFFFF8E1);
-  static const Color cautionDark  = Color(0xFF3E2000);
+  static const Color cautionBg = Color(0xFFFFF8E1);
+  static const Color cautionDark = Color(0xFF3E2000);
 
-  static const Color safeGreen    = Color(0xFF00C853);
-  static const Color safeBg       = Color(0xFFE8F5E9);
-  static const Color safeDark     = Color(0xFF00200A);
+  static const Color safeGreen = Color(0xFF00C853);
+  static const Color safeBg = Color(0xFFE8F5E9);
+  static const Color safeDark = Color(0xFF00200A);
 
   // ─── Light Surface ────────────────────────────────────────────
-  static const Color lightBg      = Color(0xFFFFFFFF);
-  static const Color lightCard    = Color(0xFFFFFFFF);
+  static const Color lightBg = Color(0xFFFFFFFF);
+  static const Color lightCard = Color(0xFFFFFFFF);
   static const Color lightCardAlt = Color(0xFFF5F7FF);
 
   // ─── Dark Surface ─────────────────────────────────────────────
-  static const Color darkBg       = Color(0xFF06090F);
-  static const Color darkSurface  = Color(0xFF0D1117);
-  static const Color darkCard     = Color(0xFF1E2638);
-  static const Color darkCardAlt  = Color(0xFF253046);
-  static const Color darkBorder   = Color(0xFF3A4456);
+  static const Color darkBg = Color(0xFF06090F);
+  static const Color darkSurface = Color(0xFF0D1117);
+  static const Color darkCard = Color(0xFF1E2638);
+  static const Color darkCardAlt = Color(0xFF253046);
+  static const Color darkBorder = Color(0xFF3A4456);
 
   // ─── Text Sizes ───────────────────────────────────────────────
-  static const double textNormal  = 1.0;
-  static const double textBada    = 1.2;
-  static const double textSabse   = 1.5;
+  static const double textNormal = 1.0;
+  static const double textBada = 1.2;
+  static const double textSabse = 1.5;
 
   // ─── Gradients ────────────────────────────────────────────────
   static const LinearGradient primaryGrad = LinearGradient(
@@ -75,11 +75,7 @@ class AppTheme {
       seedColor: primary,
       brightness: Brightness.light,
       surface: lightBg,
-    ).copyWith(
-      primary: primary,
-      secondary: accent,
-      surface: lightBg,
-    ),
+    ).copyWith(primary: primary, secondary: accent, surface: lightBg),
     scaffoldBackgroundColor: lightBg,
     fontFamily: 'Roboto',
     cardTheme: CardThemeData(
@@ -99,13 +95,20 @@ class AppTheme {
         elevation: 6,
         shadowColor: primary.withValues(alpha: 0.25),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.2),
+        textStyle: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.2,
+        ),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: Color(0xFFE8EEF5), width: 1.2),
@@ -146,11 +149,7 @@ class AppTheme {
       seedColor: primary,
       brightness: Brightness.dark,
       surface: darkSurface,
-    ).copyWith(
-      primary: primary,
-      secondary: accent,
-      surface: darkSurface,
-    ),
+    ).copyWith(primary: primary, secondary: accent, surface: darkSurface),
     scaffoldBackgroundColor: darkBg,
     fontFamily: 'Roboto',
     cardTheme: CardThemeData(
@@ -165,13 +164,20 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+        textStyle: const TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+        ),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: darkCard,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: darkBorder, width: 1.5),
@@ -208,33 +214,45 @@ class AppTheme {
   // ─── Verdict Helpers ──────────────────────────────────────────
   static Color verdictColor(String verdict) {
     switch (verdict.toUpperCase()) {
-      case 'SCAM': return scamRed;
-      case 'LIKELY_SAFE': return safeGreen;
-      default: return cautionAmber;
+      case 'SCAM':
+        return scamRed;
+      case 'LIKELY_SAFE':
+        return safeGreen;
+      default:
+        return cautionAmber;
     }
   }
 
   static LinearGradient verdictGradient(String verdict) {
     switch (verdict.toUpperCase()) {
-      case 'SCAM': return scamGrad;
-      case 'LIKELY_SAFE': return safeGrad;
-      default: return cautionGrad;
+      case 'SCAM':
+        return scamGrad;
+      case 'LIKELY_SAFE':
+        return safeGrad;
+      default:
+        return cautionGrad;
     }
   }
 
   static Color verdictBgColor(String verdict) {
     switch (verdict.toUpperCase()) {
-      case 'SCAM': return scamRedBg;
-      case 'LIKELY_SAFE': return safeBg;
-      default: return cautionBg;
+      case 'SCAM':
+        return scamRedBg;
+      case 'LIKELY_SAFE':
+        return safeBg;
+      default:
+        return cautionBg;
     }
   }
 
   static String verdictEmoji(String verdict) {
     switch (verdict.toUpperCase()) {
-      case 'SCAM': return '🔴';
-      case 'LIKELY_SAFE': return '🟢';
-      default: return '🟡';
+      case 'SCAM':
+        return '🔴';
+      case 'LIKELY_SAFE':
+        return '🟢';
+      default:
+        return '🟡';
     }
   }
 }

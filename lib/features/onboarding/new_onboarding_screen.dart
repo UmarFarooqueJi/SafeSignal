@@ -86,10 +86,11 @@ class _NewOnboardingScreenState extends State<NewOnboardingScreen> {
                       ? TextButton(
                           onPressed: () async {
                             final router = GoRouter.of(context);
-                            final prefs =
-                                await SharedPreferences.getInstance();
+                            final prefs = await SharedPreferences.getInstance();
                             await prefs.setBool(
-                                AppConstants.prefOnboardingDone, true);
+                              AppConstants.prefOnboardingDone,
+                              true,
+                            );
                             if (mounted) router.go('/signin');
                           },
                           child: Text(
@@ -174,8 +175,11 @@ class _NewOnboardingScreenState extends State<NewOnboardingScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Icon(Icons.arrow_forward_rounded,
-                                color: Colors.white, size: 20),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ],
                         ),
                       ),
@@ -234,7 +238,9 @@ class _SlideView extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: slide.illustrationColor.withValues(alpha: 0.2),
+                            color: slide.illustrationColor.withValues(
+                              alpha: 0.2,
+                            ),
                             blurRadius: 30,
                             spreadRadius: 5,
                           ),
@@ -248,10 +254,10 @@ class _SlideView extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
                     // Emoji badge
-                    Text(slide.emoji, style: const TextStyle(fontSize: 36))
-                        .animate()
-                        .scale(begin: const Offset(0.5, 0.5))
-                        .fadeIn(),
+                    Text(
+                      slide.emoji,
+                      style: const TextStyle(fontSize: 36),
+                    ).animate().scale(begin: const Offset(0.5, 0.5)).fadeIn(),
                   ],
                 ),
                 // Decorative dots

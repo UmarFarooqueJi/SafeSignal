@@ -200,7 +200,11 @@ class SettingsScreen extends ConsumerWidget {
                   iconBg: const Color(0xFF00E676),
                   title: 'WhatsApp Link Shield',
                   subtitle: 'Auto-scan links clicked in WhatsApp & Telegram',
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: Colors.grey,
+                  ),
                   onTap: () async {
                     await LinkGuardService.requestBrowserRole();
                   },
@@ -258,11 +262,17 @@ class SettingsScreen extends ConsumerWidget {
                   icon: Icons.info_outline_rounded,
                   iconBg: const Color(0xFF64748B),
                   title: 'App Version',
-                  subtitle: 'v${SafeSignalAttribution.kVersion} (Build ${SafeSignalAttribution.kBuildNumber})',
+                  subtitle:
+                      'v${SafeSignalAttribution.kVersion} (Build ${SafeSignalAttribution.kBuildNumber})',
                   trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
-                      color: (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06)),
+                      color: (isDark
+                          ? Colors.white12
+                          : Colors.black.withValues(alpha: 0.06)),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -283,16 +293,24 @@ class SettingsScreen extends ConsumerWidget {
                   iconBg: const Color(0xFF3B82F6),
                   title: 'Flush Threat Cache & Resync',
                   subtitle: 'Reset local signature cache and refresh feeds',
-                  trailing: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF3B82F6)),
+                  trailing: const Icon(
+                    Icons.refresh_rounded,
+                    size: 18,
+                    color: Color(0xFF3B82F6),
+                  ),
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.remove('cached_threat_feed');
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Threat feed cache refreshed. Ready for live sync.'),
+                          content: const Text(
+                            'Threat feed cache refreshed. Ready for live sync.',
+                          ),
                           behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           duration: const Duration(seconds: 2),
                         ),
                       );
@@ -316,11 +334,18 @@ class SettingsScreen extends ConsumerWidget {
                   iconBg: const Color(0xFF0284C7),
                   title: 'Official Website',
                   subtitle: 'safesignal-dx8.pages.dev',
-                  trailing: const Icon(Icons.open_in_new_rounded, size: 16, color: Colors.grey),
+                  trailing: const Icon(
+                    Icons.open_in_new_rounded,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
                   onTap: () async {
                     final uri = Uri.parse('https://safesignal-dx8.pages.dev');
                     if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
                     }
                   },
                 ),
@@ -330,11 +355,18 @@ class SettingsScreen extends ConsumerWidget {
                   iconBg: const Color(0xFF8B5CF6),
                   title: 'Source Code (GitHub)',
                   subtitle: 'github.com/UmarFarooqueJi/SafeSignal',
-                  trailing: const Icon(Icons.open_in_new_rounded, size: 16, color: Colors.grey),
+                  trailing: const Icon(
+                    Icons.open_in_new_rounded,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
                   onTap: () async {
                     final uri = Uri.parse(SafeSignalAttribution.kRepositoryUrl);
                     if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
                     }
                   },
                 ),
@@ -344,7 +376,11 @@ class SettingsScreen extends ConsumerWidget {
                   iconBg: const Color(0xFF10B981),
                   title: 'License & Security Model',
                   subtitle: 'Source-Available v1.0 • 100% Air-Gapped',
-                  trailing: const Icon(Icons.verified_user_rounded, size: 18, color: Color(0xFF10B981)),
+                  trailing: const Icon(
+                    Icons.verified_user_rounded,
+                    size: 18,
+                    color: Color(0xFF10B981),
+                  ),
                   onTap: () {},
                 ),
                 _buildDivider(isDark),
@@ -352,9 +388,13 @@ class SettingsScreen extends ConsumerWidget {
                   icon: Icons.verified_rounded,
                   iconBg: const Color(0xFF2563EB),
                   title: 'Architect & Research',
-                  subtitle: '${SafeSignalAttribution.kDeveloper} • ${SafeSignalAttribution.kOrganization}',
+                  subtitle:
+                      '${SafeSignalAttribution.kDeveloper} • ${SafeSignalAttribution.kOrganization}',
                   trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF2563EB).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
@@ -592,7 +632,9 @@ class SettingsScreen extends ConsumerWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                            color: const Color(
+                              0xFF00E676,
+                            ).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Text(
@@ -630,15 +672,30 @@ class SettingsScreen extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: _buildNodeBadge(Icons.cloud_off_rounded, '0 Cloud Egress', const Color(0xFF38BDF8), isDark),
+                child: _buildNodeBadge(
+                  Icons.cloud_off_rounded,
+                  '0 Cloud Egress',
+                  const Color(0xFF38BDF8),
+                  isDark,
+                ),
               ),
               const SizedBox(width: 6),
               Expanded(
-                child: _buildNodeBadge(Icons.no_accounts_rounded, 'Zero PII Tracked', const Color(0xFFA78BFA), isDark),
+                child: _buildNodeBadge(
+                  Icons.no_accounts_rounded,
+                  'Zero PII Tracked',
+                  const Color(0xFFA78BFA),
+                  isDark,
+                ),
               ),
               const SizedBox(width: 6),
               Expanded(
-                child: _buildNodeBadge(Icons.lock_outline_rounded, 'AES-256 Vault', const Color(0xFF00E676), isDark),
+                child: _buildNodeBadge(
+                  Icons.lock_outline_rounded,
+                  'AES-256 Vault',
+                  const Color(0xFF00E676),
+                  isDark,
+                ),
               ),
             ],
           ),
@@ -647,7 +704,12 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNodeBadge(IconData icon, String text, Color accent, bool isDark) {
+  Widget _buildNodeBadge(
+    IconData icon,
+    String text,
+    Color accent,
+    bool isDark,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       decoration: BoxDecoration(

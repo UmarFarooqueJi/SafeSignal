@@ -40,9 +40,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       if (mounted) context.go('/home');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Initialization error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Initialization error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -56,7 +56,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF06090F) : const Color(0xFFF1F5F9),
+        backgroundColor: isDark
+            ? const Color(0xFF06090F)
+            : const Color(0xFFF1F5F9),
         body: Stack(
           children: [
             // Breathing background glow
@@ -65,8 +67,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isDark
-                        ? [const Color(0xFF06090F), const Color(0xFF0F172A), const Color(0xFF0A192F)]
-                        : [const Color(0xFFE2E8F0), const Color(0xFFEDF2F7), const Color(0xFFF8FAFC)],
+                        ? [
+                            const Color(0xFF06090F),
+                            const Color(0xFF0F172A),
+                            const Color(0xFF0A192F),
+                          ]
+                        : [
+                            const Color(0xFFE2E8F0),
+                            const Color(0xFFEDF2F7),
+                            const Color(0xFFF8FAFC),
+                          ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -78,7 +88,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               child: Center(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 20,
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -91,9 +104,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF00E676).withValues(alpha: 0.12),
+                            color: const Color(
+                              0xFF00E676,
+                            ).withValues(alpha: 0.12),
                             border: Border.all(
-                              color: const Color(0xFF00E676).withValues(alpha: 0.35),
+                              color: const Color(
+                                0xFF00E676,
+                              ).withValues(alpha: 0.35),
                               width: 2,
                             ),
                           ),
@@ -102,7 +119,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             fit: BoxFit.contain,
                           ),
                         ),
-                      ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+                      ).animate().scale(
+                        duration: 400.ms,
+                        curve: Curves.easeOutBack,
+                      ),
 
                       const SizedBox(height: 24),
 
@@ -111,7 +131,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w900,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
                           letterSpacing: -0.5,
                         ),
                         textAlign: TextAlign.center,
@@ -123,7 +145,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         '100% Open-Source & Private — Zero Personal Data Required',
                         style: TextStyle(
                           fontSize: 13,
-                          color: isDark ? const Color(0xFF00E676) : const Color(0xFF059669),
+                          color: isDark
+                              ? const Color(0xFF00E676)
+                              : const Color(0xFF059669),
                           fontWeight: FontWeight.w600,
                         ),
                         textAlign: TextAlign.center,
@@ -155,14 +179,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(Icons.shield_outlined, color: Color(0xFF00E676), size: 20),
+                                    const Icon(
+                                      Icons.shield_outlined,
+                                      color: Color(0xFF00E676),
+                                      size: 20,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Assigned Cryptographic Node',
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
-                                        color: isDark ? Colors.white70 : Colors.black87,
+                                        color: isDark
+                                            ? Colors.white70
+                                            : Colors.black87,
                                       ),
                                     ),
                                   ],
@@ -170,16 +200,24 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 const SizedBox(height: 10),
                                 Container(
                                   width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF0B132B) : const Color(0xFFF1F5F9),
+                                    color: isDark
+                                        ? const Color(0xFF0B132B)
+                                        : const Color(0xFFF1F5F9),
                                     borderRadius: BorderRadius.circular(14),
                                     border: Border.all(
-                                      color: const Color(0xFF00E676).withValues(alpha: 0.3),
+                                      color: const Color(
+                                        0xFF00E676,
+                                      ).withValues(alpha: 0.3),
                                     ),
                                   ),
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         _nodeId,
@@ -192,10 +230,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                         ),
                                       ),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF00E676).withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(6),
+                                          color: const Color(
+                                            0xFF00E676,
+                                          ).withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
                                         ),
                                         child: const Text(
                                           'ANONYMOUS',
@@ -216,21 +261,24 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 _buildBulletPoint(
                                   icon: Icons.check_circle_outline,
                                   title: 'Zero Name or Identity Tracking',
-                                  subtitle: 'SafeSignal never asks for or stores your real name, username, or phone number.',
+                                  subtitle:
+                                      'SafeSignal never asks for or stores your real name, username, or phone number.',
                                   isDark: isDark,
                                 ),
                                 const SizedBox(height: 12),
                                 _buildBulletPoint(
                                   icon: Icons.lock_outline,
                                   title: '100% On-Device Threat Intelligence',
-                                  subtitle: 'All scans, forensic audits, and vault encryptions run locally on this hardware.',
+                                  subtitle:
+                                      'All scans, forensic audits, and vault encryptions run locally on this hardware.',
                                   isDark: isDark,
                                 ),
                                 const SizedBox(height: 12),
                                 _buildBulletPoint(
                                   icon: Icons.cloud_off_outlined,
                                   title: 'Zero Cloud Telemetry',
-                                  subtitle: 'No analytics, no behavioral trackers, and no external log servers.',
+                                  subtitle:
+                                      'No analytics, no behavioral trackers, and no external log servers.',
                                   isDark: isDark,
                                 ),
 
@@ -241,7 +289,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                   width: double.infinity,
                                   height: 52,
                                   child: ElevatedButton.icon(
-                                    onPressed: _isLoading ? null : _activateNode,
+                                    onPressed: _isLoading
+                                        ? null
+                                        : _activateNode,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF00E676),
                                       foregroundColor: const Color(0xFF06090F),
@@ -259,9 +309,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                               color: Colors.black,
                                             ),
                                           )
-                                        : const Icon(Icons.bolt, size: 20, color: Colors.black),
+                                        : const Icon(
+                                            Icons.bolt,
+                                            size: 20,
+                                            color: Colors.black,
+                                          ),
                                     label: Text(
-                                      _isLoading ? 'Initializing...' : 'Launch Defense Suite',
+                                      _isLoading
+                                          ? 'Initializing...'
+                                          : 'Launch Defense Suite',
                                       style: const TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w900,

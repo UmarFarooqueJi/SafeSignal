@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/widgets/arc_gauge.dart';
 import '../../core/services/app_risk_engine.dart';
 export '../../core/services/app_risk_engine.dart';
+
 class AppScannerScreen extends StatefulWidget {
   const AppScannerScreen({super.key});
 
@@ -52,7 +53,9 @@ class _AppScannerScreenState extends State<AppScannerScreen>
     });
 
     try {
-      final rawList = await _channel.invokeMethod<List<dynamic>>('getInstalledApps');
+      final rawList = await _channel.invokeMethod<List<dynamic>>(
+        'getInstalledApps',
+      );
       final list = rawList ?? [];
       final analyzed = <AppInfo>[];
 
@@ -82,16 +85,26 @@ class _AppScannerScreenState extends State<AppScannerScreen>
 
     // Search
     if (_search.isNotEmpty) {
-      list = list.where((a) =>
-          a.name.toLowerCase().contains(_search.toLowerCase()) ||
-          a.package.toLowerCase().contains(_search.toLowerCase())).toList();
+      list = list
+          .where(
+            (a) =>
+                a.name.toLowerCase().contains(_search.toLowerCase()) ||
+                a.package.toLowerCase().contains(_search.toLowerCase()),
+          )
+          .toList();
     }
 
     // Tab filter
     if (_tabIndex == 1) {
       list = list.where((a) => !a.isSystem).toList();
     } else if (_tabIndex == 2) {
-      list = list.where((a) => a.riskLevel == RiskLevel.high || a.riskLevel == RiskLevel.critical).toList();
+      list = list
+          .where(
+            (a) =>
+                a.riskLevel == RiskLevel.high ||
+                a.riskLevel == RiskLevel.critical,
+          )
+          .toList();
     }
 
     setState(() => _displayed = list);
@@ -99,7 +112,8 @@ class _AppScannerScreenState extends State<AppScannerScreen>
 
   double get _avgRating {
     if (_allApps.isEmpty) return 0;
-    final avgScore = _allApps.fold(0, (sum, a) => sum + a.riskScore) / _allApps.length;
+    final avgScore =
+        _allApps.fold(0, (sum, a) => sum + a.riskScore) / _allApps.length;
     // Invert: high score = risky = low rating
     return ((100 - avgScore) / 20).clamp(0.0, 5.0);
   }
@@ -113,7 +127,6 @@ class _AppScannerScreenState extends State<AppScannerScreen>
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: const Color(0xFFE3F2FD),
@@ -122,7 +135,11 @@ class _AppScannerScreenState extends State<AppScannerScreen>
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0D1117), size: 22),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Color(0xFF0D1117),
+            size: 22,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -148,10 +165,10 @@ class _AppScannerScreenState extends State<AppScannerScreen>
           child: _phase == _Phase.idle
               ? _buildIdle()
               : _phase == _Phase.scanning
-                  ? _buildScanning()
-                  : _phase == _Phase.error
-                      ? _buildError()
-                      : _buildResults(),
+              ? _buildScanning()
+              : _phase == _Phase.error
+              ? _buildError()
+              : _buildResults(),
         ),
       ),
     );
@@ -197,8 +214,13 @@ class _AppScannerScreenState extends State<AppScannerScreen>
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
                 minimumSize: const Size.fromHeight(56),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
                 elevation: 0,
               ),
             ).animate().fadeIn(delay: 220.ms),
@@ -269,7 +291,11 @@ class _AppScannerScreenState extends State<AppScannerScreen>
           const SizedBox(height: 8),
           const Text(
             'Scanning for sideloaded apps and risky permissions',
-            style: TextStyle(color: Color(0xFF64748B), fontSize: 14, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -302,7 +328,10 @@ class _AppScannerScreenState extends State<AppScannerScreen>
             const SizedBox(height: 28),
             ElevatedButton(
               onPressed: _startScan,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0F172A),
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Try Again'),
             ),
           ],
@@ -314,7 +343,9 @@ class _AppScannerScreenState extends State<AppScannerScreen>
   Widget _buildResults() {
     final rating = _avgRating;
     final gc = _gaugeColor;
-    final critical = _allApps.where((a) => a.riskLevel == RiskLevel.critical).length;
+    final critical = _allApps
+        .where((a) => a.riskLevel == RiskLevel.critical)
+        .length;
     final high = _allApps.where((a) => a.riskLevel == RiskLevel.high).length;
     final thirdParty = _allApps.where((a) => !a.isSystem).length;
 
@@ -352,7 +383,8 @@ class _AppScannerScreenState extends State<AppScannerScreen>
                               ),
                             ),
                             TextSpan(
-                              text: '.${rating.toStringAsFixed(1).split('.')[1]}',
+                              text:
+                                  '.${rating.toStringAsFixed(1).split('.')[1]}',
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w700,
@@ -388,11 +420,23 @@ class _AppScannerScreenState extends State<AppScannerScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _StatPill(label: '${_allApps.length}', sub: 'Total', color: const Color(0xFF2979FF)),
+                  _StatPill(
+                    label: '${_allApps.length}',
+                    sub: 'Total',
+                    color: const Color(0xFF2979FF),
+                  ),
                   const SizedBox(width: 8),
-                  _StatPill(label: '$thirdParty', sub: 'Third-Party', color: const Color(0xFF7C4DFF)),
+                  _StatPill(
+                    label: '$thirdParty',
+                    sub: 'Third-Party',
+                    color: const Color(0xFF7C4DFF),
+                  ),
                   const SizedBox(width: 8),
-                  _StatPill(label: '${critical + high}', sub: 'High Risk', color: const Color(0xFFEF4444)),
+                  _StatPill(
+                    label: '${critical + high}',
+                    sub: 'High Risk',
+                    color: const Color(0xFFEF4444),
+                  ),
                 ],
               ),
             ],
@@ -408,7 +452,10 @@ class _AppScannerScreenState extends State<AppScannerScreen>
             unselectedLabelColor: const Color(0xFF94A3B8),
             indicatorColor: const Color(0xFF2979FF),
             indicatorWeight: 3,
-            labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+            ),
             tabs: [
               Tab(text: 'All (${_allApps.length})'),
               Tab(text: '3rd-Party ($thirdParty)'),
@@ -425,10 +472,16 @@ class _AppScannerScreenState extends State<AppScannerScreen>
               _search = v;
               _applyFilters();
             },
-            style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              color: Color(0xFF1E293B),
+              fontWeight: FontWeight.w600,
+            ),
             decoration: InputDecoration(
               hintText: 'Search by name or package...',
-              hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+              hintStyle: const TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 14,
+              ),
               prefixIcon: const Icon(Icons.search, color: Color(0xFF94A3B8)),
               filled: true,
               fillColor: Colors.white,
@@ -455,7 +508,9 @@ class _AppScannerScreenState extends State<AppScannerScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          _tabIndex == 2 ? Icons.verified_user_rounded : Icons.search_off_rounded,
+                          _tabIndex == 2
+                              ? Icons.verified_user_rounded
+                              : Icons.search_off_rounded,
                           size: 52,
                           color: const Color(0xFFCBD5E1),
                         ),
@@ -478,10 +533,8 @@ class _AppScannerScreenState extends State<AppScannerScreen>
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                   itemCount: _displayed.length,
-                  itemBuilder: (context, i) => _AppCard(
-                    app: _displayed[i],
-                    index: i,
-                  ),
+                  itemBuilder: (context, i) =>
+                      _AppCard(app: _displayed[i], index: i),
                 ),
         ),
       ],
@@ -514,8 +567,9 @@ class _AppCardState extends State<_AppCard> {
 
   Future<void> _loadIcon() async {
     try {
-      final bytes = await const MethodChannel('com.safesignal/app_scanner')
-          .invokeMethod<Uint8List>('getAppIcon', {'package': widget.app.package});
+      final bytes = await const MethodChannel(
+        'com.safesignal/app_scanner',
+      ).invokeMethod<Uint8List>('getAppIcon', {'package': widget.app.package});
       if (mounted) {
         setState(() {
           _iconBytes = bytes;
@@ -538,18 +592,26 @@ class _AppCardState extends State<_AppCard> {
     });
 
     await Future.delayed(const Duration(milliseconds: 250));
-    final dangerousPerms = widget.app.permissions.where((p) =>
-      p.contains('READ_SMS') || p.contains('RECORD_AUDIO') || p.contains('CAMERA') || p.contains('ACCESS_FINE_LOCATION')
-    ).length;
+    final dangerousPerms = widget.app.permissions
+        .where(
+          (p) =>
+              p.contains('READ_SMS') ||
+              p.contains('RECORD_AUDIO') ||
+              p.contains('CAMERA') ||
+              p.contains('ACCESS_FINE_LOCATION'),
+        )
+        .length;
 
     setState(() {
       _vtScanning = false;
       if (widget.app.isSystem) {
         _vtResult = 'Verified System Package: Signed by OEM/Platform.';
       } else if (widget.app.riskLevel == RiskLevel.safe) {
-        _vtResult = 'On-Device Audit: Verified Clean (Zero intrusive permissions).';
+        _vtResult =
+            'On-Device Audit: Verified Clean (Zero intrusive permissions).';
       } else if (dangerousPerms >= 2) {
-        _vtResult = 'Heuristic Flag: $dangerousPerms high-risk sensor permissions stacked.';
+        _vtResult =
+            'Heuristic Flag: $dangerousPerms high-risk sensor permissions stacked.';
       } else {
         _vtResult = 'On-Device Audit: Package verified locally.';
       }
@@ -567,7 +629,7 @@ class _AppCardState extends State<_AppCard> {
   Widget build(BuildContext context) {
     final app = widget.app;
     final rc = _ratingColor;
-    
+
     // Determine install source nicely
     String source;
     final storeName = RiskEngine.getStoreName(app.installer);
@@ -589,7 +651,9 @@ class _AppCardState extends State<_AppCard> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: _expanded ? rc.withValues(alpha: 0.4) : const Color(0xFFE2E8F0),
+            color: _expanded
+                ? rc.withValues(alpha: 0.4)
+                : const Color(0xFFE2E8F0),
             width: _expanded ? 1.5 : 1,
           ),
           boxShadow: [
@@ -617,7 +681,12 @@ class _AppCardState extends State<_AppCard> {
                     clipBehavior: Clip.antiAlias,
                     child: _iconLoaded && _iconBytes != null
                         ? Image.memory(_iconBytes!, fit: BoxFit.cover)
-                        : const Center(child: Icon(Icons.android, color: Color(0xFF94A3B8))),
+                        : const Center(
+                            child: Icon(
+                              Icons.android,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -647,7 +716,9 @@ class _AppCardState extends State<_AppCard> {
                           'Source: $source',
                           style: TextStyle(
                             fontSize: 11,
-                            color: (source.startsWith('Sideloaded') || source.startsWith('Direct APK'))
+                            color:
+                                (source.startsWith('Sideloaded') ||
+                                    source.startsWith('Direct APK'))
                                 ? const Color(0xFFEF4444)
                                 : const Color(0xFF059669),
                             fontWeight: FontWeight.w600,
@@ -695,7 +766,9 @@ class _AppCardState extends State<_AppCard> {
             // View details row
             InkWell(
               onTap: () => setState(() => _expanded = !_expanded),
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(18)),
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(18),
+              ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Row(
@@ -709,7 +782,9 @@ class _AppCardState extends State<_AppCard> {
                       ),
                     ),
                     Icon(
-                      _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_right,
+                      _expanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_right,
                       color: rc,
                       size: 18,
                     ),
@@ -725,7 +800,9 @@ class _AppCardState extends State<_AppCard> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 decoration: BoxDecoration(
                   color: rc.withValues(alpha: 0.05),
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(18)),
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(18),
+                  ),
                   border: Border(
                     top: BorderSide(color: rc.withValues(alpha: 0.15)),
                   ),
@@ -741,14 +818,22 @@ class _AppCardState extends State<_AppCard> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFFEF2F2),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFEF4444,
+                            ).withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.emergency_rounded, color: Color(0xFFDC2626), size: 18),
+                                const Icon(
+                                  Icons.emergency_rounded,
+                                  color: Color(0xFFDC2626),
+                                  size: 18,
+                                ),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
@@ -797,36 +882,49 @@ class _AppCardState extends State<_AppCard> {
                     if (app.riskReasons.isEmpty)
                       const Row(
                         children: [
-                          Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 16),
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: Color(0xFF10B981),
+                            size: 16,
+                          ),
                           SizedBox(width: 6),
                           Text(
                             'No major security issues found ✅',
-                            style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: Color(0xFF10B981),
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       )
                     else
-                      ...app.riskReasons.map((r) => Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(Icons.warning_amber_rounded, color: rc, size: 16),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    r,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      height: 1.4,
-                                      color: Color(0xFF334155),
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                      ...app.riskReasons.map(
+                        (r) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                color: rc,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  r,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    height: 1.4,
+                                    color: Color(0xFF334155),
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                              ],
-                            ),
-                          )),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -858,7 +956,9 @@ class _AppCardState extends State<_AppCard> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: rc.withValues(alpha: 0.2)),
+                            border: Border.all(
+                              color: rc.withValues(alpha: 0.2),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -866,9 +966,10 @@ class _AppCardState extends State<_AppCard> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  _vtScanning 
-                                      ? 'Analyzing On-Device Heuristics...' 
-                                      : (_vtResult ?? 'Run On-Device Security Audit'),
+                                  _vtScanning
+                                      ? 'Analyzing On-Device Heuristics...'
+                                      : (_vtResult ??
+                                            'Run On-Device Security Audit'),
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
@@ -877,7 +978,14 @@ class _AppCardState extends State<_AppCard> {
                                 ),
                               ),
                               if (_vtScanning)
-                                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: rc)),
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: rc,
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -894,7 +1002,6 @@ class _AppCardState extends State<_AppCard> {
 
 // ─── Risk Engine Alias ────────────────────────────────────────────────────────
 typedef RiskEngine = AppRiskEngine;
-
 
 enum _Phase { idle, scanning, done, error }
 

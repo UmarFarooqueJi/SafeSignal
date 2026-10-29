@@ -37,7 +37,8 @@ class StalkerwareIoCResult {
     severity: StalkerwareSeverity.low,
     confidence: 0.0,
     technicalDetails: [],
-    remediation: 'No known stalkerware signatures or surveillance patterns detected.',
+    remediation:
+        'No known stalkerware signatures or surveillance patterns detected.',
   );
 }
 
@@ -99,7 +100,8 @@ class StalkerwareIoCService {
     'com.network.android': 'Pegasus Secondary Surveillance Agent',
     'com.cyber.surveillance': 'Commercial State-Grade Cyber Spyware',
     'com.wsandroid.suite': 'Predator / Cytrox Android Surveillance Framework',
-    'com.google.android.sync.service': 'Hermit / RCS Lab Disguised Spyware Implant',
+    'com.google.android.sync.service':
+        'Hermit / RCS Lab Disguised Spyware Implant',
     'com.finfisher': 'FinSpy / FinFisher Mobile Espionage Suite',
     'com.finspy': 'FinSpy Commercial Surveillance Implant',
 
@@ -176,7 +178,8 @@ class StalkerwareIoCService {
     final nameLower = name.toLowerCase().trim();
 
     // 2. Cryptographic Certificate SHA-256 Hit (Deterministic 100% confidence)
-    if (certLower.isNotEmpty && _knownMaliciousCertHashes.containsKey(certLower)) {
+    if (certLower.isNotEmpty &&
+        _knownMaliciousCertHashes.containsKey(certLower)) {
       final certFamily = _knownMaliciousCertHashes[certLower]!;
       return StalkerwareIoCResult(
         isMatch: true,
@@ -197,9 +200,14 @@ class StalkerwareIoCService {
 
     // 3. Known Stalkerware Package Name / Prefix Hit
     for (final entry in _knownSpywarePackages.entries) {
-      if (pkgLower == entry.key || pkgLower.startsWith('${entry.key}.') || pkgLower.contains('.${entry.key}.')) {
+      if (pkgLower == entry.key ||
+          pkgLower.startsWith('${entry.key}.') ||
+          pkgLower.contains('.${entry.key}.')) {
         final family = entry.value;
-        final isApt = family.contains('APT') || family.contains('Pegasus') || family.contains('Predator');
+        final isApt =
+            family.contains('APT') ||
+            family.contains('Pegasus') ||
+            family.contains('Predator');
         final isTrojan = family.contains('Trojan') || family.contains('RAT');
 
         return StalkerwareIoCResult(
@@ -207,8 +215,11 @@ class StalkerwareIoCService {
           threatFamily: family,
           threatType: isApt
               ? 'Targeted Government / Commercial Surveillance APT'
-              : (isTrojan ? 'Financial Banking Trojan / Remote Access RAT' : 'Commercial Stalkerware'),
-          matchedIndicator: 'Package signature match: "${entry.key}" in $package',
+              : (isTrojan
+                    ? 'Financial Banking Trojan / Remote Access RAT'
+                    : 'Commercial Stalkerware'),
+          matchedIndicator:
+              'Package signature match: "${entry.key}" in $package',
           severity: StalkerwareSeverity.critical,
           confidence: 0.98,
           technicalDetails: [
@@ -223,15 +234,20 @@ class StalkerwareIoCService {
     }
 
     // 4. Camouflage / Impersonation Detection (Sideloaded package mimicking Android System or Google)
-    final isSideloaded = installer.isEmpty || installer == 'unknown' || installer == 'browser_download';
-    final mimicsGoogleOrAndroid = pkgLower.startsWith('com.google.android.') ||
+    final isSideloaded =
+        installer.isEmpty ||
+        installer == 'unknown' ||
+        installer == 'browser_download';
+    final mimicsGoogleOrAndroid =
+        pkgLower.startsWith('com.google.android.') ||
         pkgLower.startsWith('com.android.system.') ||
         pkgLower.startsWith('com.sec.android.');
 
     final nameMimicsSystem = _systemCamouflageNames.contains(nameLower);
 
     if (isSideloaded && (mimicsGoogleOrAndroid || nameMimicsSystem)) {
-      final hasHighPowerPerms = hasAccessibility ||
+      final hasHighPowerPerms =
+          hasAccessibility ||
           hasDeviceAdmin ||
           (permissions.contains('android.permission.RECEIVE_SMS') &&
               permissions.contains('android.permission.SYSTEM_ALERT_WINDOW'));
@@ -241,7 +257,8 @@ class StalkerwareIoCService {
           isMatch: true,
           threatFamily: 'Camouflage Stalkerware / Impersonation Dropper',
           threatType: 'Trojanized System Disguise',
-          matchedIndicator: 'Deceptive display name "$name" ($package) sideloaded with high-privilege permissions.',
+          matchedIndicator:
+              'Deceptive display name "$name" ($package) sideloaded with high-privilege permissions.',
           severity: StalkerwareSeverity.critical,
           confidence: 0.92,
           technicalDetails: [
@@ -258,19 +275,27 @@ class StalkerwareIoCService {
     }
 
     // 5. Total Covert Surveillance Bundle (Zero launcher, Accessibility + Mic/Camera + SMS + Location)
-    final hasAudioOrCam = permissions.contains('android.permission.RECORD_AUDIO') ||
+    final hasAudioOrCam =
+        permissions.contains('android.permission.RECORD_AUDIO') ||
         permissions.contains('android.permission.CAMERA');
-    final hasGps = permissions.contains('android.permission.ACCESS_FINE_LOCATION') ||
+    final hasGps =
+        permissions.contains('android.permission.ACCESS_FINE_LOCATION') ||
         permissions.contains('android.permission.ACCESS_BACKGROUND_LOCATION');
-    final hasSms = permissions.contains('android.permission.RECEIVE_SMS') ||
+    final hasSms =
+        permissions.contains('android.permission.RECEIVE_SMS') ||
         permissions.contains('android.permission.READ_SMS');
 
-    if (!hasLauncher && hasAccessibility && (hasAudioOrCam || hasSms) && hasGps && isSideloaded) {
+    if (!hasLauncher &&
+        hasAccessibility &&
+        (hasAudioOrCam || hasSms) &&
+        hasGps &&
+        isSideloaded) {
       return StalkerwareIoCResult(
         isMatch: true,
         threatFamily: 'Generic Stealth Stalkerware / Covert Implant',
         threatType: 'Covert Spyware Heuristic',
-        matchedIndicator: 'Full surveillance profile: No launcher icon + Accessibility + Ambient Mic/Cam + Live GPS + Sideloaded.',
+        matchedIndicator:
+            'Full surveillance profile: No launcher icon + Accessibility + Ambient Mic/Cam + Live GPS + Sideloaded.',
         severity: StalkerwareSeverity.critical,
         confidence: 0.88,
         technicalDetails: [

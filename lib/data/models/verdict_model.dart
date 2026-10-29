@@ -55,7 +55,10 @@ class VerdictModel extends HiveObject {
     required this.checkedAt,
   });
 
-  factory VerdictModel.fromJson(Map<String, dynamic> json, {String inputText = ''}) {
+  factory VerdictModel.fromJson(
+    Map<String, dynamic> json, {
+    String inputText = '',
+  }) {
     return VerdictModel(
       checkId: json['check_id'] ?? '',
       verdict: json['verdict'] ?? 'UNCERTAIN',
@@ -92,72 +95,72 @@ class VerdictModel extends HiveObject {
 
   // Mock verdicts for development
   static VerdictModel mockScam() => VerdictModel(
-        checkId: 'mock_scam_001',
-        verdict: 'SCAM',
-        confidence: 0.94,
-        scamType: 'digital_arrest',
-        escalated: false,
-        why: [
-          'Police video call pe arrest nahi karti',
-          'Paisa maangna fraud ka sign hai',
-          'CBI direct contact nahi karti',
-        ],
-        whatToDo: [
-          'Paisa mat bhejo',
-          'Call turant kaat do',
-          '1930 pe report karo',
-          'Bank ko batao agar paisa bhej diya',
-        ],
-        trendNote: 'Ye scam aaj kal bahut dikh raha hai. Savdhan rahein.',
-        language: 'hi',
-        disclaimer: 'SafeSignal ek assistant hai, authority nahi.',
-        inputText: 'CBI case hai, paisa bhejo warna arrest',
-        checkedAt: DateTime.now(),
-      );
+    checkId: 'mock_scam_001',
+    verdict: 'SCAM',
+    confidence: 0.94,
+    scamType: 'digital_arrest',
+    escalated: false,
+    why: [
+      'Police video call pe arrest nahi karti',
+      'Paisa maangna fraud ka sign hai',
+      'CBI direct contact nahi karti',
+    ],
+    whatToDo: [
+      'Paisa mat bhejo',
+      'Call turant kaat do',
+      '1930 pe report karo',
+      'Bank ko batao agar paisa bhej diya',
+    ],
+    trendNote: 'Ye scam aaj kal bahut dikh raha hai. Savdhan rahein.',
+    language: 'hi',
+    disclaimer: 'SafeSignal ek assistant hai, authority nahi.',
+    inputText: 'CBI case hai, paisa bhejo warna arrest',
+    checkedAt: DateTime.now(),
+  );
 
   static VerdictModel mockSafe() => VerdictModel(
-        checkId: 'mock_safe_001',
-        verdict: 'LIKELY_SAFE',
-        confidence: 0.88,
-        scamType: 'none',
-        escalated: false,
-        why: [
-          'Official bank communication style',
-          'No request for personal information',
-          'Legitimate OTP format',
-        ],
-        whatToDo: [
-          'This appears to be a legitimate message',
-          'Always verify directly with your bank if unsure',
-        ],
-        trendNote: null,
-        language: 'en',
-        disclaimer: 'SafeSignal is an assistant, not an authority.',
-        inputText: 'Your OTP is 123456 for SBI transaction',
-        checkedAt: DateTime.now(),
-      );
+    checkId: 'mock_safe_001',
+    verdict: 'LIKELY_SAFE',
+    confidence: 0.88,
+    scamType: 'none',
+    escalated: false,
+    why: [
+      'Official bank communication style',
+      'No request for personal information',
+      'Legitimate OTP format',
+    ],
+    whatToDo: [
+      'This appears to be a legitimate message',
+      'Always verify directly with your bank if unsure',
+    ],
+    trendNote: null,
+    language: 'en',
+    disclaimer: 'SafeSignal is an assistant, not an authority.',
+    inputText: 'Your OTP is 123456 for SBI transaction',
+    checkedAt: DateTime.now(),
+  );
 
   static VerdictModel mockCaution() => VerdictModel(
-        checkId: 'mock_caution_001',
-        verdict: 'UNCERTAIN',
-        confidence: 0.65,
-        scamType: 'lottery_prize',
-        escalated: true,
-        why: [
-          'Lottery claim requires verification',
-          'Link destination unclear',
-          'Unsolicited prize notification',
-        ],
-        whatToDo: [
-          'Do NOT click any links',
-          'Do NOT share personal details',
-          'Verify independently before acting',
-          'Call 1930 if in doubt',
-        ],
-        trendNote: null,
-        language: 'en',
-        disclaimer: 'SafeSignal is an assistant, not an authority.',
-        inputText: 'Congratulations! You won 50000 rupees lottery',
-        checkedAt: DateTime.now(),
-      );
+    checkId: 'mock_caution_001',
+    verdict: 'UNCERTAIN',
+    confidence: 0.65,
+    scamType: 'lottery_prize',
+    escalated: true,
+    why: [
+      'Lottery claim requires verification',
+      'Link destination unclear',
+      'Unsolicited prize notification',
+    ],
+    whatToDo: [
+      'Do NOT click any links',
+      'Do NOT share personal details',
+      'Verify independently before acting',
+      'Call 1930 if in doubt',
+    ],
+    trendNote: null,
+    language: 'en',
+    disclaimer: 'SafeSignal is an assistant, not an authority.',
+    inputText: 'Congratulations! You won 50000 rupees lottery',
+    checkedAt: DateTime.now(),
+  );
 }

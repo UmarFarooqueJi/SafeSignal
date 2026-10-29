@@ -47,7 +47,9 @@ class TierCapabilityProfile {
 }
 
 class ResearchModeService {
-  static const MethodChannel _platformChannel = MethodChannel('safesignal/device');
+  static const MethodChannel _platformChannel = MethodChannel(
+    'safesignal/device',
+  );
 
   static final ResearchModeService _instance = ResearchModeService._internal();
   factory ResearchModeService() => _instance;
@@ -100,7 +102,8 @@ class ResearchModeService {
 
     // Query native platform channel for build tags or test-keys
     try {
-      final isRootedNative = await _platformChannel.invokeMethod<bool>('isRooted') ?? false;
+      final isRootedNative =
+          await _platformChannel.invokeMethod<bool>('isRooted') ?? false;
       if (isRootedNative) return true;
     } catch (_) {}
 
@@ -112,7 +115,8 @@ class ResearchModeService {
     if (!Platform.isAndroid) return false;
 
     try {
-      final isDeviceOwner = await _platformChannel.invokeMethod<bool>('isDeviceOwner') ?? false;
+      final isDeviceOwner =
+          await _platformChannel.invokeMethod<bool>('isDeviceOwner') ?? false;
       return isDeviceOwner;
     } catch (_) {
       return false;

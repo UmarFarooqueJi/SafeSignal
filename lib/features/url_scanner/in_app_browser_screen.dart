@@ -32,7 +32,9 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
 
   void _initWebView() {
     final parsedUri = Uri.tryParse(widget.url);
-    final target = (parsedUri != null && (parsedUri.scheme == 'http' || parsedUri.scheme == 'https'))
+    final target =
+        (parsedUri != null &&
+            (parsedUri.scheme == 'http' || parsedUri.scheme == 'https'))
         ? widget.url
         : 'https://${widget.url}';
 
@@ -143,7 +145,11 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.lock_rounded, color: Color(0xFF00E676), size: 14),
+                  const Icon(
+                    Icons.lock_rounded,
+                    color: Color(0xFF00E676),
+                    size: 14,
+                  ),
                   const SizedBox(width: 5),
                   Flexible(
                     child: Text(
@@ -174,7 +180,9 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
                   const SizedBox(width: 5),
                   Flexible(
                     child: Text(
-                      _pageTitle.isNotEmpty ? _pageTitle : 'SafeSignal Sandbox Isolated',
+                      _pageTitle.isNotEmpty
+                          ? _pageTitle
+                          : 'SafeSignal Sandbox Isolated',
                       style: const TextStyle(
                         color: Color(0xFF00E676),
                         fontSize: 10,
@@ -199,7 +207,11 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
               },
             ),
             IconButton(
-              icon: const Icon(Icons.open_in_browser_rounded, color: Color(0xFF38BDF8), size: 22),
+              icon: const Icon(
+                Icons.open_in_browser_rounded,
+                color: Color(0xFF38BDF8),
+                size: 22,
+              ),
               tooltip: 'Open in Chrome / Browser',
               onPressed: () {
                 HapticFeedback.lightImpact();
@@ -232,7 +244,10 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
                     children: [
                       Icon(Icons.share_rounded, size: 18, color: textMain),
                       const SizedBox(width: 10),
-                      Text('Share Link', style: TextStyle(color: textMain, fontSize: 13)),
+                      Text(
+                        'Share Link',
+                        style: TextStyle(color: textMain, fontSize: 13),
+                      ),
                     ],
                   ),
                 ),
@@ -242,7 +257,10 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
                     children: [
                       Icon(Icons.copy_rounded, size: 18, color: textMain),
                       const SizedBox(width: 10),
-                      Text('Copy URL', style: TextStyle(color: textMain, fontSize: 13)),
+                      Text(
+                        'Copy URL',
+                        style: TextStyle(color: textMain, fontSize: 13),
+                      ),
                     ],
                   ),
                 ),
@@ -250,9 +268,20 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
                   value: 'external',
                   child: const Row(
                     children: [
-                      Icon(Icons.open_in_new_rounded, size: 18, color: Color(0xFF38BDF8)),
+                      Icon(
+                        Icons.open_in_new_rounded,
+                        size: 18,
+                        color: Color(0xFF38BDF8),
+                      ),
                       SizedBox(width: 10),
-                      Text('Open in Chrome ↗', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 13, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Open in Chrome ↗',
+                        style: TextStyle(
+                          color: Color(0xFF38BDF8),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -263,9 +292,13 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
             preferredSize: const Size.fromHeight(2.5),
             child: _isLoading
                 ? LinearProgressIndicator(
-                    value: _loadingProgress > 0 ? _loadingProgress / 100.0 : null,
+                    value: _loadingProgress > 0
+                        ? _loadingProgress / 100.0
+                        : null,
                     backgroundColor: Colors.transparent,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00E676)),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFF00E676),
+                    ),
                     minHeight: 2.5,
                   )
                 : const SizedBox(height: 2.5),
@@ -282,7 +315,9 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
             color: barBg,
             border: Border(
               top: BorderSide(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                color: isDark
+                    ? const Color(0xFF1E293B)
+                    : const Color(0xFFE2E8F0),
                 width: 1.0,
               ),
             ),
@@ -291,11 +326,23 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
-                icon: Icon(Icons.arrow_back_ios_rounded, size: 18, color: _canGoBack ? textMain : textMain.withValues(alpha: 0.3)),
+                icon: Icon(
+                  Icons.arrow_back_ios_rounded,
+                  size: 18,
+                  color: _canGoBack
+                      ? textMain
+                      : textMain.withValues(alpha: 0.3),
+                ),
                 onPressed: _canGoBack ? () => _controller.goBack() : null,
               ),
               IconButton(
-                icon: Icon(Icons.arrow_forward_ios_rounded, size: 18, color: _canGoForward ? textMain : textMain.withValues(alpha: 0.3)),
+                icon: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 18,
+                  color: _canGoForward
+                      ? textMain
+                      : textMain.withValues(alpha: 0.3),
+                ),
                 onPressed: _canGoForward ? () => _controller.goForward() : null,
               ),
               IconButton(
@@ -303,8 +350,13 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
                 onPressed: () => _controller.reload(),
               ),
               IconButton(
-                icon: const Icon(Icons.open_in_new_rounded, size: 18, color: Color(0xFF38BDF8)),
-                onPressed: () => LinkGuardService.openUrlInSystemBrowser(_currentUrl),
+                icon: const Icon(
+                  Icons.open_in_new_rounded,
+                  size: 18,
+                  color: Color(0xFF38BDF8),
+                ),
+                onPressed: () =>
+                    LinkGuardService.openUrlInSystemBrowser(_currentUrl),
               ),
             ],
           ),
@@ -325,9 +377,15 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFEF4444).withValues(alpha: 0.12),
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                ),
               ),
-              child: const Icon(Icons.wifi_off_rounded, color: Color(0xFFEF4444), size: 44),
+              child: const Icon(
+                Icons.wifi_off_rounded,
+                color: Color(0xFFEF4444),
+                size: 44,
+              ),
             ),
             const SizedBox(height: 18),
             Text(
@@ -340,7 +398,9 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              _errorMessage.isNotEmpty ? _errorMessage : 'Unable to connect to remote host in isolated sandbox.',
+              _errorMessage.isNotEmpty
+                  ? _errorMessage
+                  : 'Unable to connect to remote host in isolated sandbox.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isDark ? Colors.white70 : const Color(0xFF64748B),
@@ -355,7 +415,9 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF00E676),
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   onPressed: () {
                     setState(() {
@@ -365,14 +427,19 @@ class _InAppBrowserScreenState extends State<InAppBrowserScreen> {
                     _controller.reload();
                   },
                   icon: const Icon(Icons.refresh_rounded, size: 18),
-                  label: const Text('Try Again', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    'Try Again',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF38BDF8),
                     side: const BorderSide(color: Color(0xFF38BDF8)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   onPressed: () {
                     LinkGuardService.openUrlInSystemBrowser(_currentUrl);

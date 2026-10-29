@@ -21,8 +21,9 @@ class DioClient {
       BaseOptions(
         baseUrl: AppConstants.apiBaseUrlRelease,
         connectTimeout: const Duration(seconds: AppConstants.apiTimeoutSeconds),
-        receiveTimeout:
-            const Duration(seconds: AppConstants.deepAnalysisTimeoutSeconds),
+        receiveTimeout: const Duration(
+          seconds: AppConstants.deepAnalysisTimeoutSeconds,
+        ),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -32,11 +33,7 @@ class DioClient {
 
     // Logging interceptor
     dio.interceptors.add(
-      LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        error: true,
-      ),
+      LogInterceptor(requestBody: true, responseBody: true, error: true),
     );
 
     // Retry interceptor

@@ -40,7 +40,9 @@ void main() {
       expect(verdict.isScam, isTrue);
       expect(verdict.riskScore, greaterThanOrEqualTo(50));
       expect(
-        verdict.reasons.any((r) => r.contains('REMOTE ACCESS') || r.contains('AnyDesk')),
+        verdict.reasons.any(
+          (r) => r.contains('REMOTE ACCESS') || r.contains('AnyDesk'),
+        ),
         isTrue,
       );
     });
@@ -51,16 +53,17 @@ void main() {
       );
       expect(verdict.isScam, isTrue);
       expect(verdict.riskScore, greaterThanOrEqualTo(55));
-      expect(
-        verdict.reasons.any((r) => r.contains('CALL FORWARDING')),
-        isTrue,
-      );
+      expect(verdict.reasons.any((r) => r.contains('CALL FORWARDING')), isTrue);
     });
 
     test('Identifies private and loopback IP hosts to block SSRF attempts', () {
       bool isPrivateHost(String host) {
         final lower = host.toLowerCase().trim();
-        if (lower == 'localhost' || lower == '127.0.0.1' || lower == '::1' || lower == '0.0.0.0') return true;
+        if (lower == 'localhost' ||
+            lower == '127.0.0.1' ||
+            lower == '::1' ||
+            lower == '0.0.0.0')
+          return true;
         final ipParts = lower.split('.');
         if (ipParts.length == 4) {
           final nums = ipParts.map((p) => int.tryParse(p)).toList();
@@ -87,9 +90,12 @@ void main() {
       expect(isPrivateHost('google.com'), isFalse);
     });
 
-    test('Identifies punycode internationalized homograph phishing patterns', () {
-      const punycodeDomain = 'xn--sbi-9ha.com'; // Deceptive lookalike
-      expect(punycodeDomain.startsWith('xn--'), isTrue);
-    });
+    test(
+      'Identifies punycode internationalized homograph phishing patterns',
+      () {
+        const punycodeDomain = 'xn--sbi-9ha.com'; // Deceptive lookalike
+        expect(punycodeDomain.startsWith('xn--'), isTrue);
+      },
+    );
   });
 }

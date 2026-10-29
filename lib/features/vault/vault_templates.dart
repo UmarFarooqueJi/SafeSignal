@@ -67,7 +67,8 @@ class VaultTemplates {
       category: 'Google / Gmail',
       icon: Icons.mail_rounded,
       color: Color(0xFFEA4335),
-      description: 'Google account, Gmail credentials, app passwords & 2FA backup codes',
+      description:
+          'Google account, Gmail credentials, app passwords & 2FA backup codes',
       primaryFieldKey: 'email',
       secretFieldKey: 'password',
       fields: [
@@ -107,7 +108,8 @@ class VaultTemplates {
       category: 'Banking & Netbanking',
       icon: Icons.account_balance_rounded,
       color: Color(0xFF0284C7),
-      description: 'Netbanking login, account number, customer ID, IFSC & transaction PIN',
+      description:
+          'Netbanking login, account number, customer ID, IFSC & transaction PIN',
       primaryFieldKey: 'bank_name',
       secretFieldKey: 'login_password',
       fields: [
@@ -156,7 +158,8 @@ class VaultTemplates {
       category: 'Payment Cards',
       icon: Icons.credit_card_rounded,
       color: Color(0xFF8B5CF6),
-      description: 'Cardholder name, 16-digit card number, expiry, CVV & ATM PIN',
+      description:
+          'Cardholder name, 16-digit card number, expiry, CVV & ATM PIN',
       primaryFieldKey: 'cardholder',
       secretFieldKey: 'card_number',
       fields: [
@@ -202,7 +205,8 @@ class VaultTemplates {
       category: 'UPI & Digital Wallet',
       icon: Icons.bolt_rounded,
       color: Color(0xFF10B981),
-      description: 'UPI VPA handle, provider (GPay/PhonePe/Paytm) & secret UPI PIN',
+      description:
+          'UPI VPA handle, provider (GPay/PhonePe/Paytm) & secret UPI PIN',
       primaryFieldKey: 'vpa',
       secretFieldKey: 'upi_pin',
       fields: [
@@ -239,7 +243,8 @@ class VaultTemplates {
       category: 'Social Media',
       icon: Icons.public_rounded,
       color: Color(0xFFEC4899),
-      description: 'Instagram, X/Twitter, Facebook, Telegram, Discord, GitHub credentials',
+      description:
+          'Instagram, X/Twitter, Facebook, Telegram, Discord, GitHub credentials',
       primaryFieldKey: 'handle',
       secretFieldKey: 'password',
       fields: [
@@ -282,7 +287,8 @@ class VaultTemplates {
       category: 'Government Identity',
       icon: Icons.badge_rounded,
       color: Color(0xFFF59E0B),
-      description: 'Aadhaar, PAN Card, Passport, Driving License & Voter ID records',
+      description:
+          'Aadhaar, PAN Card, Passport, Driving License & Voter ID records',
       primaryFieldKey: 'id_number',
       secretFieldKey: 'id_number',
       fields: [
@@ -317,7 +323,8 @@ class VaultTemplates {
       category: 'Wi-Fi Network',
       icon: Icons.wifi_rounded,
       color: Color(0xFF06B6D4),
-      description: 'Home/Office Wi-Fi SSID, WPA3/WPA2 password & router admin gateway',
+      description:
+          'Home/Office Wi-Fi SSID, WPA3/WPA2 password & router admin gateway',
       primaryFieldKey: 'ssid',
       secretFieldKey: 'password',
       fields: [
@@ -354,7 +361,8 @@ class VaultTemplates {
       category: 'Crypto & Recovery Seed',
       icon: Icons.key_rounded,
       color: Color(0xFFF97316),
-      description: '12/24-word BIP-39 mnemonic seed phrases, private keys & hardware backup',
+      description:
+          '12/24-word BIP-39 mnemonic seed phrases, private keys & hardware backup',
       primaryFieldKey: 'wallet_name',
       secretFieldKey: 'seed_phrase',
       fields: [
@@ -391,7 +399,8 @@ class VaultTemplates {
       category: 'Secret Note',
       icon: Icons.note_alt_rounded,
       color: Color(0xFF64748B),
-      description: 'Freeform encrypted text, private keys, contracts or forensic logs',
+      description:
+          'Freeform encrypted text, private keys, contracts or forensic logs',
       primaryFieldKey: 'content',
       secretFieldKey: 'content',
       fields: [
@@ -503,7 +512,11 @@ class VaultClipboardGuard {
   static String? _lastCopiedValue;
 
   /// Copies sensitive credential and automatically schedules a 30-second wipe
-  static void copyWithAutoWipe(BuildContext context, String text, String label) {
+  static void copyWithAutoWipe(
+    BuildContext context,
+    String text,
+    String label,
+  ) {
     if (text.isEmpty) return;
     _lastCopiedValue = text;
     Clipboard.setData(ClipboardData(text: text));
@@ -514,7 +527,9 @@ class VaultClipboardGuard {
         final current = await Clipboard.getData(Clipboard.kTextPlain);
         if (current?.text == _lastCopiedValue) {
           await Clipboard.setData(const ClipboardData(text: ''));
-          debugPrint('[VaultClipboardGuard] Sensitive data wiped after 30s timeout');
+          debugPrint(
+            '[VaultClipboardGuard] Sensitive data wiped after 30s timeout',
+          );
         }
       } catch (_) {}
     });
@@ -524,12 +539,19 @@ class VaultClipboardGuard {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 18),
+            const Icon(
+              Icons.shield_rounded,
+              color: Color(0xFF00E676),
+              size: 18,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Copied $label. Clipboard will auto-clear in 30s.',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
             ),
           ],

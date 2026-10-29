@@ -41,7 +41,10 @@ void main() {
     id: 'node_apk_1',
     type: ThreatNodeType.apkPackage,
     value: 'com.fake.sbi.banking',
-    metadata: {'sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'},
+    metadata: {
+      'sha256':
+          'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    },
     threatScore: 95,
     firstSeen: now,
     lastSeen: now,

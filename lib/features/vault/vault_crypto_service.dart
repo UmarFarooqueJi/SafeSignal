@@ -49,14 +49,17 @@ class VaultCryptoService {
 
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(
-      keyCipherAlgorithm: KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
+      keyCipherAlgorithm:
+          KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
       storageCipherAlgorithm: StorageCipherAlgorithm.AES_GCM_NoPadding,
     ),
   );
 
   static const String _kLegacyKeyAlias = 'safesignal_vault_master_aes_key';
-  static const String _kWrappedDekPassphraseAlias = 'safesignal_vault_dek_v2_wrapped';
-  static const String _kWrappedDekBiometricAlias = 'safesignal_vault_dek_v2_biometric_wrapped';
+  static const String _kWrappedDekPassphraseAlias =
+      'safesignal_vault_dek_v2_wrapped';
+  static const String _kWrappedDekBiometricAlias =
+      'safesignal_vault_dek_v2_biometric_wrapped';
   static const String _kBiometricKekAlias = 'safesignal_vault_biometric_kek';
 
   enc.Key? _sessionDek;
@@ -123,10 +126,14 @@ class VaultCryptoService {
   /// Throws [VaultSecurityException] if the passphrase is incorrect (GCM tag verification failure).
   Future<void> initializeOrUnlockWithPassphrase(String passphrase) async {
     if (passphrase.length < 6) {
-      throw const VaultSecurityException('Passphrase must be at least 6 characters.');
+      throw const VaultSecurityException(
+        'Passphrase must be at least 6 characters.',
+      );
     }
 
-    final wrappedJsonStr = await _storage.read(key: _kWrappedDekPassphraseAlias);
+    final wrappedJsonStr = await _storage.read(
+      key: _kWrappedDekPassphraseAlias,
+    );
 
     if (wrappedJsonStr != null && wrappedJsonStr.isNotEmpty) {
       // Modern v2 unwrap
@@ -134,7 +141,9 @@ class VaultCryptoService {
         final data = jsonDecode(wrappedJsonStr) as Map<String, dynamic>;
         final salt = base64Decode(data['salt'] as String);
         final iv = enc.IV.fromBase64(data['iv'] as String);
-        final ciphertext = enc.Encrypted.fromBase64(data['ciphertext'] as String);
+        final ciphertext = enc.Encrypted.fromBase64(
+          data['ciphertext'] as String,
+        );
         final iterations = (data['iterations'] as int?) ?? 100000;
 
         final kekBytes = deriveKeyPbkdf2(
@@ -150,7 +159,9 @@ class VaultCryptoService {
         _sessionDek = enc.Key(Uint8List.fromList(decryptedDekBytes));
         return;
       } catch (e) {
-        throw const VaultSecurityException('Incorrect master passphrase. Key authentication tag verification failed.');
+        throw const VaultSecurityException(
+          'Incorrect master passphrase. Key authentication tag verification failed.',
+        );
       }
     }
 
@@ -185,7 +196,10 @@ class VaultCryptoService {
       'ciphertext': encryptedDek.base64,
     };
 
-    await _storage.write(key: _kWrappedDekPassphraseAlias, value: jsonEncode(record));
+    await _storage.write(
+      key: _kWrappedDekPassphraseAlias,
+      value: jsonEncode(record),
+    );
     _sessionDek = dekToWrap;
   }
 
@@ -195,7 +209,9 @@ class VaultCryptoService {
     final biometricKekBase64 = await _storage.read(key: _kBiometricKekAlias);
 
     if (wrappedJsonStr == null || biometricKekBase64 == null) {
-      throw const VaultSecurityException('Biometric vault key is not enrolled. Please unlock using master passphrase.');
+      throw const VaultSecurityException(
+        'Biometric vault key is not enrolled. Please unlock using master passphrase.',
+      );
     }
 
     try {
@@ -209,14 +225,18 @@ class VaultCryptoService {
       final decryptedDekBytes = gcm.decryptBytes(ciphertext, iv: iv);
       _sessionDek = enc.Key(Uint8List.fromList(decryptedDekBytes));
     } catch (e) {
-      throw VaultSecurityException('Hardware Keystore biometric key unwrap failed: $e');
+      throw VaultSecurityException(
+        'Hardware Keystore biometric key unwrap failed: $e',
+      );
     }
   }
 
   /// Enrolls the currently active session DEK into Keystore biometric wrapping.
   Future<void> enableBiometricKeystore() async {
     if (_sessionDek == null) {
-      throw const VaultSecurityException('Cannot enroll biometrics: vault must be unlocked first.');
+      throw const VaultSecurityException(
+        'Cannot enroll biometrics: vault must be unlocked first.',
+      );
     }
 
     final biometricKek = enc.Key.fromSecureRandom(32);
@@ -231,8 +251,14 @@ class VaultCryptoService {
       'ciphertext': encryptedDek.base64,
     };
 
-    await _storage.write(key: _kBiometricKekAlias, value: base64Encode(biometricKek.bytes));
-    await _storage.write(key: _kWrappedDekBiometricAlias, value: jsonEncode(record));
+    await _storage.write(
+      key: _kBiometricKekAlias,
+      value: base64Encode(biometricKek.bytes),
+    );
+    await _storage.write(
+      key: _kWrappedDekBiometricAlias,
+      value: jsonEncode(record),
+    );
   }
 
   /// Retrieves the active hardware-backed 256-bit AES Data Encryption Key.
@@ -283,7 +309,8 @@ class VaultCryptoService {
 
     // Save ciphertext to private sandbox
     final vaultDir = await _getVaultDocDirectory();
-    final fileName = 'doc_gcm_${DateTime.now().millisecondsSinceEpoch}_${iv.base64.substring(0, 8).replaceAll('/', '_')}.enc';
+    final fileName =
+        'doc_gcm_${DateTime.now().millisecondsSinceEpoch}_${iv.base64.substring(0, 8).replaceAll('/', '_')}.enc';
     final targetFile = File('${vaultDir.path}/$fileName');
 
     await targetFile.writeAsBytes(encrypted.bytes, flush: true);
@@ -316,7 +343,9 @@ class VaultCryptoService {
     final file = File('${vaultDir.path}/$relativePath');
 
     if (!await file.exists()) {
-      throw Exception('Encrypted document payload not found on disk: $relativePath');
+      throw Exception(
+        'Encrypted document payload not found on disk: $relativePath',
+      );
     }
 
     final cipherBytes = await file.readAsBytes();
@@ -325,21 +354,30 @@ class VaultCryptoService {
     // 1. Authenticated GCM decryption
     if (cipherMode == 'gcm' || relativePath.contains('_gcm_')) {
       try {
-        final gcmEncrypter = enc.Encrypter(enc.AES(masterKey, mode: enc.AESMode.gcm));
-        final decrypted = gcmEncrypter.decryptBytes(enc.Encrypted(cipherBytes), iv: iv);
+        final gcmEncrypter = enc.Encrypter(
+          enc.AES(masterKey, mode: enc.AESMode.gcm),
+        );
+        final decrypted = gcmEncrypter.decryptBytes(
+          enc.Encrypted(cipherBytes),
+          iv: iv,
+        );
         final resultBytes = Uint8List.fromList(decrypted);
 
         if (expectedSha256 != null && expectedSha256.isNotEmpty) {
           final actualDigest = crypto.sha256.convert(resultBytes).toString();
           if (actualDigest.toLowerCase() != expectedSha256.toLowerCase()) {
-            throw Exception('Document integrity verification failed (SHA-256 mismatch)');
+            throw Exception(
+              'Document integrity verification failed (SHA-256 mismatch)',
+            );
           }
         }
         return resultBytes;
       } catch (e) {
         // If it was explicitly GCM or failed auth, rethrow integrity failure
         if (cipherMode == 'gcm' && relativePath.contains('_gcm_')) {
-          throw Exception('Cryptographic verification failed: Authentication tag mismatch or corrupted ciphertext: $e');
+          throw Exception(
+            'Cryptographic verification failed: Authentication tag mismatch or corrupted ciphertext: $e',
+          );
         }
         // Otherwise continue to legacy fallback below
       }
@@ -347,19 +385,28 @@ class VaultCryptoService {
 
     // 2. Legacy AES-256-CBC Fallback for older documents
     try {
-      final cbcEncrypter = enc.Encrypter(enc.AES(masterKey, mode: enc.AESMode.cbc));
-      final decrypted = cbcEncrypter.decryptBytes(enc.Encrypted(cipherBytes), iv: iv);
+      final cbcEncrypter = enc.Encrypter(
+        enc.AES(masterKey, mode: enc.AESMode.cbc),
+      );
+      final decrypted = cbcEncrypter.decryptBytes(
+        enc.Encrypted(cipherBytes),
+        iv: iv,
+      );
       final resultBytes = Uint8List.fromList(decrypted);
 
       if (expectedSha256 != null && expectedSha256.isNotEmpty) {
         final actualDigest = crypto.sha256.convert(resultBytes).toString();
         if (actualDigest.toLowerCase() != expectedSha256.toLowerCase()) {
-          throw Exception('Legacy CBC document checksum mismatch: payload altered');
+          throw Exception(
+            'Legacy CBC document checksum mismatch: payload altered',
+          );
         }
       }
       return resultBytes;
     } catch (e) {
-      throw Exception('Failed to decrypt vault document (bad key, corrupted payload, or untrusted tag): $e');
+      throw Exception(
+        'Failed to decrypt vault document (bad key, corrupted payload, or untrusted tag): $e',
+      );
     }
   }
 

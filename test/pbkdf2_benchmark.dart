@@ -47,6 +47,8 @@ void main() {
       iterations: iterations,
     );
     sw.stop();
-    print('Iterations: $iterations | Elapsed Time: ${sw.elapsedMilliseconds} ms | Derived KEK bytes: ${kek.length}');
+    print(
+      'Iterations: $iterations | Elapsed Time: ${sw.elapsedMilliseconds} ms | Derived KEK bytes: ${kek.length}',
+    );
   }
 }

@@ -28,8 +28,10 @@ import 'vault_templates.dart';
 class VaultItem {
   final String id;
   final String title;
-  final String category; // 'Aadhaar / ID', 'PAN Card', 'Passport', 'Banking & UPI', 'Crypto / Seed Phrase', 'Secret Note'
-  final String templateType; // 'gmail', 'bank', 'card', 'upi', 'social', 'id', 'wifi', 'crypto', 'note', 'document'
+  final String
+  category; // 'Aadhaar / ID', 'PAN Card', 'Passport', 'Banking & UPI', 'Crypto / Seed Phrase', 'Secret Note'
+  final String
+  templateType; // 'gmail', 'bank', 'card', 'upi', 'social', 'id', 'wifi', 'crypto', 'note', 'document'
   final String secretValue;
   final Map<String, String> fields;
   final String notes;
@@ -61,21 +63,21 @@ class VaultItem {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'category': category,
-        'templateType': templateType,
-        'secretValue': secretValue,
-        'fields': fields,
-        'notes': notes,
-        'createdAt': createdAt,
-        'type': type,
-        'documentFileName': documentFileName,
-        'documentIv': documentIv,
-        'documentChecksum': documentChecksum,
-        'fileSizeBytes': fileSizeBytes,
-        'cipherMode': cipherMode,
-      };
+    'id': id,
+    'title': title,
+    'category': category,
+    'templateType': templateType,
+    'secretValue': secretValue,
+    'fields': fields,
+    'notes': notes,
+    'createdAt': createdAt,
+    'type': type,
+    'documentFileName': documentFileName,
+    'documentIv': documentIv,
+    'documentChecksum': documentChecksum,
+    'fileSizeBytes': fileSizeBytes,
+    'cipherMode': cipherMode,
+  };
 
   factory VaultItem.fromJson(Map<String, dynamic> json) {
     final rawFields = json['fields'] as Map<String, dynamic>?;
@@ -102,7 +104,10 @@ class VaultItem {
           detectedTemplate = 'crypto';
         } else if (cat.contains('wifi')) {
           detectedTemplate = 'wifi';
-        } else if (cat.contains('aadhaar') || cat.contains('pan') || cat.contains('passport') || cat.contains('license')) {
+        } else if (cat.contains('aadhaar') ||
+            cat.contains('pan') ||
+            cat.contains('passport') ||
+            cat.contains('license')) {
           detectedTemplate = 'id';
         } else {
           detectedTemplate = 'note';
@@ -118,14 +123,18 @@ class VaultItem {
       secretValue: json['secretValue'] as String? ?? '',
       fields: parsedFields,
       notes: json['notes'] as String? ?? '',
-      createdAt: json['createdAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
+      createdAt:
+          json['createdAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
       type: json['type'] as String? ?? 'text',
       documentFileName: json['documentFileName'] as String?,
       documentIv: json['documentIv'] as String?,
       documentChecksum: json['documentChecksum'] as String?,
       fileSizeBytes: json['fileSizeBytes'] as int?,
-      cipherMode: json['cipherMode'] as String? ??
-          ((json['documentFileName'] as String?)?.contains('_gcm_') == true ? 'gcm' : 'cbc'),
+      cipherMode:
+          json['cipherMode'] as String? ??
+          ((json['documentFileName'] as String?)?.contains('_gcm_') == true
+              ? 'gcm'
+              : 'cbc'),
     );
   }
 }
@@ -137,11 +146,13 @@ class VaultScreen extends ConsumerStatefulWidget {
   ConsumerState<VaultScreen> createState() => _VaultScreenState();
 }
 
-class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingObserver {
+class _VaultScreenState extends ConsumerState<VaultScreen>
+    with WidgetsBindingObserver {
   final LocalAuthentication auth = LocalAuthentication();
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(
-      keyCipherAlgorithm: KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
+      keyCipherAlgorithm:
+          KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
       storageCipherAlgorithm: StorageCipherAlgorithm.AES_GCM_NoPadding,
     ),
   );
@@ -174,7 +185,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
       VaultCryptoService().lockVault();
       if (mounted) {
         setState(() {
@@ -191,7 +204,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     final prefs = await SharedPreferences.getInstance();
     final canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
     final canAuthenticateWithDevice = await auth.isDeviceSupported();
-    final canAuthenticate = canAuthenticateWithBiometrics || canAuthenticateWithDevice;
+    final canAuthenticate =
+        canAuthenticateWithBiometrics || canAuthenticateWithDevice;
 
     final isLockEnabled = prefs.getBool('isVaultEnabled') ?? true;
 
@@ -206,7 +220,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
       _authenticateAndLoad();
     } else {
       // Hardware biometrics not configured: fail-closed, keep locked until master passphrase entered
-      debugPrint('[VaultAuth] Biometrics not enrolled or supported. Fail-closed: vault remains locked.');
+      debugPrint(
+        '[VaultAuth] Biometrics not enrolled or supported. Fail-closed: vault remains locked.',
+      );
     }
   }
 
@@ -217,7 +233,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     }
     try {
       final didAuthenticate = await auth.authenticate(
-        localizedReason: 'Authenticate to decrypt your hardware-protected Vault',
+        localizedReason:
+            'Authenticate to decrypt your hardware-protected Vault',
         biometricOnly: false,
         persistAcrossBackgrounding: true,
       );
@@ -265,11 +282,21 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
             ),
             title: Row(
               children: [
-                const Icon(Icons.password_rounded, color: Color(0xFF00E5FF), size: 24),
+                const Icon(
+                  Icons.password_rounded,
+                  color: Color(0xFF00E5FF),
+                  size: 24,
+                ),
                 const SizedBox(width: 10),
                 Text(
-                  isNewPassphrase ? 'Create Vault Passphrase' : 'Enter Vault Passphrase',
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  isNewPassphrase
+                      ? 'Create Vault Passphrase'
+                      : 'Enter Vault Passphrase',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -281,7 +308,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                   isNewPassphrase
                       ? 'Set a master security passphrase (PBKDF2-HMAC-SHA256) to cryptographically wrap and protect your vault key.'
                       : 'Enter your master passphrase to unwrap the AES-256 vault encryption key.',
-                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                  style: const TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -289,12 +319,17 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                   obscureText: true,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: isNewPassphrase ? 'Master Passphrase (min 6 chars)' : 'Passphrase',
+                    labelText: isNewPassphrase
+                        ? 'Master Passphrase (min 6 chars)'
+                        : 'Passphrase',
                     labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
                     errorText: errorText,
                     filled: true,
                     fillColor: const Color(0xFF1E293B),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
                 if (isNewPassphrase) ...[
@@ -308,7 +343,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
                       filled: true,
                       fillColor: const Color(0xFF1E293B),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ],
@@ -317,27 +355,38 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Color(0xFF94A3B8)),
+                ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF00E5FF),
                   foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onPressed: () async {
                   final pass = ctrl.text;
                   if (isNewPassphrase) {
                     if (pass.length < 6) {
-                      setDialogState(() => errorText = 'Passphrase must be at least 6 characters');
+                      setDialogState(
+                        () => errorText =
+                            'Passphrase must be at least 6 characters',
+                      );
                       return;
                     }
                     if (pass != confirmCtrl.text) {
-                      setDialogState(() => errorText = 'Passphrases do not match');
+                      setDialogState(
+                        () => errorText = 'Passphrases do not match',
+                      );
                       return;
                     }
                     try {
-                      await VaultCryptoService().initializeOrUnlockWithPassphrase(pass);
+                      await VaultCryptoService()
+                          .initializeOrUnlockWithPassphrase(pass);
                       if (_hasBiometrics) {
                         try {
                           await VaultCryptoService().enableBiometricKeystore();
@@ -346,11 +395,14 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (mounted) await _loadItems();
                     } catch (e) {
-                      setDialogState(() => errorText = 'Initialization error: $e');
+                      setDialogState(
+                        () => errorText = 'Initialization error: $e',
+                      );
                     }
                   } else {
                     try {
-                      await VaultCryptoService().initializeOrUnlockWithPassphrase(pass);
+                      await VaultCryptoService()
+                          .initializeOrUnlockWithPassphrase(pass);
                       if (_hasBiometrics) {
                         try {
                           await VaultCryptoService().enableBiometricKeystore();
@@ -359,7 +411,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (mounted) await _loadItems();
                     } catch (_) {
-                      setDialogState(() => errorText = 'Incorrect master passphrase');
+                      setDialogState(
+                        () => errorText = 'Incorrect master passphrase',
+                      );
                     }
                   }
                 },
@@ -377,7 +431,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
       final raw = await _storage.read(key: 'safesignal_vault_entries');
       if (raw != null && raw.isNotEmpty) {
         final list = jsonDecode(raw) as List;
-        final items = list.map((e) => VaultItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+        final items = list
+            .map((e) => VaultItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
         if (mounted) {
           setState(() {
             _items = items;
@@ -425,7 +481,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
           setState(() => _isVaultEnabled = true);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('App Lock Activated! 🔒'), backgroundColor: Color(0xFF10B981)),
+              const SnackBar(
+                content: Text('App Lock Activated! 🔒'),
+                backgroundColor: Color(0xFF10B981),
+              ),
             );
           }
         }
@@ -449,7 +508,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
     try {
       final inputImage = InputImage.fromFilePath(imagePath);
-      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+      final RecognizedText recognizedText = await textRecognizer.processImage(
+        inputImage,
+      );
       final fullText = recognizedText.text;
       final upper = fullText.toUpperCase();
 
@@ -460,7 +521,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
       // 1. PAN Card Detection
       final panRegex = RegExp(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b');
       final panMatch = panRegex.firstMatch(upper);
-      if (panMatch != null || upper.contains('INCOME TAX') || upper.contains('PERMANENT ACCOUNT NUMBER')) {
+      if (panMatch != null ||
+          upper.contains('INCOME TAX') ||
+          upper.contains('PERMANENT ACCOUNT NUMBER')) {
         detectedCategory = 'PAN Card';
         detectedTitle = 'PAN Card';
         if (panMatch != null) {
@@ -472,7 +535,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
           upper.contains('UIDAI') ||
           upper.contains('MERA AADHAAR') ||
           upper.contains('UNIQUE IDENTIFICATION') ||
-          (upper.contains('GOVERNMENT OF INDIA') && (upper.contains('DOB') || upper.contains('YEAR OF BIRTH')))) {
+          (upper.contains('GOVERNMENT OF INDIA') &&
+              (upper.contains('DOB') || upper.contains('YEAR OF BIRTH')))) {
         detectedCategory = 'Aadhaar / ID';
         detectedTitle = 'Aadhaar Card';
 
@@ -481,25 +545,35 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
         if (aadhaarMatch != null) {
           detectedId = aadhaarMatch.group(0)!;
         } else {
-          final pure12 = RegExp(r'\b[2-9]\d{11}\b').firstMatch(fullText.replaceAll('-', ' '));
+          final pure12 = RegExp(
+            r'\b[2-9]\d{11}\b',
+          ).firstMatch(fullText.replaceAll('-', ' '));
           if (pure12 != null) {
             final raw = pure12.group(0)!;
-            detectedId = '${raw.substring(0, 4)} ${raw.substring(4, 8)} ${raw.substring(8, 12)}';
+            detectedId =
+                '${raw.substring(0, 4)} ${raw.substring(4, 8)} ${raw.substring(8, 12)}';
           }
         }
       }
       // 3. Indian Driving License Detection
-      else if (upper.contains('DRIVING') || upper.contains('LICENCE') || upper.contains('TRANSPORT') || upper.contains('DL NO')) {
+      else if (upper.contains('DRIVING') ||
+          upper.contains('LICENCE') ||
+          upper.contains('TRANSPORT') ||
+          upper.contains('DL NO')) {
         detectedCategory = 'Driving License';
         detectedTitle = 'Driving License';
-        final dlRegex = RegExp(r'\b[A-Z]{2}[-\s]?[0-9]{2}[-\s]?[0-9]{4}[-\s]?[0-9]{7}\b|\b[A-Z]{2}[0-9]{13,15}\b');
+        final dlRegex = RegExp(
+          r'\b[A-Z]{2}[-\s]?[0-9]{2}[-\s]?[0-9]{4}[-\s]?[0-9]{7}\b|\b[A-Z]{2}[0-9]{13,15}\b',
+        );
         final dlMatch = dlRegex.firstMatch(upper);
         if (dlMatch != null) {
           detectedId = dlMatch.group(0)!;
         }
       }
       // 4. Passport Detection
-      else if (upper.contains('PASSPORT') || upper.contains('REPUBLIC OF INDIA') || upper.contains('P<IND')) {
+      else if (upper.contains('PASSPORT') ||
+          upper.contains('REPUBLIC OF INDIA') ||
+          upper.contains('P<IND')) {
         detectedCategory = 'Passport';
         detectedTitle = 'Passport';
         final passRegex = RegExp(r'\b[A-PR-WYZ][0-9]{7}\b');
@@ -509,7 +583,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
         }
       }
       // 5. Banking / IFSC / Cheque Detection
-      else if (upper.contains('BANK') || upper.contains('IFSC') || upper.contains('ACCOUNT NUMBER') || upper.contains('CHEQUE')) {
+      else if (upper.contains('BANK') ||
+          upper.contains('IFSC') ||
+          upper.contains('ACCOUNT NUMBER') ||
+          upper.contains('CHEQUE')) {
         detectedCategory = 'Banking & Tax';
         detectedTitle = 'Bank Document';
         final ifscRegex = RegExp(r'\b[A-Z]{4}0[A-Z0-9]{6}\b');
@@ -525,7 +602,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
           detectedTitle = 'PAN Card';
           detectedId = panMatch.group(0)!;
         } else {
-          final aadhaarMatch = RegExp(r'\b\d{4}\s\d{4}\s\d{4}\b').firstMatch(fullText);
+          final aadhaarMatch = RegExp(
+            r'\b\d{4}\s\d{4}\s\d{4}\b',
+          ).firstMatch(fullText);
           if (aadhaarMatch != null) {
             detectedCategory = 'Aadhaar / ID';
             detectedTitle = 'Aadhaar Card';
@@ -557,7 +636,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
       final scanner = DocumentScanner(
         options: DocumentScannerOptions(
           documentFormats: const {DocumentFormat.jpeg},
-          mode: ScannerMode.base, // Clean original colors, zero over-contrast filter distortion
+          mode: ScannerMode
+              .base, // Clean original colors, zero over-contrast filter distortion
           isGalleryImport: true,
           pageLimit: 1,
         ),
@@ -589,7 +669,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
       final picker = ImagePicker();
       final picked = await picker.pickImage(
         source: source,
-        imageQuality: 100, // Maximum crystal-clear 100% quality, zero compression loss
+        imageQuality:
+            100, // Maximum crystal-clear 100% quality, zero compression loss
         preferredCameraDevice: CameraDevice.rear,
       );
       if (picked != null) {
@@ -598,7 +679,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Capture error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Capture error: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -619,15 +703,24 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error processing document: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error processing document: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
   }
 
-  void _showSaveDocumentDialog(Uint8List rawBytes, String tempPath, {Map<String, String>? ocrData}) {
+  void _showSaveDocumentDialog(
+    Uint8List rawBytes,
+    String tempPath, {
+    Map<String, String>? ocrData,
+  }) {
     String category = ocrData?['category'] ?? 'Aadhaar / ID';
-    final titleCtrl = TextEditingController(text: ocrData?['title'] ?? 'Aadhaar Card');
+    final titleCtrl = TextEditingController(
+      text: ocrData?['title'] ?? 'Aadhaar Card',
+    );
     final docIdCtrl = TextEditingController(text: ocrData?['idNumber'] ?? '');
     final notesCtrl = TextEditingController();
     bool isEncrypting = false;
@@ -644,12 +737,16 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
             final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
 
             return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
               child: Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   color: sheetBg,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
                   border: Border.all(color: const Color(0xFF1E293B)),
                 ),
                 child: SingleChildScrollView(
@@ -665,15 +762,25 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                  color: const Color(
+                                    0xFF10B981,
+                                  ).withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Icon(Icons.document_scanner_rounded, color: Color(0xFF10B981), size: 22),
+                                child: const Icon(
+                                  Icons.document_scanner_rounded,
+                                  color: Color(0xFF10B981),
+                                  size: 22,
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Text(
                                 'Lock Scanned Document',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: textMain),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: textMain,
+                                ),
                               ),
                             ],
                           ),
@@ -689,7 +796,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                          color: isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -710,23 +819,39 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                 children: [
                                   Row(
                                     children: [
-                                      const Icon(Icons.verified_rounded, size: 14, color: Color(0xFF10B981)),
+                                      const Icon(
+                                        Icons.verified_rounded,
+                                        size: 14,
+                                        color: Color(0xFF10B981),
+                                      ),
                                       const SizedBox(width: 4),
                                       const Text(
                                         'Auto-Cropped & Enhanced',
-                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF10B981),
+                                        ),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     'Size: ${(rawBytes.length / 1024).toStringAsFixed(1)} KB',
-                                    style: TextStyle(fontSize: 12, color: textMain, fontWeight: FontWeight.w600),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: textMain,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                   const SizedBox(height: 2),
                                   const Text(
                                     'Cipher: AES-256-CBC • TEE KeyStore',
-                                    style: TextStyle(fontSize: 11, color: Color(0xFF38BDF8), fontWeight: FontWeight.w600),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF38BDF8),
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -734,18 +859,33 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                           ],
                         ),
                       ),
-                      if (ocrData != null && (ocrData['idNumber']?.isNotEmpty == true || ocrData['category'] != 'Secret Note')) ...[
+                      if (ocrData != null &&
+                          (ocrData['idNumber']?.isNotEmpty == true ||
+                              ocrData['category'] != 'Secret Note')) ...[
                         const SizedBox(height: 12),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                            color: const Color(
+                              0xFF10B981,
+                            ).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF10B981,
+                              ).withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.auto_awesome_rounded, size: 16, color: Color(0xFF10B981)),
+                              const Icon(
+                                Icons.auto_awesome_rounded,
+                                size: 16,
+                                color: Color(0xFF10B981),
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -771,28 +911,60 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         initialValue: category,
                         decoration: InputDecoration(
                           labelText: 'Document Type',
-                          prefixIcon: const Icon(Icons.category_rounded, size: 20),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          prefixIcon: const Icon(
+                            Icons.category_rounded,
+                            size: 20,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'Aadhaar / ID', child: Text('Aadhaar Card / Govt ID')),
-                          DropdownMenuItem(value: 'PAN Card', child: Text('PAN Card (Income Tax)')),
-                          DropdownMenuItem(value: 'Passport', child: Text('Passport / Visa Document')),
-                          DropdownMenuItem(value: 'Driving License', child: Text('Driving License / RC')),
-                          DropdownMenuItem(value: 'Banking & Tax', child: Text('Bank Passbook / Cheque / ITR')),
-                          DropdownMenuItem(value: 'Medical Record', child: Text('Health / Medical Record')),
-                          DropdownMenuItem(value: 'Secret Note', child: Text('Confidential Contract / Paper')),
+                          DropdownMenuItem(
+                            value: 'Aadhaar / ID',
+                            child: Text('Aadhaar Card / Govt ID'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'PAN Card',
+                            child: Text('PAN Card (Income Tax)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Passport',
+                            child: Text('Passport / Visa Document'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Driving License',
+                            child: Text('Driving License / RC'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Banking & Tax',
+                            child: Text('Bank Passbook / Cheque / ITR'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Medical Record',
+                            child: Text('Health / Medical Record'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Secret Note',
+                            child: Text('Confidential Contract / Paper'),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val != null) {
                             setModalState(() {
                               category = val;
-                              if (val == 'Aadhaar / ID') titleCtrl.text = 'Aadhaar Card';
-                              if (val == 'PAN Card') titleCtrl.text = 'PAN Card';
-                              if (val == 'Passport') titleCtrl.text = 'Passport';
-                              if (val == 'Driving License') titleCtrl.text = 'Driving License';
-                              if (val == 'Banking & Tax') titleCtrl.text = 'Bank Passbook / Cheque';
-                              if (val == 'Medical Record') titleCtrl.text = 'Medical Prescription';
+                              if (val == 'Aadhaar / ID')
+                                titleCtrl.text = 'Aadhaar Card';
+                              if (val == 'PAN Card')
+                                titleCtrl.text = 'PAN Card';
+                              if (val == 'Passport')
+                                titleCtrl.text = 'Passport';
+                              if (val == 'Driving License')
+                                titleCtrl.text = 'Driving License';
+                              if (val == 'Banking & Tax')
+                                titleCtrl.text = 'Bank Passbook / Cheque';
+                              if (val == 'Medical Record')
+                                titleCtrl.text = 'Medical Prescription';
                             });
                           }
                         },
@@ -804,7 +976,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         decoration: InputDecoration(
                           labelText: 'Document Title (e.g. My Aadhaar Front)',
                           prefixIcon: const Icon(Icons.title_rounded, size: 20),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -813,9 +987,14 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         controller: docIdCtrl,
                         decoration: InputDecoration(
                           labelText: 'Document / ID Number (Optional)',
-                          prefixIcon: const Icon(Icons.numbers_rounded, size: 20),
+                          prefixIcon: const Icon(
+                            Icons.numbers_rounded,
+                            size: 20,
+                          ),
                           hintText: 'e.g. 5482 1928 3821 or ABCDE1234F',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -826,7 +1005,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         decoration: InputDecoration(
                           labelText: 'Confidential Notes (Optional)',
                           prefixIcon: const Icon(Icons.notes_rounded, size: 20),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -839,18 +1020,21 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                 setModalState(() => isEncrypting = true);
 
                                 try {
-                                  final encResult = await VaultCryptoService().encryptAndStoreDocument(
-                                    documentBytes: rawBytes,
-                                    sourceTempPath: tempPath,
-                                  );
+                                  final encResult = await VaultCryptoService()
+                                      .encryptAndStoreDocument(
+                                        documentBytes: rawBytes,
+                                        sourceTempPath: tempPath,
+                                      );
 
                                   final newItem = VaultItem(
-                                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                    id: DateTime.now().millisecondsSinceEpoch
+                                        .toString(),
                                     title: titleCtrl.text.trim(),
                                     category: category,
                                     secretValue: docIdCtrl.text.trim(),
                                     notes: notesCtrl.text.trim(),
-                                    createdAt: DateTime.now().millisecondsSinceEpoch,
+                                    createdAt:
+                                        DateTime.now().millisecondsSinceEpoch,
                                     type: 'document',
                                     documentFileName: encResult.relativePath,
                                     documentIv: encResult.ivBase64,
@@ -859,7 +1043,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                     cipherMode: encResult.cipherMode,
                                   );
 
-                                  _documentThumbCache[encResult.relativePath] = rawBytes;
+                                  _documentThumbCache[encResult.relativePath] =
+                                      rawBytes;
                                   setState(() => _items.insert(0, newItem));
                                   await _saveItems();
 
@@ -869,9 +1054,15 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                       const SnackBar(
                                         content: Row(
                                           children: [
-                                            Icon(Icons.shield_rounded, color: Colors.white, size: 18),
+                                            Icon(
+                                              Icons.shield_rounded,
+                                              color: Colors.white,
+                                              size: 18,
+                                            ),
                                             SizedBox(width: 8),
-                                            Text('Document encrypted & stored in Hardware Vault!'),
+                                            Text(
+                                              'Document encrypted & stored in Hardware Vault!',
+                                            ),
                                           ],
                                         ),
                                         backgroundColor: Color(0xFF10B981),
@@ -883,27 +1074,47 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                   setModalState(() => isEncrypting = false);
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Encryption error: $e'), backgroundColor: Colors.red),
+                                      SnackBar(
+                                        content: Text('Encryption error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
                                     );
                                   }
                                 }
                               },
                         icon: isEncrypting
-                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Icon(Icons.lock_rounded, size: 18),
                         label: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            isEncrypting ? 'ENCRYPTING PAYLOAD...' : 'ENCRYPT & STORE IN VAULT',
+                            isEncrypting
+                                ? 'ENCRYPTING PAYLOAD...'
+                                : 'ENCRYPT & STORE IN VAULT',
                             maxLines: 1,
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2563EB),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                            horizontal: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],
@@ -955,15 +1166,25 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFF00E676,
+                          ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 22),
+                        child: const Icon(
+                          Icons.shield_rounded,
+                          color: Color(0xFF00E676),
+                          size: 22,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Text(
                         'Select Credential Template',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: textMain),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: textMain,
+                        ),
                       ),
                     ],
                   ),
@@ -995,10 +1216,14 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       child: Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                          color: isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                            color: isDark
+                                ? const Color(0xFF334155)
+                                : const Color(0xFFE2E8F0),
                             width: 1,
                           ),
                         ),
@@ -1028,7 +1253,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                   const SizedBox(height: 3),
                                   Text(
                                     t.description,
-                                    style: TextStyle(fontSize: 11.5, color: textSub, height: 1.3),
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: textSub,
+                                      height: 1.3,
+                                    ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -1036,7 +1265,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Icon(Icons.chevron_right_rounded, color: t.color, size: 22),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: t.color,
+                              size: 22,
+                            ),
                           ],
                         ),
                       ),
@@ -1052,14 +1285,23 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
   }
 
   // ─── Template Editor & Credential Builder ──────────────────────────────────
-  void _showTemplateEditorDialog({required VaultTemplateDef template, VaultItem? existingItem}) {
-    final titleCtrl = TextEditingController(text: existingItem?.title ?? template.name);
+  void _showTemplateEditorDialog({
+    required VaultTemplateDef template,
+    VaultItem? existingItem,
+  }) {
+    final titleCtrl = TextEditingController(
+      text: existingItem?.title ?? template.name,
+    );
     final notesCtrl = TextEditingController(text: existingItem?.notes ?? '');
     final Map<String, TextEditingController> fieldControllers = {};
     final Set<String> visibleSecretKeys = {};
 
     for (var f in template.fields) {
-      final initialVal = existingItem?.fields[f.key] ?? (existingItem != null && f.key == template.secretFieldKey ? existingItem.secretValue : '');
+      final initialVal =
+          existingItem?.fields[f.key] ??
+          (existingItem != null && f.key == template.secretFieldKey
+              ? existingItem.secretValue
+              : '');
       fieldControllers[f.key] = TextEditingController(text: initialVal);
     }
 
@@ -1076,7 +1318,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
             final textSub = isDark ? Colors.white60 : const Color(0xFF64748B);
 
             return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
               child: Container(
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.90,
@@ -1084,7 +1328,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   color: sheetBg,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
                   border: Border.all(color: const Color(0xFF1E293B)),
                 ),
                 child: SingleChildScrollView(
@@ -1103,12 +1349,22 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                   color: template.color.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: Icon(template.icon, color: template.color, size: 22),
+                                child: Icon(
+                                  template.icon,
+                                  color: template.color,
+                                  size: 22,
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                existingItem != null ? 'Edit ${template.name}' : 'Lock ${template.name}',
-                                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: textMain),
+                                existingItem != null
+                                    ? 'Edit ${template.name}'
+                                    : 'Lock ${template.name}',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: textMain,
+                                ),
                               ),
                             ],
                           ),
@@ -1123,14 +1379,25 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       // Item Title / Label
                       TextField(
                         controller: titleCtrl,
-                        style: TextStyle(color: textMain, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: textMain,
+                          fontWeight: FontWeight.bold,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Title / Label',
                           labelStyle: TextStyle(color: textSub),
-                          prefixIcon: Icon(Icons.label_outline_rounded, color: template.color, size: 20),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          prefixIcon: Icon(
+                            Icons.label_outline_rounded,
+                            color: template.color,
+                            size: 20,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                           filled: true,
-                          fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                          fillColor: isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF8FAFC),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -1138,7 +1405,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       // Dynamic Template Fields
                       ...template.fields.map((field) {
                         final ctrl = fieldControllers[field.key]!;
-                        final isRevealed = visibleSecretKeys.contains(field.key);
+                        final isRevealed = visibleSecretKeys.contains(
+                          field.key,
+                        );
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
@@ -1152,45 +1421,68 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                 keyboardType: field.keyboardType,
                                 style: TextStyle(
                                   color: textMain,
-                                  fontFamily: field.isSecret && isRevealed ? 'monospace' : null,
+                                  fontFamily: field.isSecret && isRevealed
+                                      ? 'monospace'
+                                      : null,
                                 ),
                                 decoration: InputDecoration(
                                   labelText: field.label,
                                   hintText: field.hint,
                                   labelStyle: TextStyle(color: textSub),
-                                  hintStyle: TextStyle(color: textSub.withValues(alpha: 0.5), fontSize: 12),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                                  hintStyle: TextStyle(
+                                    color: textSub.withValues(alpha: 0.5),
+                                    fontSize: 12,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
                                   filled: true,
-                                  fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                                  fillColor: isDark
+                                      ? const Color(0xFF1E293B)
+                                      : const Color(0xFFF8FAFC),
                                   suffixIcon: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       if (field.canGeneratePassword)
                                         IconButton(
-                                          icon: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF00E5FF), size: 20),
+                                          icon: const Icon(
+                                            Icons.auto_awesome_rounded,
+                                            color: Color(0xFF00E5FF),
+                                            size: 20,
+                                          ),
                                           tooltip: 'Generate Strong Password',
                                           onPressed: () {
-                                            _showPasswordGeneratorDialog(onInsert: (generated) {
-                                              ctrl.text = generated;
-                                              setModalState(() {
-                                                visibleSecretKeys.add(field.key);
-                                              });
-                                            });
+                                            _showPasswordGeneratorDialog(
+                                              onInsert: (generated) {
+                                                ctrl.text = generated;
+                                                setModalState(() {
+                                                  visibleSecretKeys.add(
+                                                    field.key,
+                                                  );
+                                                });
+                                              },
+                                            );
                                           },
                                         ),
                                       if (field.isSecret)
                                         IconButton(
                                           icon: Icon(
-                                            isRevealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                            isRevealed
+                                                ? Icons.visibility_off_outlined
+                                                : Icons.visibility_outlined,
                                             size: 20,
                                             color: textSub,
                                           ),
                                           onPressed: () {
                                             setModalState(() {
                                               if (isRevealed) {
-                                                visibleSecretKeys.remove(field.key);
+                                                visibleSecretKeys.remove(
+                                                  field.key,
+                                                );
                                               } else {
-                                                visibleSecretKeys.add(field.key);
+                                                visibleSecretKeys.add(
+                                                  field.key,
+                                                );
                                               }
                                             });
                                           },
@@ -1212,10 +1504,18 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         decoration: InputDecoration(
                           labelText: 'Confidential Notes (Optional)',
                           labelStyle: TextStyle(color: textSub),
-                          prefixIcon: Icon(Icons.note_alt_outlined, color: template.color, size: 20),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          prefixIcon: Icon(
+                            Icons.note_alt_outlined,
+                            color: template.color,
+                            size: 20,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                           filled: true,
-                          fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                          fillColor: isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF8FAFC),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -1227,27 +1527,37 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
 
                           final Map<String, String> fieldsMap = {};
                           for (var f in template.fields) {
-                            fieldsMap[f.key] = fieldControllers[f.key]!.text.trim();
+                            fieldsMap[f.key] = fieldControllers[f.key]!.text
+                                .trim();
                           }
 
-                          final primarySecret = fieldControllers[template.secretFieldKey]?.text.trim() ??
+                          final primarySecret =
+                              fieldControllers[template.secretFieldKey]?.text
+                                  .trim() ??
                               fieldControllers.values.first.text.trim();
 
                           final newItem = VaultItem(
-                            id: existingItem?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+                            id:
+                                existingItem?.id ??
+                                DateTime.now().millisecondsSinceEpoch
+                                    .toString(),
                             title: titleCtrl.text.trim(),
                             category: template.category,
                             templateType: template.id,
                             secretValue: primarySecret,
                             fields: fieldsMap,
                             notes: notesCtrl.text.trim(),
-                            createdAt: existingItem?.createdAt ?? DateTime.now().millisecondsSinceEpoch,
+                            createdAt:
+                                existingItem?.createdAt ??
+                                DateTime.now().millisecondsSinceEpoch,
                             type: 'text',
                           );
 
                           setState(() {
                             if (existingItem != null) {
-                              final idx = _items.indexWhere((i) => i.id == existingItem.id);
+                              final idx = _items.indexWhere(
+                                (i) => i.id == existingItem.id,
+                              );
                               if (idx != -1) _items[idx] = newItem;
                             } else {
                               _items.insert(0, newItem);
@@ -1261,9 +1571,15 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                             SnackBar(
                               content: Row(
                                 children: [
-                                  const Icon(Icons.shield_rounded, color: Color(0xFF00E676), size: 18),
+                                  const Icon(
+                                    Icons.shield_rounded,
+                                    color: Color(0xFF00E676),
+                                    size: 18,
+                                  ),
                                   const SizedBox(width: 8),
-                                  Text('${template.name} encrypted & stored in Hardware Vault!'),
+                                  Text(
+                                    '${template.name} encrypted & stored in Hardware Vault!',
+                                  ),
                                 ],
                               ),
                               backgroundColor: const Color(0xFF0F172A),
@@ -1275,16 +1591,26 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         label: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            existingItem != null ? 'UPDATE ENCRYPTED RECORD' : 'ENCRYPT & STORE IN VAULT',
+                            existingItem != null
+                                ? 'UPDATE ENCRYPTED RECORD'
+                                : 'ENCRYPT & STORE IN VAULT',
                             maxLines: 1,
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2563EB),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                            horizontal: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],
@@ -1327,8 +1653,12 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
             final entropy = isPinMode
                 ? double.parse((pinLength * 3.32).toStringAsFixed(1))
                 : VaultPasswordGenerator.calculateEntropy(currentPassword);
-            final entropyRating = VaultPasswordGenerator.getEntropyRating(entropy);
-            final entropyColor = VaultPasswordGenerator.getEntropyColor(entropy);
+            final entropyRating = VaultPasswordGenerator.getEntropyRating(
+              entropy,
+            );
+            final entropyColor = VaultPasswordGenerator.getEntropyColor(
+              entropy,
+            );
 
             return AlertDialog(
               backgroundColor: bg,
@@ -1344,12 +1674,20 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF00E5FF), size: 22),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Color(0xFF00E5FF),
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Text(
                     isPinMode ? 'Secure PIN Generator' : 'Password Generator',
-                    style: TextStyle(color: textMain, fontSize: 17, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: textMain,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -1362,9 +1700,14 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF06090F) : const Color(0xFFF1F5F9),
+                        color: isDark
+                            ? const Color(0xFF06090F)
+                            : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: entropyColor.withValues(alpha: 0.5), width: 1.2),
+                        border: Border.all(
+                          color: entropyColor.withValues(alpha: 0.5),
+                          width: 1.2,
+                        ),
                       ),
                       child: Column(
                         children: [
@@ -1384,24 +1727,37 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
                                   color: entropyColor.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
                                   '$entropy bits • $entropyRating',
-                                  style: TextStyle(color: entropyColor, fontSize: 11, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    color: entropyColor,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               IconButton(
-                                icon: const Icon(Icons.refresh_rounded, color: Color(0xFF38BDF8), size: 20),
+                                icon: const Icon(
+                                  Icons.refresh_rounded,
+                                  color: Color(0xFF38BDF8),
+                                  size: 20,
+                                ),
                                 tooltip: 'Regenerate',
                                 onPressed: () {
                                   setDialogState(() {
                                     currentPassword = isPinMode
-                                        ? VaultPasswordGenerator.generatePin(length: pinLength)
+                                        ? VaultPasswordGenerator.generatePin(
+                                            length: pinLength,
+                                          )
                                         : VaultPasswordGenerator.generate(
                                             length: length,
                                             upper: upper,
@@ -1447,7 +1803,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                           onSelected: (val) {
                             setDialogState(() {
                               isPinMode = true;
-                              currentPassword = VaultPasswordGenerator.generatePin(length: pinLength);
+                              currentPassword =
+                                  VaultPasswordGenerator.generatePin(
+                                    length: pinLength,
+                                  );
                             });
                           },
                         ),
@@ -1460,9 +1819,24 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Length: $length characters', style: TextStyle(color: textMain, fontSize: 13, fontWeight: FontWeight.w600)),
-                          Text(length >= 20 ? 'Max Armor' : (length >= 14 ? 'Recommended' : 'Minimum'),
-                              style: TextStyle(color: entropyColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                          Text(
+                            'Length: $length characters',
+                            style: TextStyle(
+                              color: textMain,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            length >= 20
+                                ? 'Max Armor'
+                                : (length >= 14 ? 'Recommended' : 'Minimum'),
+                            style: TextStyle(
+                              color: entropyColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                       Slider(
@@ -1488,7 +1862,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       CheckboxListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        title: Text('Uppercase Letters (A-Z)', style: TextStyle(color: textMain, fontSize: 13)),
+                        title: Text(
+                          'Uppercase Letters (A-Z)',
+                          style: TextStyle(color: textMain, fontSize: 13),
+                        ),
                         value: upper,
                         onChanged: (val) {
                           setDialogState(() {
@@ -1506,7 +1883,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       CheckboxListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        title: Text('Lowercase Letters (a-z)', style: TextStyle(color: textMain, fontSize: 13)),
+                        title: Text(
+                          'Lowercase Letters (a-z)',
+                          style: TextStyle(color: textMain, fontSize: 13),
+                        ),
                         value: lower,
                         onChanged: (val) {
                           setDialogState(() {
@@ -1524,7 +1904,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       CheckboxListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        title: Text('Digits (0-9)', style: TextStyle(color: textMain, fontSize: 13)),
+                        title: Text(
+                          'Digits (0-9)',
+                          style: TextStyle(color: textMain, fontSize: 13),
+                        ),
                         value: digits,
                         onChanged: (val) {
                           setDialogState(() {
@@ -1542,7 +1925,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       CheckboxListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        title: Text('Special Symbols (!@#\$%)', style: TextStyle(color: textMain, fontSize: 13)),
+                        title: Text(
+                          'Special Symbols (!@#\$%)',
+                          style: TextStyle(color: textMain, fontSize: 13),
+                        ),
                         value: symbols,
                         onChanged: (val) {
                           setDialogState(() {
@@ -1568,7 +1954,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                             onSelected: (val) {
                               setDialogState(() {
                                 pinLength = l;
-                                currentPassword = VaultPasswordGenerator.generatePin(length: pinLength);
+                                currentPassword =
+                                    VaultPasswordGenerator.generatePin(
+                                      length: pinLength,
+                                    );
                               });
                             },
                           );
@@ -1581,19 +1970,29 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
               actions: [
                 TextButton.icon(
                   onPressed: () {
-                    VaultClipboardGuard.copyWithAutoWipe(context, currentPassword, isPinMode ? 'PIN' : 'Password');
+                    VaultClipboardGuard.copyWithAutoWipe(
+                      context,
+                      currentPassword,
+                      isPinMode ? 'PIN' : 'Password',
+                    );
                   },
                   icon: const Icon(Icons.copy_rounded, size: 16),
                   label: const Text('Copy to RAM'),
                 ),
                 if (onInsert != null)
                   ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00E676), foregroundColor: Colors.black),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00E676),
+                      foregroundColor: Colors.black,
+                    ),
                     onPressed: () {
                       onInsert(currentPassword);
                       Navigator.pop(ctx);
                     },
-                    child: const Text('Insert & Use', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Insert & Use',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
               ],
             );
@@ -1627,7 +2026,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
                 color: sheetBg,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
                 border: Border.all(color: const Color(0xFF1E293B)),
               ),
               child: SingleChildScrollView(
@@ -1646,7 +2047,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                 color: template.color.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Icon(template.icon, color: template.color, size: 24),
+                              child: Icon(
+                                template.icon,
+                                color: template.color,
+                                size: 24,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Column(
@@ -1654,12 +2059,20 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                               children: [
                                 Text(
                                   item.title,
-                                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: textMain),
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w900,
+                                    color: textMain,
+                                  ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   '${template.name} • AES-256 KeyStore',
-                                  style: TextStyle(fontSize: 11, color: template.color, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: template.color,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1675,7 +2088,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
 
                     // Structured Field Cards
                     ...template.fields.map((field) {
-                      final val = item.fields[field.key] ?? (field.key == template.secretFieldKey ? item.secretValue : '');
+                      final val =
+                          item.fields[field.key] ??
+                          (field.key == template.secretFieldKey
+                              ? item.secretValue
+                              : '');
                       if (val.isEmpty) return const SizedBox.shrink();
 
                       final isRevealed = revealedKeys.contains(field.key);
@@ -1684,10 +2101,14 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                          color: isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                            color: isDark
+                                ? const Color(0xFF334155)
+                                : const Color(0xFFE2E8F0),
                             width: 0.8,
                           ),
                         ),
@@ -1696,19 +2117,29 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                           children: [
                             Text(
                               field.label.toUpperCase(),
-                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: textSub, letterSpacing: 0.5),
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: textSub,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                             const SizedBox(height: 6),
                             Row(
                               children: [
                                 Expanded(
                                   child: Text(
-                                    field.isSecret && !isRevealed ? '•••• •••• •••• ••••' : val,
+                                    field.isSecret && !isRevealed
+                                        ? '•••• •••• •••• ••••'
+                                        : val,
                                     style: TextStyle(
                                       color: textMain,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
-                                      fontFamily: (field.isSecret && isRevealed) || field.key.contains('number') || field.key.contains('pin')
+                                      fontFamily:
+                                          (field.isSecret && isRevealed) ||
+                                              field.key.contains('number') ||
+                                              field.key.contains('pin')
                                           ? 'monospace'
                                           : null,
                                     ),
@@ -1717,7 +2148,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                 if (field.isSecret)
                                   IconButton(
                                     icon: Icon(
-                                      isRevealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                      isRevealed
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
                                       size: 18,
                                       color: textSub,
                                     ),
@@ -1732,10 +2165,18 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                     },
                                   ),
                                 IconButton(
-                                  icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF2563EB)),
+                                  icon: const Icon(
+                                    Icons.copy_rounded,
+                                    size: 18,
+                                    color: Color(0xFF2563EB),
+                                  ),
                                   tooltip: 'Copy',
                                   onPressed: () {
-                                    VaultClipboardGuard.copyWithAutoWipe(context, val, field.label);
+                                    VaultClipboardGuard.copyWithAutoWipe(
+                                      context,
+                                      val,
+                                      field.label,
+                                    );
                                   },
                                 ),
                               ],
@@ -1750,15 +2191,31 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                          color: isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('CONFIDENTIAL NOTES', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: textSub)),
+                            Text(
+                              'CONFIDENTIAL NOTES',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: textSub,
+                              ),
+                            ),
                             const SizedBox(height: 6),
-                            Text(item.notes, style: TextStyle(color: textMain, fontSize: 13, height: 1.35)),
+                            Text(
+                              item.notes,
+                              style: TextStyle(
+                                color: textMain,
+                                fontSize: 13,
+                                height: 1.35,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1771,17 +2228,36 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                           child: OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: Color(0xFF38BDF8)),
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                            icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF38BDF8)),
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              size: 16,
+                              color: Color(0xFF38BDF8),
+                            ),
                             label: const FittedBox(
                               fit: BoxFit.scaleDown,
-                              child: Text('Edit Fields', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13)),
+                              child: Text(
+                                'Edit Fields',
+                                style: TextStyle(
+                                  color: Color(0xFF38BDF8),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ),
                             onPressed: () {
                               Navigator.pop(ctx);
-                              _showTemplateEditorDialog(template: template, existingItem: item);
+                              _showTemplateEditorDialog(
+                                template: template,
+                                existingItem: item,
+                              );
                             },
                           ),
                         ),
@@ -1791,13 +2267,27 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFEF4444),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                            icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 16,
+                            ),
                             label: const FittedBox(
                               fit: BoxFit.scaleDown,
-                              child: Text('Shred Record', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              child: Text(
+                                'Shred Record',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ),
                             onPressed: () {
                               Navigator.pop(ctx);
@@ -1840,7 +2330,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
               children: [
                 Text(
                   'Add to Hardware Vault',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: textMain),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: textMain,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ListTile(
@@ -1851,10 +2345,23 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       color: const Color(0xFF00E676).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.security_rounded, color: Color(0xFF00E676), size: 24),
+                    child: const Icon(
+                      Icons.security_rounded,
+                      color: Color(0xFF00E676),
+                      size: 24,
+                    ),
                   ),
-                  title: Text('Add Credential (9 Templates)', style: TextStyle(fontWeight: FontWeight.bold, color: textMain)),
-                  subtitle: const Text('Gmail, Netbanking, Cards, UPI, Social Media, Wi-Fi & Crypto Seeds', style: TextStyle(fontSize: 12)),
+                  title: Text(
+                    'Add Credential (9 Templates)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: textMain,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Gmail, Netbanking, Cards, UPI, Social Media, Wi-Fi & Crypto Seeds',
+                    style: TextStyle(fontSize: 12),
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _showTemplatePickerSheet();
@@ -1869,10 +2376,23 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF00E5FF), size: 24),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Color(0xFF00E5FF),
+                      size: 24,
+                    ),
                   ),
-                  title: Text('Password & PIN Generator', style: TextStyle(fontWeight: FontWeight.bold, color: textMain)),
-                  subtitle: const Text('Military-grade 128-bit entropy passwords & numeric PINs', style: TextStyle(fontSize: 12)),
+                  title: Text(
+                    'Password & PIN Generator',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: textMain,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Military-grade 128-bit entropy passwords & numeric PINs',
+                    style: TextStyle(fontSize: 12),
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _showPasswordGeneratorDialog();
@@ -1887,10 +2407,23 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       color: const Color(0xFF10B981).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.document_scanner_rounded, color: Color(0xFF10B981), size: 24),
+                    child: const Icon(
+                      Icons.document_scanner_rounded,
+                      color: Color(0xFF10B981),
+                      size: 24,
+                    ),
                   ),
-                  title: Text('Scan Document (Auto Edge-Crop HD)', style: TextStyle(fontWeight: FontWeight.bold, color: textMain)),
-                  subtitle: const Text('Clean edge-detection without filter distortion', style: TextStyle(fontSize: 12)),
+                  title: Text(
+                    'Scan Document (Auto Edge-Crop HD)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: textMain,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Clean edge-detection without filter distortion',
+                    style: TextStyle(fontSize: 12),
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _startDocumentScan();
@@ -1905,10 +2438,23 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       color: const Color(0xFF06B6D4).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF06B6D4), size: 24),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      color: Color(0xFF06B6D4),
+                      size: 24,
+                    ),
                   ),
-                  title: Text('Camera HD Capture (100% Quality)', style: TextStyle(fontWeight: FontWeight.bold, color: textMain)),
-                  subtitle: const Text('Direct high-res photo with zero compression loss', style: TextStyle(fontSize: 12)),
+                  title: Text(
+                    'Camera HD Capture (100% Quality)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: textMain,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Direct high-res photo with zero compression loss',
+                    style: TextStyle(fontSize: 12),
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _captureCameraHd();
@@ -1923,10 +2469,23 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.photo_library_rounded, color: Color(0xFF38BDF8), size: 24),
+                    child: const Icon(
+                      Icons.photo_library_rounded,
+                      color: Color(0xFF38BDF8),
+                      size: 24,
+                    ),
                   ),
-                  title: Text('Import Document from Gallery', style: TextStyle(fontWeight: FontWeight.bold, color: textMain)),
-                  subtitle: const Text('Pick existing identity doc image to encrypt with AES-256', style: TextStyle(fontSize: 12)),
+                  title: Text(
+                    'Import Document from Gallery',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: textMain,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Pick existing identity doc image to encrypt with AES-256',
+                    style: TextStyle(fontSize: 12),
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _pickDocumentFromGallery();
@@ -1941,7 +2500,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
   }
 
   void _deleteItem(String id) {
-    final item = _items.firstWhere((i) => i.id == id, orElse: () => _items.first);
+    final item = _items.firstWhere(
+      (i) => i.id == id,
+      orElse: () => _items.first,
+    );
 
     showDialog(
       context: context,
@@ -1953,11 +2515,16 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
               : 'This secret entry will be permanently deleted from local hardware storage.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () async {
               if (item.isDocument && item.documentFileName != null) {
-                await VaultCryptoService().shredDocument(item.documentFileName!);
+                await VaultCryptoService().shredDocument(
+                  item.documentFileName!,
+                );
               }
               setState(() {
                 _items.removeWhere((i) => i.id == id);
@@ -1966,7 +2533,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
               await _saveItems();
               if (ctx.mounted) Navigator.pop(ctx);
             },
-            child: const Text('Shred & Delete', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Shred & Delete',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -1979,7 +2549,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     } else if (_activeFilter == 'gmail') {
       return _items.where((i) => i.templateType == 'gmail').toList();
     } else if (_activeFilter == 'bank') {
-      return _items.where((i) => i.templateType == 'bank' || i.templateType == 'card').toList();
+      return _items
+          .where((i) => i.templateType == 'bank' || i.templateType == 'card')
+          .toList();
     } else if (_activeFilter == 'upi') {
       return _items.where((i) => i.templateType == 'upi').toList();
     } else if (_activeFilter == 'secrets') {
@@ -1995,11 +2567,15 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     final cardBg = isDark ? const Color(0xFF111827) : Colors.white;
     final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
     final textSub = isDark ? Colors.white60 : const Color(0xFF64748B);
-    final borderCol = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    final borderCol = isDark
+        ? const Color(0xFF1F2937)
+        : const Color(0xFFE2E8F0);
 
     final docsCount = _items.where((i) => i.isDocument).length;
     final gmailCount = _items.where((i) => i.templateType == 'gmail').length;
-    final bankCount = _items.where((i) => i.templateType == 'bank' || i.templateType == 'card').length;
+    final bankCount = _items
+        .where((i) => i.templateType == 'bank' || i.templateType == 'card')
+        .length;
     final upiCount = _items.where((i) => i.templateType == 'upi').length;
     final secretsCount = _items.where((i) => !i.isDocument).length;
 
@@ -2015,12 +2591,19 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
         ),
         title: Text(
           'Hardware Security Vault',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: textMain),
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 20,
+            color: textMain,
+          ),
         ),
         actions: [
           if (_isUnlocked)
             IconButton(
-              icon: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF2563EB)),
+              icon: const Icon(
+                Icons.add_circle_outline_rounded,
+                color: Color(0xFF2563EB),
+              ),
               tooltip: 'Add Entry',
               onPressed: _showAddActionSheet,
             ),
@@ -2041,23 +2624,32 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       gradient: LinearGradient(
                         colors: _isUnlocked
                             ? [const Color(0xFF0A2540), const Color(0xFF0F172A)]
-                            : [const Color(0xFF1E293B), const Color(0xFF0F172A)],
+                            : [
+                                const Color(0xFF1E293B),
+                                const Color(0xFF0F172A),
+                              ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                            color: const Color(
+                              0xFF2563EB,
+                            ).withValues(alpha: 0.15),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            _isUnlocked ? Icons.lock_open_rounded : Icons.lock_rounded,
+                            _isUnlocked
+                                ? Icons.lock_open_rounded
+                                : Icons.lock_rounded,
                             color: const Color(0xFF38BDF8),
                             size: 32,
                           ),
@@ -2068,7 +2660,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _isUnlocked ? 'AES-256 HARDWARE VAULT' : 'VAULT LOCKED',
+                                _isUnlocked
+                                    ? 'AES-256 HARDWARE VAULT'
+                                    : 'VAULT LOCKED',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 15,
@@ -2106,15 +2700,23 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                               child: GestureDetector(
                                 onTap: _showTemplatePickerSheet,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                    horizontal: 12,
+                                  ),
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
-                                      colors: [Color(0xFF00E676), Color(0xFF00B0FF)],
+                                      colors: [
+                                        Color(0xFF00E676),
+                                        Color(0xFF00B0FF),
+                                      ],
                                     ),
                                     borderRadius: BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFF00E676).withValues(alpha: 0.25),
+                                        color: const Color(
+                                          0xFF00E676,
+                                        ).withValues(alpha: 0.25),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4),
                                       ),
@@ -2123,12 +2725,20 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                   child: const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.add_moderator_rounded, color: Colors.black, size: 18),
+                                      Icon(
+                                        Icons.add_moderator_rounded,
+                                        color: Colors.black,
+                                        size: 18,
+                                      ),
                                       SizedBox(width: 6),
                                       Flexible(
                                         child: Text(
                                           'Add Credential',
-                                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 13),
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 13,
+                                          ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -2143,15 +2753,23 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                               child: GestureDetector(
                                 onTap: _startDocumentScan,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                    horizontal: 12,
+                                  ),
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
-                                      colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                                      colors: [
+                                        Color(0xFF2563EB),
+                                        Color(0xFF1D4ED8),
+                                      ],
                                     ),
                                     borderRadius: BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                                        color: const Color(
+                                          0xFF2563EB,
+                                        ).withValues(alpha: 0.3),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4),
                                       ),
@@ -2160,12 +2778,20 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                                   child: const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.document_scanner_rounded, color: Colors.white, size: 18),
+                                      Icon(
+                                        Icons.document_scanner_rounded,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
                                       SizedBox(width: 6),
                                       Flexible(
                                         child: Text(
                                           'Scan Document',
-                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -2181,7 +2807,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         GestureDetector(
                           onTap: () => _showPasswordGeneratorDialog(),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 11,
+                              horizontal: 14,
+                            ),
                             decoration: BoxDecoration(
                               color: cardBg,
                               borderRadius: BorderRadius.circular(14),
@@ -2190,12 +2819,20 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.auto_awesome_rounded, color: Color(0xFF00E5FF), size: 16),
+                                const Icon(
+                                  Icons.auto_awesome_rounded,
+                                  color: Color(0xFF00E5FF),
+                                  size: 16,
+                                ),
                                 const SizedBox(width: 8),
                                 Flexible(
                                   child: Text(
                                     'Generate Strong Password / PIN',
-                                    style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 12),
+                                    style: TextStyle(
+                                      color: textMain,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -2222,7 +2859,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       activeThumbColor: const Color(0xFF10B981),
                       title: Text(
                         'Biometric App Lock on Launch',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textMain),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: textMain,
+                        ),
                       ),
                       subtitle: Text(
                         _hasBiometrics
@@ -2236,7 +2877,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                           color: const Color(0xFF10B981).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.fingerprint_rounded, color: Color(0xFF10B981), size: 22),
+                        child: const Icon(
+                          Icons.fingerprint_rounded,
+                          color: Color(0xFF10B981),
+                          size: 22,
+                        ),
                       ),
                     ),
                   ),
@@ -2255,8 +2900,13 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2563EB),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
                         ),
                       ),
@@ -2270,21 +2920,36 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         children: [
                           _buildFilterChip('All (${_items.length})', 'all'),
                           const SizedBox(width: 8),
-                          _buildFilterChip('Scanned Documents ($docsCount)', 'docs'),
+                          _buildFilterChip(
+                            'Scanned Documents ($docsCount)',
+                            'docs',
+                          ),
                           const SizedBox(width: 8),
                           if (gmailCount > 0) ...[
-                            _buildFilterChip('Google / Gmail ($gmailCount)', 'gmail'),
+                            _buildFilterChip(
+                              'Google / Gmail ($gmailCount)',
+                              'gmail',
+                            ),
                             const SizedBox(width: 8),
                           ],
                           if (bankCount > 0) ...[
-                            _buildFilterChip('Banking & Cards ($bankCount)', 'bank'),
+                            _buildFilterChip(
+                              'Banking & Cards ($bankCount)',
+                              'bank',
+                            ),
                             const SizedBox(width: 8),
                           ],
                           if (upiCount > 0) ...[
-                            _buildFilterChip('UPI & Wallets ($upiCount)', 'upi'),
+                            _buildFilterChip(
+                              'UPI & Wallets ($upiCount)',
+                              'upi',
+                            ),
                             const SizedBox(width: 8),
                           ],
-                          _buildFilterChip('All Keys & PINs ($secretsCount)', 'secrets'),
+                          _buildFilterChip(
+                            'All Keys & PINs ($secretsCount)',
+                            'secrets',
+                          ),
                         ],
                       ),
                     ),
@@ -2300,11 +2965,23 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         ),
                         child: Column(
                           children: [
-                            Icon(Icons.shield_moon_outlined, size: 40, color: textSub.withValues(alpha: 0.5)),
+                            Icon(
+                              Icons.shield_moon_outlined,
+                              size: 40,
+                              color: textSub.withValues(alpha: 0.5),
+                            ),
                             const SizedBox(height: 12),
                             Text(
-                              _activeFilter == 'docs' ? 'No Scanned Documents' : (_activeFilter == 'secrets' ? 'No Secrets Stored' : 'Vault is Empty'),
-                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: textMain),
+                              _activeFilter == 'docs'
+                                  ? 'No Scanned Documents'
+                                  : (_activeFilter == 'secrets'
+                                        ? 'No Secrets Stored'
+                                        : 'Vault is Empty'),
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: textMain,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -2316,17 +2993,34 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton.icon(
-                              onPressed: _activeFilter == 'secrets' ? _showAddSecretDialog : _startDocumentScan,
-                              icon: Icon(_activeFilter == 'secrets' ? Icons.add_rounded : Icons.document_scanner_rounded, size: 16),
+                              onPressed: _activeFilter == 'secrets'
+                                  ? _showAddSecretDialog
+                                  : _startDocumentScan,
+                              icon: Icon(
+                                _activeFilter == 'secrets'
+                                    ? Icons.add_rounded
+                                    : Icons.document_scanner_rounded,
+                                size: 16,
+                              ),
                               label: FittedBox(
                                 fit: BoxFit.scaleDown,
-                                child: Text(_activeFilter == 'secrets' ? 'Add Secret Key' : 'Scan First Document', maxLines: 1),
+                                child: Text(
+                                  _activeFilter == 'secrets'
+                                      ? 'Add Secret Key'
+                                      : 'Scan First Document',
+                                  maxLines: 1,
+                                ),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF2563EB),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                             ),
                           ],
@@ -2340,7 +3034,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (context, idx) {
                           final item = _filteredItems[idx];
-                          return item.isDocument ? _buildDocumentCard(item) : _buildSecretCard(item);
+                          return item.isDocument
+                              ? _buildDocumentCard(item)
+                              : _buildSecretCard(item);
                         },
                       ),
                   ],
@@ -2360,9 +3056,17 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0F172A) : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0)),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF0F172A)
+                : const Color(0xFFE2E8F0),
+          ),
           boxShadow: [
-            if (isSelected) BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4),
+            if (isSelected)
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 4,
+              ),
           ],
         ),
         child: Text(
@@ -2382,9 +3086,13 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? const Color(0xFF111827) : Colors.white;
     final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
-    final borderCol = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    final borderCol = isDark
+        ? const Color(0xFF1F2937)
+        : const Color(0xFFE2E8F0);
 
-    final sizeStr = item.fileSizeBytes != null ? '${(item.fileSizeBytes! / 1024).toStringAsFixed(0)} KB' : 'Encrypted';
+    final sizeStr = item.fileSizeBytes != null
+        ? '${(item.fileSizeBytes! / 1024).toStringAsFixed(0)} KB'
+        : 'Encrypted';
 
     Color categoryColor = const Color(0xFF10B981);
     IconData categoryIcon = Icons.badge_rounded;
@@ -2452,25 +3160,41 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         runSpacing: 4,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: categoryColor.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               item.category.toUpperCase(),
-                              style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: categoryColor),
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w900,
+                                color: categoryColor,
+                              ),
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                              color: const Color(
+                                0xFF2563EB,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               'AES-256 • $sizeStr',
-                              style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                              style: const TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2563EB),
+                              ),
                             ),
                           ),
                         ],
@@ -2478,17 +3202,28 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       const SizedBox(height: 6),
                       Text(
                         item.title,
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: textMain),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: textMain,
+                        ),
                       ),
                       if (item.secretValue.isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                            color: isDark
+                                ? const Color(0xFF0F172A)
+                                : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                              color: isDark
+                                  ? const Color(0xFF334155)
+                                  : const Color(0xFFCBD5E1),
                               width: 0.8,
                             ),
                           ),
@@ -2499,7 +3234,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                               fontWeight: FontWeight.w700,
                               fontFamily: 'monospace',
                               letterSpacing: 0.5,
-                              color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0369A1),
+                              color: isDark
+                                  ? const Color(0xFF38BDF8)
+                                  : const Color(0xFF0369A1),
                             ),
                           ),
                         ),
@@ -2508,7 +3245,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Color(0xFFEF4444)),
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    size: 20,
+                    color: Color(0xFFEF4444),
+                  ),
                   tooltip: 'Shred',
                   onPressed: () => _deleteItem(item.id),
                 ),
@@ -2531,27 +3272,46 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                 ),
               );
             },
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(20),
+            ),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : const Color(0xFFF8FAFC),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                color: isDark
+                    ? const Color(0xFF1E293B).withValues(alpha: 0.4)
+                    : const Color(0xFFF8FAFC),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(20),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.lock_open_rounded, size: 16, color: Color(0xFF2563EB)),
+                  const Icon(
+                    Icons.lock_open_rounded,
+                    size: 16,
+                    color: Color(0xFF2563EB),
+                  ),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
                       'DECRYPT & VIEW IN SECURE RAM',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF2563EB), letterSpacing: 0.3),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2563EB),
+                        letterSpacing: 0.3,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Color(0xFF2563EB)),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 12,
+                    color: Color(0xFF2563EB),
+                  ),
                 ],
               ),
             ),
@@ -2567,7 +3327,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     final cardBg = isDark ? const Color(0xFF111827) : Colors.white;
     final textMain = isDark ? Colors.white : const Color(0xFF0F172A);
     final textSub = isDark ? Colors.white60 : const Color(0xFF64748B);
-    final borderCol = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    final borderCol = isDark
+        ? const Color(0xFF1F2937)
+        : const Color(0xFFE2E8F0);
     final isRevealed = _revealedItemIds.contains(item.id);
     final template = VaultTemplates.findById(item.templateType);
 
@@ -2606,28 +3368,50 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         color: template.color.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(template.icon, color: template.color, size: 18),
+                      child: Icon(
+                        template.icon,
+                        color: template.color,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: template.color.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         template.name.toUpperCase(),
-                        style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: template.color),
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
+                          color: template.color,
+                        ),
                       ),
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF38BDF8)),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        size: 18,
+                        color: Color(0xFF38BDF8),
+                      ),
                       tooltip: 'Edit',
-                      onPressed: () => _showTemplateEditorDialog(template: template, existingItem: item),
+                      onPressed: () => _showTemplateEditorDialog(
+                        template: template,
+                        existingItem: item,
+                      ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        size: 18,
+                        color: Color(0xFFEF4444),
+                      ),
                       tooltip: 'Shred',
                       onPressed: () => _deleteItem(item.id),
                     ),
@@ -2636,25 +3420,37 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                 const SizedBox(height: 8),
                 Text(
                   item.title,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: textMain),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: textMain,
+                  ),
                 ),
-                if (primaryFieldValue.isNotEmpty && primaryFieldValue != item.title) ...[
+                if (primaryFieldValue.isNotEmpty &&
+                    primaryFieldValue != item.title) ...[
                   const SizedBox(height: 3),
                   Text(
                     primaryFieldValue,
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                      color: isDark
+                          ? const Color(0xFF38BDF8)
+                          : const Color(0xFF0284C7),
                     ),
                   ),
                 ],
                 const SizedBox(height: 10),
                 // Masked / Revealed Secret Row
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    color: isDark
+                        ? const Color(0xFF0F172A)
+                        : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: borderCol),
                   ),
@@ -2674,7 +3470,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                       ),
                       IconButton(
                         icon: Icon(
-                          isRevealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          isRevealed
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                           size: 18,
                           color: textSub,
                         ),
@@ -2689,10 +3487,18 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                         },
                       ),
                       IconButton(
-                        icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF2563EB)),
+                        icon: const Icon(
+                          Icons.copy_rounded,
+                          size: 18,
+                          color: Color(0xFF2563EB),
+                        ),
                         tooltip: 'Copy',
                         onPressed: () {
-                          VaultClipboardGuard.copyWithAutoWipe(context, item.secretValue, 'Password / Secret');
+                          VaultClipboardGuard.copyWithAutoWipe(
+                            context,
+                            item.secretValue,
+                            'Password / Secret',
+                          );
                         },
                       ),
                     ],
@@ -2702,7 +3508,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                   const SizedBox(height: 8),
                   Text(
                     item.notes,
-                    style: TextStyle(fontSize: 11.5, color: textSub, fontStyle: FontStyle.italic),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: textSub,
+                      fontStyle: FontStyle.italic,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -2714,12 +3524,18 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
           // Action Bar to View All Decrypted Fields
           InkWell(
             onTap: () => _showItemDetailsSheet(item),
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(20),
+            ),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : const Color(0xFFF8FAFC),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                color: isDark
+                    ? const Color(0xFF1E293B).withValues(alpha: 0.4)
+                    : const Color(0xFFF8FAFC),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(20),
+                ),
               ),
               child: Row(
                 children: [
@@ -2728,13 +3544,22 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                   Expanded(
                     child: Text(
                       'VIEW ALL DECRYPTED FIELDS (${item.fields.length} ITEMS)',
-                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: template.color, letterSpacing: 0.3),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: template.color,
+                        letterSpacing: 0.3,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 4),
-                  Icon(Icons.arrow_forward_ios_rounded, size: 12, color: template.color),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 12,
+                    color: template.color,
+                  ),
                 ],
               ),
             ),
@@ -2758,7 +3583,8 @@ class _DocumentThumbnailWidget extends StatefulWidget {
   });
 
   @override
-  State<_DocumentThumbnailWidget> createState() => _DocumentThumbnailWidgetState();
+  State<_DocumentThumbnailWidget> createState() =>
+      _DocumentThumbnailWidgetState();
 }
 
 class _DocumentThumbnailWidgetState extends State<_DocumentThumbnailWidget> {
@@ -2819,7 +3645,10 @@ class _DocumentThumbnailWidgetState extends State<_DocumentThumbnailWidget> {
         height: 72,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: widget.categoryColor.withValues(alpha: 0.35), width: 1.5),
+          border: Border.all(
+            color: widget.categoryColor.withValues(alpha: 0.35),
+            width: 1.5,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.12),
@@ -2847,7 +3676,11 @@ class _DocumentThumbnailWidgetState extends State<_DocumentThumbnailWidget> {
                     color: Colors.black.withValues(alpha: 0.75),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.lock_rounded, size: 10, color: Color(0xFF10B981)),
+                  child: const Icon(
+                    Icons.lock_rounded,
+                    size: 10,
+                    color: Color(0xFF10B981),
+                  ),
                 ),
               ),
             ],

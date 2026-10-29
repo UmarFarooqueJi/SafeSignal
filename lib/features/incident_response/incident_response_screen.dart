@@ -5,11 +5,11 @@ import 'package:go_router/go_router.dart';
 
 // ─── Theme Colors ────────────────────────────────────────────────────────────
 const _kScaffoldLight = Color(0xFFDEEBF7);
-const _kCardLight     = Colors.white;
+const _kCardLight = Colors.white;
 const _kTextMainLight = Color(0xFF0F172A);
-const _kBorderLight   = Color(0xFFCBDDF0);
-const _kBlue          = Color(0xFF0284C7);
-const _kRed           = Color(0xFFDC2626);
+const _kBorderLight = Color(0xFFCBDDF0);
+const _kBlue = Color(0xFF0284C7);
+const _kRed = Color(0xFFDC2626);
 
 class IncidentResponseScreen extends StatefulWidget {
   const IncidentResponseScreen({super.key});
@@ -109,7 +109,8 @@ class _IncidentResponseScreenState extends State<IncidentResponseScreen> {
     final date = DateTime.now().toLocal().toString().split('.')[0];
 
     setState(() {
-      _generatedComplaint = '''
+      _generatedComplaint =
+          '''
 COMPLAINT UNDER SECTION 66D OF THE INFORMATION TECHNOLOGY ACT, 2000 (CYBER FRAUD & CHEATING BY PERSONATION)
 
 To,
@@ -254,7 +255,10 @@ Aadhaar/ID: [LAST 4 DIGITS]
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(20),
@@ -276,7 +280,11 @@ Aadhaar/ID: [LAST 4 DIGITS]
                 ),
               ),
               const Spacer(),
-              const Icon(Icons.emergency_rounded, color: Colors.white, size: 28),
+              const Icon(
+                Icons.emergency_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -327,7 +335,11 @@ Aadhaar/ID: [LAST 4 DIGITS]
               color: _kRed.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.phone_in_talk_rounded, color: _kRed, size: 24),
+            child: const Icon(
+              Icons.phone_in_talk_rounded,
+              color: _kRed,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -337,7 +349,11 @@ Aadhaar/ID: [LAST 4 DIGITS]
               children: [
                 Text(
                   'Dial 1930 (Cyber Helpline)',
-                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900, color: textMain),
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900,
+                    color: textMain,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -367,7 +383,11 @@ Aadhaar/ID: [LAST 4 DIGITS]
                     SizedBox(width: 6),
                     Text(
                       'Call 1930',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -424,10 +444,20 @@ Aadhaar/ID: [LAST 4 DIGITS]
             style: TextStyle(fontSize: 13, color: textMain),
             decoration: InputDecoration(
               hintText: 'Search Bank or Payment App (SBI, HDFC, PhonePe)...',
-              hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : const Color(0xFF94A3B8)),
-              prefixIcon: Icon(Icons.search_rounded, size: 18, color: isDark ? Colors.white54 : const Color(0xFF64748B)),
+              hintStyle: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+              ),
+              prefixIcon: Icon(
+                Icons.search_rounded,
+                size: 18,
+                color: isDark ? Colors.white54 : const Color(0xFF64748B),
+              ),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
           ),
         ),
@@ -440,7 +470,10 @@ Aadhaar/ID: [LAST 4 DIGITS]
             alignment: Alignment.center,
             child: Text(
               'No bank found matching "$_bankQuery"',
-              style: TextStyle(color: isDark ? Colors.white38 : Colors.black45, fontSize: 13),
+              style: TextStyle(
+                color: isDark ? Colors.white38 : Colors.black45,
+                fontSize: 13,
+              ),
             ),
           )
         else
@@ -470,7 +503,11 @@ Aadhaar/ID: [LAST 4 DIGITS]
                       color: _kBlue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.account_balance_rounded, size: 19, color: _kBlue),
+                    child: const Icon(
+                      Icons.account_balance_rounded,
+                      size: 19,
+                      color: _kBlue,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -480,20 +517,36 @@ Aadhaar/ID: [LAST 4 DIGITS]
                       children: [
                         Text(
                           b['name']!,
-                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: textMain),
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: textMain,
+                          ),
                         ),
                         const SizedBox(height: 3),
                         InkWell(
-                          onTap: () => _copyToClipboard(b['smsFreeze']!, 'SMS Protocol'),
+                          onTap: () =>
+                              _copyToClipboard(b['smsFreeze']!, 'SMS Protocol'),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.copy_rounded, size: 11, color: isDark ? Colors.white54 : const Color(0xFF64748B)),
+                              Icon(
+                                Icons.copy_rounded,
+                                size: 11,
+                                color: isDark
+                                    ? Colors.white54
+                                    : const Color(0xFF64748B),
+                              ),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
                                   b['smsFreeze']!,
-                                  style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : const Color(0xFF64748B)),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark
+                                        ? Colors.white60
+                                        : const Color(0xFF64748B),
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -506,21 +559,34 @@ Aadhaar/ID: [LAST 4 DIGITS]
                   ),
                   const SizedBox(width: 8),
                   Material(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFF0F172A),
                     borderRadius: BorderRadius.circular(10),
                     child: InkWell(
                       onTap: () => _callNumber(b['tollFree']!),
                       borderRadius: BorderRadius.circular(10),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.call, size: 12, color: Colors.white),
+                            const Icon(
+                              Icons.call,
+                              size: 12,
+                              color: Colors.white,
+                            ),
                             const SizedBox(width: 5),
                             Text(
                               b['tollFree']!,
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
                             ),
                           ],
                         ),
@@ -565,13 +631,21 @@ Aadhaar/ID: [LAST 4 DIGITS]
                   color: _kBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.description_rounded, color: _kBlue, size: 18),
+                child: const Icon(
+                  Icons.description_rounded,
+                  color: _kBlue,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'Cybercrime FIR & Chakshu Generator',
-                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900, color: textMain),
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900,
+                    color: textMain,
+                  ),
                 ),
               ),
             ],
@@ -579,16 +653,43 @@ Aadhaar/ID: [LAST 4 DIGITS]
           const SizedBox(height: 6),
           Text(
             'Automatically formats a legally grounded complaint statement ready to submit on cybercrime.gov.in and DoT Chakshu.',
-            style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : const Color(0xFF64748B)),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white60 : const Color(0xFF64748B),
+            ),
           ),
           const SizedBox(height: 16),
-          _buildTextField(_amountCtrl, 'Stolen Amount (₹)', 'e.g. 25000', TextInputType.number, isDark),
+          _buildTextField(
+            _amountCtrl,
+            'Stolen Amount (₹)',
+            'e.g. 25000',
+            TextInputType.number,
+            isDark,
+          ),
           const SizedBox(height: 10),
-          _buildTextField(_utrCtrl, 'Transaction UTR / Ref ID (12 digits)', 'e.g. 429381928472', TextInputType.text, isDark),
+          _buildTextField(
+            _utrCtrl,
+            'Transaction UTR / Ref ID (12 digits)',
+            'e.g. 429381928472',
+            TextInputType.text,
+            isDark,
+          ),
           const SizedBox(height: 10),
-          _buildTextField(_scammerInfoCtrl, 'Scammer Phone / UPI ID / Handle', 'e.g. 9876543210 or scammer@upi', TextInputType.text, isDark),
+          _buildTextField(
+            _scammerInfoCtrl,
+            'Scammer Phone / UPI ID / Handle',
+            'e.g. 9876543210 or scammer@upi',
+            TextInputType.text,
+            isDark,
+          ),
           const SizedBox(height: 10),
-          _buildTextField(_bankNameCtrl, 'Your Bank / Payment App', 'e.g. SBI, HDFC, PhonePe', TextInputType.text, isDark),
+          _buildTextField(
+            _bankNameCtrl,
+            'Your Bank / Payment App',
+            'e.g. SBI, HDFC, PhonePe',
+            TextInputType.text,
+            isDark,
+          ),
           const SizedBox(height: 16),
           Material(
             color: _kBlue,
@@ -605,7 +706,11 @@ Aadhaar/ID: [LAST 4 DIGITS]
                     SizedBox(width: 8),
                     Text(
                       'Generate Legal Complaint Draft',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.white,
+                      ),
                     ),
                   ],
                 ),
@@ -617,7 +722,9 @@ Aadhaar/ID: [LAST 4 DIGITS]
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                color: isDark
+                    ? const Color(0xFF0F172A)
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: borderColor),
               ),
@@ -628,23 +735,48 @@ Aadhaar/ID: [LAST 4 DIGITS]
                     children: [
                       Text(
                         'LEGAL STATEMENT FORMATTED',
-                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900, color: isDark ? Colors.white70 : const Color(0xFF64748B)),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF64748B),
+                        ),
                       ),
                       const Spacer(),
                       Material(
-                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
+                        color: isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFF0F172A),
                         borderRadius: BorderRadius.circular(8),
                         child: InkWell(
-                          onTap: () => _copyToClipboard(_generatedComplaint, 'Official Complaint Statement'),
+                          onTap: () => _copyToClipboard(
+                            _generatedComplaint,
+                            'Official Complaint Statement',
+                          ),
                           borderRadius: BorderRadius.circular(8),
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.copy_rounded, size: 12, color: Colors.white),
+                                Icon(
+                                  Icons.copy_rounded,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
                                 SizedBox(width: 5),
-                                Text('Copy Draft', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+                                Text(
+                                  'Copy Draft',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -655,7 +787,12 @@ Aadhaar/ID: [LAST 4 DIGITS]
                   const SizedBox(height: 10),
                   SelectableText(
                     _generatedComplaint,
-                    style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: isDark ? Colors.white : const Color(0xFF1E293B), height: 1.4),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
@@ -665,27 +802,59 @@ Aadhaar/ID: [LAST 4 DIGITS]
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => launchUrl(Uri.parse('https://cybercrime.gov.in/'), mode: LaunchMode.externalApplication),
+                    onPressed: () => launchUrl(
+                      Uri.parse('https://cybercrime.gov.in/'),
+                      mode: LaunchMode.externalApplication,
+                    ),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       side: BorderSide(color: borderColor),
                     ),
-                    icon: const Icon(Icons.open_in_new_rounded, size: 14, color: _kBlue),
-                    label: const Text('cybercrime.gov.in', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _kBlue)),
+                    icon: const Icon(
+                      Icons.open_in_new_rounded,
+                      size: 14,
+                      color: _kBlue,
+                    ),
+                    label: const Text(
+                      'cybercrime.gov.in',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: _kBlue,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => launchUrl(Uri.parse('https://sancharsaathi.gov.in/sfc/'), mode: LaunchMode.externalApplication),
+                    onPressed: () => launchUrl(
+                      Uri.parse('https://sancharsaathi.gov.in/sfc/'),
+                      mode: LaunchMode.externalApplication,
+                    ),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       side: BorderSide(color: borderColor),
                     ),
-                    icon: const Icon(Icons.open_in_new_rounded, size: 14, color: _kBlue),
-                    label: const Text('DoT Chakshu', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _kBlue)),
+                    icon: const Icon(
+                      Icons.open_in_new_rounded,
+                      size: 14,
+                      color: _kBlue,
+                    ),
+                    label: const Text(
+                      'DoT Chakshu',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: _kBlue,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -696,7 +865,13 @@ Aadhaar/ID: [LAST 4 DIGITS]
     );
   }
 
-  Widget _buildTextField(TextEditingController ctrl, String label, String hint, TextInputType type, bool isDark) {
+  Widget _buildTextField(
+    TextEditingController ctrl,
+    String label,
+    String hint,
+    TextInputType type,
+    bool isDark,
+  ) {
     final borderColor = isDark ? Colors.white12 : _kBorderLight;
     final textMain = isDark ? Colors.white : _kTextMainLight;
 
@@ -706,16 +881,34 @@ Aadhaar/ID: [LAST 4 DIGITS]
       style: TextStyle(fontSize: 13, color: textMain),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : const Color(0xFF64748B)),
+        labelStyle: TextStyle(
+          fontSize: 12,
+          color: isDark ? Colors.white60 : const Color(0xFF64748B),
+        ),
         hintText: hint,
-        hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white24 : Colors.black26),
+        hintStyle: TextStyle(
+          fontSize: 12,
+          color: isDark ? Colors.white24 : Colors.black26,
+        ),
         isDense: true,
         filled: true,
         fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: borderColor)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: borderColor)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _kBlue, width: 1.5)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: borderColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: borderColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _kBlue, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
       ),
     );
   }
@@ -726,7 +919,9 @@ Aadhaar/ID: [LAST 4 DIGITS]
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFF0B1B15),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: const Color(0xFF10B981).withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         children: [
@@ -736,7 +931,11 @@ Aadhaar/ID: [LAST 4 DIGITS]
               color: const Color(0xFF10B981).withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.shield_rounded, color: Color(0xFF10B981), size: 24),
+            child: const Icon(
+              Icons.shield_rounded,
+              color: Color(0xFF10B981),
+              size: 24,
+            ),
           ),
           const SizedBox(width: 14),
           const Expanded(
@@ -745,7 +944,11 @@ Aadhaar/ID: [LAST 4 DIGITS]
               children: [
                 Text(
                   'Hardware Security Vault',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
                 ),
                 SizedBox(height: 2),
                 Text(
@@ -766,7 +969,11 @@ Aadhaar/ID: [LAST 4 DIGITS]
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Text(
                   'Open Vault',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

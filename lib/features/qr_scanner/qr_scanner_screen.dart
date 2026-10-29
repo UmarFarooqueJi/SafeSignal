@@ -21,7 +21,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     detectionSpeed: DetectionSpeed.noDuplicates,
     facing: CameraFacing.back,
   );
-  
+
   _QrState _state = _QrState.scanning;
   String _scannedData = '';
   String _analysisResult = '';
@@ -43,7 +43,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   Future<void> _handleScan(BarcodeCapture capture) async {
     if (_state != _QrState.scanning) return;
-    
+
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
       final code = barcodes.first.rawValue!;
@@ -68,8 +68,12 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       });
       _controller.stop();
 
-      final BarcodeCapture? capture = await _controller.analyzeImage(image.path);
-      if (capture != null && capture.barcodes.isNotEmpty && capture.barcodes.first.rawValue != null) {
+      final BarcodeCapture? capture = await _controller.analyzeImage(
+        image.path,
+      );
+      if (capture != null &&
+          capture.barcodes.isNotEmpty &&
+          capture.barcodes.first.rawValue != null) {
         final code = capture.barcodes.first.rawValue!;
         HapticFeedback.mediumImpact();
         setState(() {
@@ -80,10 +84,14 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('No clear QR code or Barcode found in selected image.'),
+              content: const Text(
+                'No clear QR code or Barcode found in selected image.',
+              ),
               backgroundColor: const Color(0xFFEF4444),
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
           _resetScanner();
@@ -106,14 +114,19 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
     // 1. Offline Deep Dissection: UPI Payment Intent & Mandates
     if (lower.startsWith('upi://')) {
-      _dataType = lower.contains('mandate') ? 'UPI Auto-Debit Mandate' : 'UPI Payment Intent';
+      _dataType = lower.contains('mandate')
+          ? 'UPI Auto-Debit Mandate'
+          : 'UPI Payment Intent';
       final analysis = UpiIntentGuardService.analyze(data);
-      if (analysis.payeeAddress.isNotEmpty) _dissectedFields['Payee VPA'] = analysis.payeeAddress;
-      if (analysis.payeeName.isNotEmpty) _dissectedFields['Payee Name'] = analysis.payeeName;
+      if (analysis.payeeAddress.isNotEmpty)
+        _dissectedFields['Payee VPA'] = analysis.payeeAddress;
+      if (analysis.payeeName.isNotEmpty)
+        _dissectedFields['Payee Name'] = analysis.payeeName;
       if (analysis.amount != null && analysis.amount!.isNotEmpty) {
         _dissectedFields['Pre-filled Amount'] = '₹${analysis.amount} INR';
       }
-      if (analysis.transactionNote != null && analysis.transactionNote!.isNotEmpty) {
+      if (analysis.transactionNote != null &&
+          analysis.transactionNote!.isNotEmpty) {
         _dissectedFields['Note'] = analysis.transactionNote!;
       }
       if (analysis.merchantCode != null && analysis.merchantCode!.isNotEmpty) {
@@ -133,7 +146,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           'ℹ️ Standard UPI QR: Will initiate a payment to ${analysis.payeeName} (${analysis.payeeAddress}). ${analysis.actionGuidance}',
         );
       }
-    } 
+    }
     // 2. Offline Deep Dissection: Web URL
     else if (lower.startsWith('http://') || lower.startsWith('https://')) {
       _dataType = 'Web URL / Link';
@@ -145,25 +158,60 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
         if (uri.scheme == 'http') {
           _riskScore += 40;
-          _threatAlerts.add('⚠️ INSECURE HTTP: Traffic is unencrypted. Susceptible to interception.');
+          _threatAlerts.add(
+            '⚠️ INSECURE HTTP: Traffic is unencrypted. Susceptible to interception.',
+          );
         }
 
-        if (lower.endsWith('.apk') || lower.contains('.apk?') || lower.contains('/download')) {
+        if (lower.endsWith('.apk') ||
+            lower.contains('.apk?') ||
+            lower.contains('/download')) {
           _riskScore = 95;
           _grade = 'E';
-          _threatAlerts.add('🚨 MALICIOUS APK DROPPER: Direct Android application package download link. High risk of spyware or banking trojan.');
+          _threatAlerts.add(
+            '🚨 MALICIOUS APK DROPPER: Direct Android application package download link. High risk of spyware or banking trojan.',
+          );
         }
 
-        final scamTlds = ['.xyz', '.top', '.click', '.tk', '.ml', '.ga', '.cf', '.work', '.rest', '.buzz'];
+        final scamTlds = [
+          '.xyz',
+          '.top',
+          '.click',
+          '.tk',
+          '.ml',
+          '.ga',
+          '.cf',
+          '.work',
+          '.rest',
+          '.buzz',
+        ];
         if (scamTlds.any((tld) => host.endsWith(tld))) {
           _riskScore += 35;
-          _threatAlerts.add('⚠️ SUSPICIOUS TLD: Hosted on cheap, disposable top-level domain frequently utilized in phishing syndicates.');
+          _threatAlerts.add(
+            '⚠️ SUSPICIOUS TLD: Hosted on cheap, disposable top-level domain frequently utilized in phishing syndicates.',
+          );
         }
 
-        final bankKeywords = ['sbi', 'yono', 'hdfc', 'icici', 'pnb', 'paytm', 'kyc', 'pan', 'electricity', 'bill'];
-        if (bankKeywords.any((kw) => host.contains(kw)) && !host.endsWith('.com') && !host.endsWith('.co.in') && !host.endsWith('.in')) {
+        final bankKeywords = [
+          'sbi',
+          'yono',
+          'hdfc',
+          'icici',
+          'pnb',
+          'paytm',
+          'kyc',
+          'pan',
+          'electricity',
+          'bill',
+        ];
+        if (bankKeywords.any((kw) => host.contains(kw)) &&
+            !host.endsWith('.com') &&
+            !host.endsWith('.co.in') &&
+            !host.endsWith('.in')) {
           _riskScore += 45;
-          _threatAlerts.add('🚨 BANK TYPOSQUATTING: Impersonates financial or utility services on an unverified domain.');
+          _threatAlerts.add(
+            '🚨 BANK TYPOSQUATTING: Impersonates financial or utility services on an unverified domain.',
+          );
         }
       }
     }
@@ -173,7 +221,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       _riskScore = 15;
       _grade = 'A';
       _dissectedFields['Type'] = 'Wi-Fi Auto-Connect';
-    } 
+    }
     // 4. Plain Text
     else {
       _dataType = 'Plain Text / Data';
@@ -192,15 +240,25 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
     // Call LLM for enriched context if network is available
     try {
-      final prompt = '''
+      final prompt =
+          '''
 Analyze this raw data scanned from a QR code: "$data".
 Data Type: $_dataType
 Give a concise 2-sentence risk summary for an Indian user. Mention specific dangers like UPI collect fraud, fake OLX buyer scams, or phishing if applicable.
 ''';
-      final response = await LlmOrchestrator().analyze(text: prompt, type: 'chat');
-      _analysisResult = response.summary.replaceAll(RegExp(r'SCORE:\s*\d+'), '').replaceAll(RegExp(r'GRADE:\s*[ACE]'), '').replaceAll('ANALYSIS:', '').trim();
+      final response = await LlmOrchestrator().analyze(
+        text: prompt,
+        type: 'chat',
+      );
+      _analysisResult = response.summary
+          .replaceAll(RegExp(r'SCORE:\s*\d+'), '')
+          .replaceAll(RegExp(r'GRADE:\s*[ACE]'), '')
+          .replaceAll('ANALYSIS:', '')
+          .trim();
     } catch (_) {
-      _analysisResult = _threatAlerts.isNotEmpty ? _threatAlerts.first : 'Verified QR code structure. Review parsed parameters below.';
+      _analysisResult = _threatAlerts.isNotEmpty
+          ? _threatAlerts.first
+          : 'Verified QR code structure. Review parsed parameters below.';
     }
 
     if (mounted) {
@@ -266,7 +324,10 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
         actions: [
           if (_state == _QrState.scanning) ...[
             IconButton(
-              icon: Icon(_isTorchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded, color: textColor),
+              icon: Icon(
+                _isTorchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                color: textColor,
+              ),
               onPressed: () async {
                 await _controller.toggleTorch();
                 setState(() => _isTorchOn = !_isTorchOn);
@@ -296,11 +357,16 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
                       width: 260,
                       height: 260,
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFF2563EB), width: 2.5),
+                        border: Border.all(
+                          color: const Color(0xFF2563EB),
+                          width: 2.5,
+                        ),
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                            color: const Color(
+                              0xFF2563EB,
+                            ).withValues(alpha: 0.25),
                             blurRadius: 20,
                             spreadRadius: 2,
                           ),
@@ -314,7 +380,10 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
                       child: Column(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.75),
                               borderRadius: BorderRadius.circular(30),
@@ -322,11 +391,19 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.center_focus_strong_rounded, color: Colors.white, size: 16),
+                                Icon(
+                                  Icons.center_focus_strong_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                                 SizedBox(width: 8),
                                 Text(
                                   'Align QR inside viewfinder',
-                                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ],
                             ),
@@ -339,15 +416,27 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
                               backgroundColor: Colors.white,
                               foregroundColor: const Color(0xFF0F172A),
                               elevation: 4,
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
                             ),
-                            icon: const Icon(Icons.photo_library_rounded, size: 18, color: Color(0xFF2563EB)),
+                            icon: const Icon(
+                              Icons.photo_library_rounded,
+                              size: 18,
+                              color: Color(0xFF2563EB),
+                            ),
                             label: const FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
                                 'Scan from Gallery / Screenshot',
-                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                           ),
@@ -368,7 +457,11 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
                       const SizedBox(height: 24),
                       Text(
                         'Deconstructing QR payload & UPI intent...',
-                        style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ).animate().fade().scale(),
                     ],
                   ),
@@ -381,9 +474,20 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 60),
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: Color(0xFFEF4444),
+                        size: 60,
+                      ),
                       const SizedBox(height: 16),
-                      Text('Analysis failed.', style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Analysis failed.',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: _resetScanner,
@@ -398,7 +502,10 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -414,19 +521,28 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
 
                       // Threat Alerts
                       if (_threatAlerts.isNotEmpty && !_isUpiCollectScam) ...[
-                        ..._threatAlerts.map((alert) => Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFEF2F2),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: const Color(0xFFFCA5A5)),
+                        ..._threatAlerts.map(
+                          (alert) => Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF2F2),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: const Color(0xFFFCA5A5),
                               ),
-                              child: Text(
-                                alert,
-                                style: const TextStyle(fontSize: 12.5, color: Color(0xFF991B1B), height: 1.4, fontWeight: FontWeight.w600),
+                            ),
+                            child: Text(
+                              alert,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: Color(0xFF991B1B),
+                                height: 1.4,
+                                fontWeight: FontWeight.w600,
                               ),
-                            )),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 4),
                       ],
 
@@ -456,15 +572,22 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
   Widget _buildResultHeaderCard() {
     final isDanger = _grade == 'E';
     final isWarning = _grade == 'C';
-    final themeColor = isDanger ? const Color(0xFFEF4444) : (isWarning ? const Color(0xFFF59E0B) : const Color(0xFF10B981));
-    final statusText = isDanger ? 'HIGH THREAT DETECTED' : (isWarning ? 'SUSPICIOUS CAUTION' : 'SAFE STRUCTURE');
+    final themeColor = isDanger
+        ? const Color(0xFFEF4444)
+        : (isWarning ? const Color(0xFFF59E0B) : const Color(0xFF10B981));
+    final statusText = isDanger
+        ? 'HIGH THREAT DETECTED'
+        : (isWarning ? 'SUSPICIOUS CAUTION' : 'SAFE STRUCTURE');
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: themeColor.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(
+          color: themeColor.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: themeColor.withValues(alpha: 0.08),
@@ -479,7 +602,10 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: themeColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
@@ -546,7 +672,11 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
               Expanded(
                 child: Text(
                   'DO NOT SCAN OR PAY!',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF991B1B)),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF991B1B),
+                  ),
                 ),
               ),
             ],
@@ -556,7 +686,12 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
             '⚠️ REVERSE PAYMENT FRAUD DETECTED: A scammer is attempting to DEBIT money from your bank account! '
             'Commonly used in OLX sales, Army Officer scams, and fake lottery rewards. '
             'Remember: IN UPI, YOU NEVER ENTER YOUR PIN TO RECEIVE MONEY.',
-            style: TextStyle(fontSize: 13, color: Color(0xFF7F1D1D), height: 1.45, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 13,
+              color: Color(0xFF7F1D1D),
+              height: 1.45,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -580,32 +715,47 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
               SizedBox(width: 8),
               Text(
                 'DISSECTED INTENT PARAMETERS',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF64748B), letterSpacing: 1.0),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF64748B),
+                  letterSpacing: 1.0,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          ..._dissectedFields.entries.map((entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 120,
-                      child: Text(
-                        entry.key,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+          ..._dissectedFields.entries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      entry.key,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF64748B),
                       ),
                     ),
-                    Expanded(
-                      child: Text(
-                        entry.value,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  ),
+                  Expanded(
+                    child: Text(
+                      entry.value,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
                       ),
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -626,16 +776,32 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
             children: [
               const Text(
                 'RAW PAYLOAD',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF64748B), letterSpacing: 1.0),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF64748B),
+                  letterSpacing: 1.0,
+                ),
               ),
               const Spacer(),
               InkWell(
                 onTap: () => _copyToClipboard(_scannedData, 'Payload'),
                 child: const Row(
                   children: [
-                    Icon(Icons.copy_rounded, size: 14, color: Color(0xFF2563EB)),
+                    Icon(
+                      Icons.copy_rounded,
+                      size: 14,
+                      color: Color(0xFF2563EB),
+                    ),
                     SizedBox(width: 4),
-                    Text('Copy', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
+                    Text(
+                      'Copy',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -644,7 +810,11 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
           const SizedBox(height: 8),
           Text(
             _scannedData,
-            style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: Color(0xFF334155)),
+            style: const TextStyle(
+              fontSize: 12,
+              fontFamily: 'monospace',
+              color: Color(0xFF334155),
+            ),
           ),
         ],
       ),
@@ -652,7 +822,9 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
   }
 
   Widget _buildActionButtons() {
-    final isUrl = _scannedData.startsWith('http://') || _scannedData.startsWith('https://');
+    final isUrl =
+        _scannedData.startsWith('http://') ||
+        _scannedData.startsWith('https://');
 
     return Column(
       children: [
@@ -665,10 +837,15 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
                   backgroundColor: const Color(0xFF0F172A),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
-                label: const Text('Scan Another QR', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                label: const Text(
+                  'Scan Another QR',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                ),
               ),
             ),
             if (isUrl) ...[
@@ -682,10 +859,15 @@ Give a concise 2-sentence risk summary for an Indian user. Mention specific dang
                     backgroundColor: const Color(0xFF2563EB),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   icon: const Icon(Icons.security_rounded, size: 18),
-                  label: const Text('Analyze URL', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                  label: const Text(
+                    'Analyze URL',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  ),
                 ),
               ),
             ],
