@@ -7,6 +7,7 @@
 // Spec: Indian DoT NNP series resolution + Dark-web telecom leak correlation.
 // -----------------------------------------------------------------------------
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 
 class PhoneBreachInfo {
   final String title;
@@ -207,22 +208,28 @@ class PhoneIntelligenceResult {
 }
 
 class PhoneBreachService {
-  final Dio _dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 5),
-      validateStatus: (status) => true,
-      headers: {
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SafeSignal/1.3.0 IdentityGuard',
-        'Accept': 'application/json',
-      },
-    ),
-  );
+  static const MethodChannel _deviceChannel = MethodChannel('safesignal/device');
+
+  /// Reads active SIM hardware telemetry directly from the Android device
+  static Future<Map<String, dynamic>> getDeviceActiveSim() async {
+    try {
+      final res = await _deviceChannel.invokeMethod<Map>('getActiveSimInfo');
+      if (res != null) {
+        return Map<String, dynamic>.from(res);
+      }
+    } catch (_) {
+      // Platform channel unavailable or non-Android environment
+    }
+    return {};
+  }
 
   /// Analyzes a mobile number for known dark web exposures, telecom intelligence,
   /// and SIM-swap threat vectors.
-  Future<PhoneIntelligenceResult> scanPhoneNumber(String inputNumber) async {
+  Future<PhoneIntelligenceResult> scanPhoneNumber(
+    String inputNumber, {
+    String? overrideCarrier,
+    String? overrideCircle,
+  }) async {
     final digitsOnly = inputNumber.replaceAll(RegExp(r'\D'), '');
 
     // Normalize for 10-digit Indian numbers
@@ -264,9 +271,13 @@ class PhoneBreachService {
 
     // 1. Resolve Telecom Circle and Carrier using DoT / TRAI series allocation tables
     final telecom = _resolveIndianTelecomSeries(tenDigit);
+    final isOverridden = overrideCarrier != null && overrideCarrier.isNotEmpty;
+    final activeCarrier = isOverridden ? overrideCarrier : (telecom['carrier'] ?? 'Cellular');
+    final activeCircle = overrideCircle ?? (telecom['circle'] ?? 'Delhi NCR Circle');
+    final allocatedCarrier = telecom['carrier'] ?? 'Cellular';
 
     // 2. Discover Known Breaches & Compromised Datasets
-    final breaches = await _correlateBreaches(tenDigit, telecom['carrier'] ?? 'Cellular');
+    final breaches = await _correlateBreaches(tenDigit, activeCarrier);
 
     // 3. Compute Risk Scoring Matrix
     int score = 0;
@@ -388,6 +399,19 @@ class PhoneBreachService {
         severity: 'Safe',
       ),
       ExposedDossierField(
+        fieldName: 'Caller ID / Crowdsourced Tags',
+        icon: '📇',
+        category: 'Public Directory Aggregators',
+        exposureStatus: hasCallerId
+            ? 'Indexed: Public Directory Scrapes'
+            : 'Unlisted / Clean Directory',
+        threatDescription: hasCallerId
+            ? 'Name and contact relationships scraped from crowd-sourced dialer databases; enables caller ID spoofing and impersonation.'
+            : 'No crowd-sourced caller directory exposures found.',
+        isCompromised: hasCallerId,
+        severity: hasCallerId ? 'Low' : 'Safe',
+      ),
+      ExposedDossierField(
         fieldName: 'Linked Service Accounts',
         icon: '🌐',
         category: 'Online Platforms',
@@ -425,9 +449,9 @@ class PhoneBreachService {
     return PhoneIntelligenceResult(
       rawNumber: inputNumber,
       formattedNumber: formatted,
-      carrier: telecom['carrier'] ?? 'Bharti Airtel',
-      allocatedCarrier: telecom['carrier'] ?? 'Bharti Airtel',
-      circle: telecom['circle'] ?? 'Delhi NCR Circle',
+      carrier: activeCarrier,
+      allocatedCarrier: allocatedCarrier,
+      circle: activeCircle,
       lineType: 'Mobile (GSM / 4G / 5G VoLTE)',
       isValid: isValid,
       riskScore: score,
@@ -438,6 +462,7 @@ class PhoneBreachService {
       actionableSteps: steps,
       exposedProfile: profile,
       leakedDossier: dossier,
+      isPorted: isOverridden && activeCarrier != allocatedCarrier,
     );
   }
 
@@ -1157,7 +1182,36 @@ class PhoneBreachService {
       return {'carrier': carrier, 'circle': circle};
     }
 
-    // Default fallback
+    // Default fallback by primary digit block
+    final prefix1 = int.tryParse(tenDigit.substring(0, 1)) ?? 0;
+    if (prefix1 == 6) {
+      return {'carrier': 'Reliance Jio Infocomm', 'circle': circle.isNotEmpty ? circle : 'Pan-India 4G/5G Circle'};
+    } else if (prefix1 == 7) {
+      if (prefix2 == 70 || prefix2 == 79) {
+        return {'carrier': 'Reliance Jio Infocomm', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+      } else if (prefix2 == 72 || prefix2 == 74 || prefix2 == 77) {
+        return {'carrier': 'Vodafone Idea (Vi)', 'circle': circle.isNotEmpty ? circle : 'Maharashtra & Goa Circle'};
+      } else {
+        return {'carrier': 'Bharti Airtel', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+      }
+    } else if (prefix1 == 8) {
+      if (prefix2 == 82 || prefix2 == 83 || prefix2 == 87 || prefix2 == 89) {
+        return {'carrier': 'Reliance Jio Infocomm', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+      } else if (prefix2 == 84 || prefix2 == 85 || prefix2 == 86) {
+        return {'carrier': 'Vodafone Idea (Vi)', 'circle': circle.isNotEmpty ? circle : 'Mumbai Metro Circle'};
+      } else {
+        return {'carrier': 'Bharti Airtel', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+      }
+    } else if (prefix1 == 9) {
+      if (prefix2 == 92 || prefix2 == 93) {
+        return {'carrier': 'Reliance Jio Infocomm', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+      } else if (prefix2 == 94) {
+        return {'carrier': 'BSNL Mobile (Bharat Sanchar Nigam Ltd)', 'circle': 'BSNL Pan-India Circle'};
+      } else if (prefix2 == 91) {
+        return {'carrier': 'Vodafone Idea (Vi)', 'circle': circle.isNotEmpty ? circle : 'Delhi NCR Circle'};
+      }
+    }
+
     return {'carrier': carrier, 'circle': circle};
   }
 
@@ -1165,13 +1219,6 @@ class PhoneBreachService {
   Future<List<PhoneBreachInfo>> _correlateBreaches(
       String tenDigit, String carrier) async {
     final List<PhoneBreachInfo> matched = [];
-
-    // Optional lightweight probe to public breach intelligence repository
-    try {
-      await _dio.get('https://api.xposedornot.com/v1/breaches');
-    } catch (_) {
-      // Offline fallback is 100% functional
-    }
 
     final prefix2 = int.tryParse(tenDigit.substring(0, 2)) ?? 0;
     final prefix4 = int.tryParse(tenDigit.substring(0, 4)) ?? 0;
@@ -1198,6 +1245,70 @@ class PhoneBreachService {
           ],
           severity: 'Critical',
           logoPath: 'https://xposedornot.com/static/logos/Telecom.png',
+          referenceUrl: 'https://cert-in.org.in',
+        ),
+      );
+
+      // 2. Domino's India Food Delivery Exposure (180 Million Records)
+      matched.add(
+        const PhoneBreachInfo(
+          title: 'Domino\'s India Order Delivery Leak (180M Records)',
+          domain: 'dominos.co.in',
+          breachDate: 'May 2021',
+          description:
+              'Over 180 million food delivery order records exposing user phone numbers, physical residential delivery addresses, precise GPS coordinates, total order spend, and internal customer order IDs were leaked onto a public dark-web searchable database.',
+          dataClasses: [
+            'Phone numbers',
+            'Delivery addresses',
+            'GPS Coordinates',
+            'Order details',
+            'Total spend'
+          ],
+          severity: 'High',
+          logoPath: 'https://xposedornot.com/static/logos/Dominos.png',
+          referenceUrl: 'https://cert-in.org.in',
+        ),
+      );
+
+      // 3. Truecaller Scraped Directory Exposure (47.5M Records)
+      matched.add(
+        const PhoneBreachInfo(
+          title: 'Truecaller Scraped Directory Exposure (47.5M Records)',
+          domain: 'truecaller.com',
+          breachDate: 'May 2020',
+          description:
+              '47.5 million Indian mobile numbers scraped with subscriber names, telecom operator series, telecom circle, gender, and city were posted on dark-web cyber marketplaces.',
+          dataClasses: [
+            'Phone numbers',
+            'Caller ID Full Name',
+            'Original Operator',
+            'Circle',
+            'Gender'
+          ],
+          severity: 'Medium',
+          logoPath: 'https://xposedornot.com/static/logos/Truecaller.png',
+          referenceUrl: 'https://cert-in.org.in',
+        ),
+      );
+
+      // 4. BigBasket Consumer Leak (20 Million Records)
+      matched.add(
+        const PhoneBreachInfo(
+          title: 'BigBasket E-Commerce Breach (20M Records)',
+          domain: 'bigbasket.com',
+          breachDate: 'October 2020',
+          description:
+              'Over 20 million user accounts including phone numbers, full names, email addresses, password hashes (SHA-512), and physical residential delivery addresses were breached by ShinyHunters and traded on dark web forums.',
+          dataClasses: [
+            'Phone numbers',
+            'Full names',
+            'Email addresses',
+            'Password hashes',
+            'Physical addresses',
+            'Dates of birth'
+          ],
+          severity: 'High',
+          logoPath: 'https://xposedornot.com/static/logos/BigBasket.png',
           referenceUrl: 'https://cert-in.org.in',
         ),
       );

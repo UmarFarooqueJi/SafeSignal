@@ -58,11 +58,26 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
   String _phoneVerdict = '';
   bool _unmaskLeakedData = false;
   bool _showRawJsonPayload = false;
+  Map<String, dynamic>? _deviceSimInfo;
+  String? _selectedActiveCarrier;
 
   @override
   void initState() {
     super.initState();
     _mode = widget.initialPhoneMode ? _ScanMode.phone : _ScanMode.email;
+    _detectDeviceSim();
+  }
+
+  Future<void> _detectDeviceSim() async {
+    final sim = await PhoneBreachService.getDeviceActiveSim();
+    if (mounted && sim.isNotEmpty) {
+      setState(() {
+        _deviceSimInfo = sim;
+        if (_selectedActiveCarrier == null && sim['normalizedCarrier'] != null && (sim['normalizedCarrier'] as String).isNotEmpty) {
+          _selectedActiveCarrier = sim['normalizedCarrier'] as String;
+        }
+      });
+    }
   }
 
   @override
@@ -194,7 +209,10 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
     });
 
     try {
-      final result = await _phoneService.scanPhoneNumber(rawPhone);
+      final result = await _phoneService.scanPhoneNumber(
+        rawPhone,
+        overrideCarrier: _selectedActiveCarrier,
+      );
 
       String instantVerdict;
       if (result.breaches.isEmpty) {
@@ -357,8 +375,13 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
               // Input Field based on Mode
               if (_mode == _ScanMode.email)
                 _buildEmailInput(isDark, textColor)
-              else
+              else ...[
+                if (_deviceSimInfo != null &&
+                    _deviceSimInfo!['normalizedCarrier'] != null &&
+                    (_deviceSimInfo!['normalizedCarrier'] as String).isNotEmpty)
+                  _buildDeviceSimBadge(isDark),
                 _buildPhoneInput(isDark, textColor),
+              ],
 
               const SizedBox(height: 18),
 
@@ -523,6 +546,111 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
         ),
       ),
       onSubmitted: (_) => _startScan(),
+    );
+  }
+
+  Widget _buildDeviceSimBadge(bool isDark) {
+    final carrier = _deviceSimInfo?['normalizedCarrier'] ?? 'Active SIM';
+    final rawName = _deviceSimInfo?['simOperatorName'] ?? '';
+    final isSelected = _selectedActiveCarrier == carrier;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0C1929) : const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF0284C7).withValues(alpha: isSelected ? 0.8 : 0.3),
+          width: isSelected ? 1.5 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0284C7).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.sim_card_rounded, color: Color(0xFF38BDF8), size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'DETECTED HARDWARE SIM',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.6,
+                        color: const Color(0xFF0284C7),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$carrier ${rawName.isNotEmpty && rawName != carrier ? "($rawName)" : ""}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _selectedActiveCarrier = carrier;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Active hardware SIM linked: $carrier'),
+                  backgroundColor: const Color(0xFF0284C7),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF10B981) : const Color(0xFF0284C7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(isSelected ? Icons.check_rounded : Icons.bolt_rounded, size: 12, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text(
+                    isSelected ? 'Linked' : 'Link SIM',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -880,12 +1008,44 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
               _divider(),
               _buildRow('Threat Score', '${result.riskScore} / 100', valueColor: outlineColor, isDark: isDark),
               _divider(),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 2, child: Text('AI Synopsis', style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 15, fontWeight: FontWeight.bold))),
-                  Expanded(flex: 3, child: Text(_phoneVerdict.isEmpty ? 'Analyzing threat intelligence...' : _phoneVerdict, style: TextStyle(color: outlineColor, fontSize: 13, height: 1.4))),
-                ],
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: outlineColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: outlineColor.withValues(alpha: 0.25)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.auto_awesome, size: 14, color: outlineColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          'AI CYBER DEFENSE VERDICT',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                            color: outlineColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _phoneVerdict.isEmpty ? 'Analyzing threat intelligence...' : _phoneVerdict,
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : const Color(0xFF334155),
+                        fontSize: 13,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -907,7 +1067,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
             children: [
               Row(
                 children: [
-                  Icon(CupertinoIcons.antenna_radiowaves_left_right, color: const Color(0xFF38BDF8), size: 20),
+                  const Icon(CupertinoIcons.antenna_radiowaves_left_right, color: Color(0xFF38BDF8), size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'TELECOM & CARRIER TELEMETRY',
@@ -921,36 +1081,73 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              _buildRow('Mobile Number', result.formattedNumber, valueColor: const Color(0xFF38BDF8), isDark: isDark),
-              _divider(),
-              _buildRow('Allocated Series (DoT)', result.allocatedCarrier ?? result.carrier, valueColor: isDark ? Colors.white70 : const Color(0xFF475569), isDark: isDark),
-              _divider(),
-              _buildRow(
-                'Active SIM Network',
-                result.carrier,
-                valueColor: isDark ? Colors.white : Colors.black87,
+              _buildTelecomTile(
+                label: 'MOBILE NUMBER',
+                value: result.formattedNumber,
+                icon: CupertinoIcons.phone_fill,
                 isDark: isDark,
-                trailingWidget: result.isPorted
-                    ? Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                valueColor: const Color(0xFF38BDF8),
+              ),
+              _buildTelecomTile(
+                label: 'ACTIVE SIM NETWORK',
+                value: result.carrier,
+                icon: CupertinoIcons.antenna_radiowaves_left_right,
+                isDark: isDark,
+                valueColor: isDark ? Colors.white : const Color(0xFF0F172A),
+                trailingWidget: InkWell(
+                  onTap: () => _showMnpCarrierSelector(result, isDark),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: (result.isPorted ? const Color(0xFF10B981) : const Color(0xFF38BDF8)).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: (result.isPorted ? const Color(0xFF10B981) : const Color(0xFF38BDF8)).withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          result.isPorted ? Icons.check_circle_rounded : Icons.swap_horiz_rounded,
+                          size: 11,
+                          color: result.isPorted ? const Color(0xFF10B981) : const Color(0xFF38BDF8),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.check_circle_rounded, size: 10, color: Color(0xFF10B981)),
-                            SizedBox(width: 3),
-                            Text(
-                              'MNP Active',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                            ),
-                          ],
+                        const SizedBox(width: 4),
+                        Text(
+                          result.isPorted ? 'MNP Active' : 'Switch MNP',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: result.isPorted ? const Color(0xFF10B981) : const Color(0xFF38BDF8),
+                          ),
                         ),
-                      )
-                    : null,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              _buildTelecomTile(
+                label: 'ALLOCATED SERIES (DoT)',
+                value: result.allocatedCarrier ?? result.carrier,
+                icon: CupertinoIcons.shield_fill,
+                isDark: isDark,
+                valueColor: isDark ? Colors.white70 : const Color(0xFF475569),
+                subtitle: 'Original MSC allocation series issued by DoT',
+              ),
+              _buildTelecomTile(
+                label: 'TELECOM CIRCLE (LSA)',
+                value: result.circle,
+                icon: CupertinoIcons.map_pin_ellipse,
+                isDark: isDark,
+              ),
+              _buildTelecomTile(
+                label: 'CONNECTION LINE TYPE',
+                value: result.lineType,
+                icon: CupertinoIcons.waveform_path,
+                isDark: isDark,
+                valueColor: Colors.greenAccent.shade400,
               ),
               const SizedBox(height: 10),
               // Quick 1-tap carrier switcher chips
@@ -966,6 +1163,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
               const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
                 child: Row(
                   children: [
                     _buildCarrierChip(
@@ -976,6 +1174,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                       isDark: isDark,
                       onTap: () {
                         setState(() {
+                          _selectedActiveCarrier = 'Reliance Jio Infocomm';
                           _phoneResult = _phoneService.updateCarrierWithMnp(result, 'Reliance Jio Infocomm');
                         });
                       },
@@ -989,6 +1188,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                       isDark: isDark,
                       onTap: () {
                         setState(() {
+                          _selectedActiveCarrier = 'Bharti Airtel';
                           _phoneResult = _phoneService.updateCarrierWithMnp(result, 'Bharti Airtel');
                         });
                       },
@@ -1002,6 +1202,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                       isDark: isDark,
                       onTap: () {
                         setState(() {
+                          _selectedActiveCarrier = 'Vodafone Idea (Vi)';
                           _phoneResult = _phoneService.updateCarrierWithMnp(result, 'Vodafone Idea (Vi)');
                         });
                       },
@@ -1015,6 +1216,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                       isDark: isDark,
                       onTap: () {
                         setState(() {
+                          _selectedActiveCarrier = 'BSNL Mobile (Bharat Sanchar Nigam Ltd)';
                           _phoneResult = _phoneService.updateCarrierWithMnp(result, 'BSNL Mobile (Bharat Sanchar Nigam Ltd)');
                         });
                       },
@@ -1031,10 +1233,6 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                   height: 1.3,
                 ),
               ),
-              _divider(),
-              _buildRow('Telecom Circle', result.circle, valueColor: isDark ? Colors.white : Colors.black87, isDark: isDark),
-              _divider(),
-              _buildRow('Line Type', result.lineType, valueColor: Colors.greenAccent.shade400, isDark: isDark),
             ],
           ),
         ),
@@ -1638,10 +1836,11 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
           const SizedBox(height: 14),
 
-          // Action Toolbar: Copy Schema Button
+          // Action Toolbar: Copy Schema Button & Unmask Toggle
           Row(
             children: [
               Expanded(
+                flex: 3,
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: dossier.rawDumpSyntax));
@@ -1666,6 +1865,32 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _unmaskLeakedData = !_unmaskLeakedData;
+                    });
+                  },
+                  icon: Icon(
+                    _unmaskLeakedData ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    size: 14,
+                    color: const Color(0xFFEF4444),
+                  ),
+                  label: Text(
+                    _unmaskLeakedData ? 'Mask PII' : 'Unmask PII',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFEF4444)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFEF4444)),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
             ],
           ),
 
@@ -1674,7 +1899,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
           // Field 1: Subscriber Registration Exposure
           _buildDossierValueBox(
             label: '👤 SUBSCRIBER REGISTRATION EXPOSURE',
-            value: dossier.subscriberName,
+            value: _unmaskLeakedData ? dossier.subscriberName : _maskString(dossier.subscriberName),
             highlightColor: const Color(0xFFF97316),
             isDark: isDark,
             subtitle: 'DoT KYC record status across historical retailer dumps',
@@ -1685,7 +1910,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
           // Field 2: Father's / Guardian Name (Critical vector in Digital Arrest)
           _buildDossierValueBox(
             label: "👨 FATHER'S / GUARDIAN NAME EXPLOITATION",
-            value: dossier.fatherName,
+            value: _unmaskLeakedData ? dossier.fatherName : _maskString(dossier.fatherName),
             highlightColor: const Color(0xFFEF4444),
             isDark: isDark,
             isCriticalAlert: true,
@@ -1707,7 +1932,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
           // Field 4: Alternate Contact Number
           _buildDossierValueBox(
             label: '📱 ALTERNATE EMERGENCY CONTACT STATUS',
-            value: dossier.alternateNumber,
+            value: _unmaskLeakedData ? dossier.alternateNumber : _maskPhone(dossier.alternateNumber),
             highlightColor: const Color(0xFF38BDF8),
             isDark: isDark,
             subtitle: 'Secondary contact numbers recorded during SIM purchase',
@@ -2218,6 +2443,80 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
     return n.toString();
   }
 
+  Widget _buildTelecomTile({
+    required String label,
+    required String value,
+    required IconData icon,
+    required bool isDark,
+    Color? valueColor,
+    Widget? trailingWidget,
+    String? subtitle,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.6) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: (valueColor ?? const Color(0xFF38BDF8)).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: valueColor ?? const Color(0xFF38BDF8)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                    color: isDark ? Colors.white54 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: valueColor ?? (isDark ? Colors.white : const Color(0xFF0F172A)),
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (trailingWidget != null) ...[
+            const SizedBox(width: 8),
+            trailingWidget,
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildRow(
     String label,
     String value, {
@@ -2228,9 +2527,9 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
     int valueFlex = 6,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             flex: labelFlex,
@@ -2238,34 +2537,31 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
               label,
               style: TextStyle(
                 color: isDark ? Colors.white70 : const Color(0xFF334155),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             flex: valueFlex,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 4,
+              runSpacing: 4,
               children: [
-                Flexible(
-                  child: Text(
-                    value,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: valueColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      height: 1.25,
-                    ),
+                Text(
+                  value,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: valueColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    height: 1.25,
                   ),
                 ),
-                if (trailingWidget != null) ...[
-                  const SizedBox(width: 6),
-                  trailingWidget,
-                ],
+                ?trailingWidget,
               ],
             ),
           ),

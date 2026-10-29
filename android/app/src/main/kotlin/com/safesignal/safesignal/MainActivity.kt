@@ -346,6 +346,44 @@ class MainActivity : FlutterFragmentActivity() {
                         result.error("INVALID_ARGUMENT", "URL is required", null)
                     }
                 }
+                "getActiveSimInfo" -> {
+                    try {
+                        val tm = getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                        val simName = tm?.simOperatorName?.trim() ?: ""
+                        val netName = tm?.networkOperatorName?.trim() ?: ""
+                        val simOp = tm?.simOperator?.trim() ?: ""
+                        val country = tm?.simCountryIso?.trim() ?: ""
+
+                        var carrier = ""
+                        val combined = "$simName $netName $simOp".lowercase()
+                        if (combined.contains("jio") || simOp.startsWith("4058") || simOp.startsWith("4059") || simOp.startsWith("4050")) {
+                            carrier = "Reliance Jio Infocomm"
+                        } else if (combined.contains("airtel") || simOp.startsWith("40410") || simOp.startsWith("40445")) {
+                            carrier = "Bharti Airtel"
+                        } else if (combined.contains("vi") || combined.contains("vodafone") || combined.contains("idea")) {
+                            carrier = "Vodafone Idea (Vi)"
+                        } else if (combined.contains("bsnl") || combined.contains("cellone") || simOp.startsWith("40438") || simOp.startsWith("40464")) {
+                            carrier = "BSNL Mobile (Bharat Sanchar Nigam Ltd)"
+                        } else if (combined.contains("mtnl")) {
+                            carrier = "MTNL Dolphin"
+                        } else if (simName.isNotEmpty()) {
+                            carrier = simName
+                        } else if (netName.isNotEmpty()) {
+                            carrier = netName
+                        }
+
+                        val map = HashMap<String, Any>()
+                        map["simOperatorName"] = simName
+                        map["networkOperatorName"] = netName
+                        map["simOperatorCode"] = simOp
+                        map["simCountryIso"] = country
+                        map["normalizedCarrier"] = carrier
+                        map["hasSimCard"] = (tm?.simState == TelephonyManager.SIM_STATE_READY)
+                        result.success(map)
+                    } catch (e: Exception) {
+                        result.success(HashMap<String, Any>())
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
