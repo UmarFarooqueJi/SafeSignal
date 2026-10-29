@@ -26,7 +26,7 @@ void main() {
       expect(res.riskScore, greaterThan(0));
       expect(res.leakedDossier, isNotNull);
       expect(res.leakedDossier!.subscriberName, isNotEmpty);
-      expect(res.leakedDossier!.fatherName.startsWith('S/O'), isTrue);
+      expect(res.leakedDossier!.fatherName, contains('Digital Arrest'));
       expect(res.leakedDossier!.rawCafAddress, contains('!'));
       expect(res.leakedDossier!.formattedAddress, isNotEmpty);
       expect(res.leakedDossier!.rawDumpSyntax, contains('"mobile": "9810123456"'));
@@ -113,6 +113,20 @@ void main() {
       expect(ported.actionableSteps.any((s) => s.contains('Reliance Jio Infocomm')), isTrue);
       final carrierField = ported.exposedProfile.firstWhere((p) => p.fieldName.contains('Carrier'));
       expect(carrierField.exposureStatus, contains('Reliance Jio Infocomm - MNP Active'));
+    });
+
+    test('confirms clean record with 0 risk score for modern uncompromised series', () async {
+      final res = await service.scanPhoneNumber('6201234567');
+
+      expect(res.isValid, isTrue);
+      expect(res.carrier, equals('Reliance Jio Infocomm'));
+      expect(res.breaches, isEmpty);
+      expect(res.riskScore, equals(0));
+      expect(res.securityGrade, equals('A'));
+      expect(res.simSwapVulnerable, isFalse);
+      expect(res.leakedDossier, isNotNull);
+      expect(res.leakedDossier!.subscriberName, contains('Clean'));
+      expect(res.actionableSteps.first, contains('No active dark-web breach exposures'));
     });
 
     test('gracefully rejects invalid numbers without crashing', () async {

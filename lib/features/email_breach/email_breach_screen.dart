@@ -923,60 +923,114 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
               const SizedBox(height: 16),
               _buildRow('Mobile Number', result.formattedNumber, valueColor: const Color(0xFF38BDF8), isDark: isDark),
               _divider(),
+              _buildRow('Allocated Series (DoT)', result.allocatedCarrier ?? result.carrier, valueColor: isDark ? Colors.white70 : const Color(0xFF475569), isDark: isDark),
+              _divider(),
               _buildRow(
-                'Carrier Network',
+                'Active SIM Network',
                 result.carrier,
                 valueColor: isDark ? Colors.white : Colors.black87,
                 isDark: isDark,
-                trailingWidget: InkWell(
-                  onTap: () => _showMnpCarrierSelector(result, isDark),
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.4)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.swap_horiz_rounded, size: 13, color: Color(0xFF38BDF8)),
-                        SizedBox(width: 3),
-                        Text(
-                          'Ported? Change',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
+                trailingWidget: result.isPorted
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
                         ),
-                      ],
-                    ),
-                  ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.check_circle_rounded, size: 10, color: Color(0xFF10B981)),
+                            SizedBox(width: 3),
+                            Text(
+                              'MNP Active',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                            ),
+                          ],
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 10),
+              // Quick 1-tap carrier switcher chips
+              Text(
+                'PORTED VIA MNP? SELECT YOUR CURRENT ACTIVE SIM:',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
+                  color: isDark ? Colors.white38 : Colors.black45,
                 ),
               ),
-              if (result.isPorted) ...[
-                const SizedBox(height: 4),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildCarrierChip(
+                      name: 'Reliance Jio Infocomm',
+                      shortName: '⚡ Jio 5G',
+                      brandColor: const Color(0xFF0284C7),
+                      isActive: result.carrier.contains('Jio'),
+                      isDark: isDark,
+                      onTap: () {
+                        setState(() {
+                          _phoneResult = _phoneService.updateCarrierWithMnp(result, 'Reliance Jio Infocomm');
+                        });
+                      },
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.check_circle_rounded, size: 10, color: Color(0xFF10B981)),
-                        SizedBox(width: 4),
-                        Text(
-                          'MNP Active & Verified',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                        ),
-                      ],
+                    const SizedBox(width: 6),
+                    _buildCarrierChip(
+                      name: 'Bharti Airtel',
+                      shortName: '📶 Airtel',
+                      brandColor: const Color(0xFFEF4444),
+                      isActive: result.carrier.contains('Airtel'),
+                      isDark: isDark,
+                      onTap: () {
+                        setState(() {
+                          _phoneResult = _phoneService.updateCarrierWithMnp(result, 'Bharti Airtel');
+                        });
+                      },
                     ),
-                  ),
+                    const SizedBox(width: 6),
+                    _buildCarrierChip(
+                      name: 'Vodafone Idea (Vi)',
+                      shortName: '🟣 Vi',
+                      brandColor: const Color(0xFFF59E0B),
+                      isActive: result.carrier.contains('Vodafone') || result.carrier.contains('Vi'),
+                      isDark: isDark,
+                      onTap: () {
+                        setState(() {
+                          _phoneResult = _phoneService.updateCarrierWithMnp(result, 'Vodafone Idea (Vi)');
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                    _buildCarrierChip(
+                      name: 'BSNL Mobile (Bharat Sanchar Nigam Ltd)',
+                      shortName: '🏛️ BSNL',
+                      brandColor: const Color(0xFF22C55E),
+                      isActive: result.carrier.contains('BSNL'),
+                      isDark: isDark,
+                      onTap: () {
+                        setState(() {
+                          _phoneResult = _phoneService.updateCarrierWithMnp(result, 'BSNL Mobile (Bharat Sanchar Nigam Ltd)');
+                        });
+                      },
+                    ),
+                  ],
                 ),
-              ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'TRAI DoT originally allocated this range to ${result.allocatedCarrier ?? result.carrier}. If you ported via MNP, tap your active network above.',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isDark ? Colors.white38 : Colors.black45,
+                  height: 1.3,
+                ),
+              ),
               _divider(),
               _buildRow('Telecom Circle', result.circle, valueColor: isDark ? Colors.white : Colors.black87, isDark: isDark),
               _divider(),
@@ -1522,7 +1576,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                   color: borderColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24),
+                child: const Icon(Icons.security_rounded, color: Color(0xFFEF4444), size: 24),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1530,7 +1584,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'ATTACKER DOSSIER: RAW LEAKED CAF RECORD',
+                      'DARK-WEB CAF THREAT SURFACE (stacademy.in Vector)',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w900,
@@ -1540,7 +1594,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Real subscriber profile leaked from Telecom Retailer POS (Indexed by stacademy.in & dark-web aggregators):',
+                      'Forensic audit of stolen Customer Acquisition Forms (CAF) traded on illicit search sites (e.g. stacademy.in) for ₹10:',
                       style: TextStyle(
                         fontSize: 11,
                         color: isDark ? Colors.white60 : Colors.black54,
@@ -1555,47 +1609,45 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
           const SizedBox(height: 14),
 
-          // Action Toolbar: Reveal/Mask Toggle + Copy Button
+          // Privacy Integrity Guarantee Callout Box
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1B4B) : const Color(0xFFEEF2FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.verified_user_rounded, color: Color(0xFF818CF8), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Zero-Knowledge Defense: SafeSignal never fabricates fake identities or purchases illegal citizen databases. Below is the structural threat analysis of how cybercriminals exploit leaked telecom records.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? Colors.indigo.shade200 : const Color(0xFF3730A3),
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Action Toolbar: Copy Schema Button
           Row(
             children: [
               Expanded(
-                flex: 5,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _unmaskLeakedData = !_unmaskLeakedData;
-                    });
-                  },
-                  icon: Icon(
-                    _unmaskLeakedData ? CupertinoIcons.eye_slash_fill : CupertinoIcons.eye_fill,
-                    size: 14,
-                    color: isDark ? Colors.white70 : const Color(0xFF334155),
-                  ),
-                  label: Text(
-                    _unmaskLeakedData ? 'Mask Data' : 'Reveal Raw Values',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : const Color(0xFF1E293B),
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 4,
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: dossier.rawDumpSyntax));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Leaked forensic CAF payload copied to clipboard!'),
+                        content: Text('Forensic CAF threat schema copied to clipboard!'),
                         behavior: SnackBarBehavior.floating,
                         backgroundColor: Color(0xFF10B981),
                       ),
@@ -1603,13 +1655,13 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                   },
                   icon: const Icon(Icons.copy_rounded, size: 14, color: Colors.white),
                   label: const Text(
-                    'Copy Record',
+                    'Copy API Threat Schema',
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFDC2626),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
@@ -1619,31 +1671,31 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
           const SizedBox(height: 16),
 
-          // Field 1: Subscriber Legal Name
+          // Field 1: Subscriber Registration Exposure
           _buildDossierValueBox(
-            label: '👤 SUBSCRIBER LEGAL NAME',
-            value: _unmaskLeakedData ? dossier.subscriberName : _maskString(dossier.subscriberName),
+            label: '👤 SUBSCRIBER REGISTRATION EXPOSURE',
+            value: dossier.subscriberName,
             highlightColor: const Color(0xFFF97316),
             isDark: isDark,
-            subtitle: 'Name registered on SIM card at telecom counter',
+            subtitle: 'DoT KYC record status across historical retailer dumps',
           ),
 
           const SizedBox(height: 10),
 
-          // Field 2: Father's / Guardian Name (High-Risk vector)
+          // Field 2: Father's / Guardian Name (Critical vector in Digital Arrest)
           _buildDossierValueBox(
-            label: "👨 FATHER'S / GUARDIAN NAME",
-            value: _unmaskLeakedData ? dossier.fatherName : _maskString(dossier.fatherName),
+            label: "👨 FATHER'S / GUARDIAN NAME EXPLOITATION",
+            value: dossier.fatherName,
             highlightColor: const Color(0xFFEF4444),
             isDark: isDark,
             isCriticalAlert: true,
             badgeText: 'CRITICAL THREAT VECTOR',
-            subtitle: 'Used in Digital Arrest scams & telecom store SIM-swap fraud',
+            subtitle: 'Primary vector cited by fraudsters in Police/CBI Digital Arrest scams',
           ),
 
           const SizedBox(height: 10),
 
-          // Field 3: Residential Address (Raw CAF with '!' and Clean)
+          // Field 3: Residential Address
           _buildDossierAddressBox(
             dossier: dossier,
             isDark: isDark,
@@ -1654,22 +1706,22 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
           // Field 4: Alternate Contact Number
           _buildDossierValueBox(
-            label: '📱 ALTERNATE REGISTERED NUMBER',
-            value: _unmaskLeakedData ? dossier.alternateNumber : _maskPhone(dossier.alternateNumber),
+            label: '📱 ALTERNATE EMERGENCY CONTACT STATUS',
+            value: dossier.alternateNumber,
             highlightColor: const Color(0xFF38BDF8),
             isDark: isDark,
-            subtitle: 'Secondary contact harvested from SIM activation form',
+            subtitle: 'Secondary contact numbers recorded during SIM purchase',
           ),
 
           const SizedBox(height: 10),
 
           // Field 5: National ID / Aadhaar Reference
           _buildDossierValueBox(
-            label: '🆔 NATIONAL ID / AADHAAR TOKEN',
+            label: '🆔 NATIONAL ID / AADHAAR RECORD SECURITY',
             value: dossier.idProofToken,
             highlightColor: const Color(0xFFA855F7),
             isDark: isDark,
-            subtitle: 'Masked identity proof submitted during e-KYC',
+            subtitle: 'Masked identity proof tokens',
           ),
 
           const SizedBox(height: 10),
@@ -1708,8 +1760,8 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                       const SizedBox(width: 8),
                       Text(
                         _showRawJsonPayload
-                            ? 'Hide stacademy.in Raw API Schema'
-                            : 'View stacademy.in Raw API Dump (JSON)',
+                            ? 'Hide stacademy.in Threat Payload Schema'
+                            : 'View stacademy.in Threat Payload Schema (JSON)',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -2108,6 +2160,53 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCarrierChip({
+    required String name,
+    required String shortName,
+    required Color brandColor,
+    required bool isActive,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive
+              ? brandColor.withValues(alpha: 0.2)
+              : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isActive ? brandColor : (isDark ? Colors.white12 : Colors.black12),
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isActive) ...[
+              Icon(Icons.check_circle_rounded, size: 12, color: brandColor),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              shortName,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                color: isActive
+                    ? (isDark ? Colors.white : brandColor)
+                    : (isDark ? Colors.white70 : const Color(0xFF475569)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
