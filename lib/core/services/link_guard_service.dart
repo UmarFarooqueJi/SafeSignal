@@ -56,11 +56,21 @@ class LinkGuardService {
     }
   }
 
-  /// Opens Android Settings -> Default Apps so user can select SafeSignal
+  /// Opens Android Settings -> Default Apps so user can select SafeSignal or preferred browser
   static Future<void> openDefaultAppsSettings() async {
     try {
       await _channel.invokeMethod('openDefaultAppsSettings');
     } catch (_) {}
+  }
+
+  /// Clears SafeSignal as the default browser so user retains choice of opening in Chrome/browser
+  static Future<bool> clearDefaultBrowser() async {
+    try {
+      final res = await _channel.invokeMethod<bool>('clearDefaultBrowser');
+      return res ?? false;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Opens a URL in an external system browser (Chrome/Firefox) without re-intercepting

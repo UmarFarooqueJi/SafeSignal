@@ -991,7 +991,7 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _isDefaultBrowser ? 'WhatsApp Link Shield: ACTIVE' : 'Auto-Intercept WhatsApp Links',
+                      _isDefaultBrowser ? 'WhatsApp Link Shield: ACTIVE' : 'Link Protection: OPTIONAL',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -1001,8 +1001,8 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                     const SizedBox(height: 2),
                     Text(
                       _isDefaultBrowser
-                          ? 'All links clicked in WhatsApp & Telegram will automatically route and scan here first.'
-                          : 'Set SafeSignal as default link handler to auto-scan links from WhatsApp before opening in browser.',
+                          ? 'All links clicked in WhatsApp & Telegram route here first. You can reset to Chrome anytime.'
+                          : 'You decide: Open links directly in Chrome, or share them to SafeSignal Link Guard to scan.',
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark ? Colors.white70 : Colors.black54,
@@ -1013,11 +1013,36 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
               ),
             ],
           ),
-          if (!_isDefaultBrowser) ...[
-            const SizedBox(height: 12),
+          const SizedBox(height: 12),
+          if (_isDefaultBrowser) ...[
             SizedBox(
               width: double.infinity,
-              height: 40,
+              height: 38,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFF97316),
+                  side: const BorderSide(color: Color(0xFFF97316)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () async {
+                  await LinkGuardService.clearDefaultBrowser();
+                  await LinkGuardService.openDefaultAppsSettings();
+                  await _checkBrowserRole();
+                },
+                icon: const Icon(Icons.settings_backup_restore_rounded, size: 16),
+                label: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Reset Default Browser to Chrome',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          ] else ...[
+            SizedBox(
+              width: double.infinity,
+              height: 38,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: inactiveColor,
@@ -1026,15 +1051,15 @@ class _UrlScannerScreenState extends State<UrlScannerScreen> with WidgetsBinding
                   elevation: 0,
                 ),
                 onPressed: () async {
-                  await LinkGuardService.requestBrowserRole();
+                  await LinkGuardService.openDefaultAppsSettings();
                   await _checkBrowserRole();
                 },
-                icon: const Icon(Icons.flash_on_rounded, size: 16),
+                icon: const Icon(Icons.tune_rounded, size: 16),
                 label: const FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    'Enable WhatsApp Link Shield (1-Tap)',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                    'Choose Default Browser in Settings (Optional)',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

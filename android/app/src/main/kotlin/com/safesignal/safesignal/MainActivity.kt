@@ -50,6 +50,11 @@ class MainActivity : FlutterFragmentActivity() {
         super.onCreate(savedInstanceState)
         handleSendIntent(intent)
         
+        // Reset default link handler preferences so user always retains full choice of browser
+        try {
+            packageManager.clearPackagePreferredActivities(packageName)
+        } catch (_: Exception) {}
+        
         // Start Persistent Background Service
         try {
             val serviceIntent = Intent(this, SafeSignalService::class.java)
@@ -308,23 +313,45 @@ class MainActivity : FlutterFragmentActivity() {
                     openDefaultApps()
                     result.success(true)
                 }
+                "clearDefaultBrowser" -> {
+                    try {
+                        packageManager.clearPackagePreferredActivities(packageName)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
                 "openUrlInSystemBrowser" -> {
                     val url = call.argument<String>("url")
                     if (!url.isNullOrBlank()) {
                         try {
                             val uri = android.net.Uri.parse(url)
-                            val viewIntent = Intent(Intent.ACTION_VIEW, uri)
                             val pm = packageManager
-                            val resolved = pm.queryIntentActivities(viewIntent, PackageManager.MATCH_DEFAULT_ONLY)
+                            val knownBrowsers = listOf(
+                                "com.android.chrome",
+                                "com.heytap.browser",
+                                "org.mozilla.firefox",
+                                "com.microsoft.emmx",
+                                "com.opera.browser",
+                                "com.opera.mini.native",
+                                "com.brave.browser",
+                                "com.sec.android.app.sbrowser",
+                                "com.duckduckgo.mobile.android"
+                            )
                             var targetPkg: String? = null
-                            for (info in resolved) {
-                                val p = info.activityInfo.packageName
-                                if (p != packageName && (p.contains("chrome") || p.contains("browser") || p.contains("firefox") || p.contains("opera") || p.contains("edge") || p.contains("samsung"))) {
-                                    targetPkg = p
+                            for (pkg in knownBrowsers) {
+                                try {
+                                    pm.getPackageInfo(pkg, 0)
+                                    targetPkg = pkg
                                     break
-                                }
+                                } catch (_: Exception) {}
                             }
+
                             if (targetPkg == null) {
+                                val testIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+                                    addCategory(Intent.CATEGORY_BROWSABLE)
+                                }
+                                val resolved = pm.queryIntentActivities(testIntent, 0)
                                 for (info in resolved) {
                                     val p = info.activityInfo.packageName
                                     if (p != packageName) {
@@ -333,11 +360,23 @@ class MainActivity : FlutterFragmentActivity() {
                                     }
                                 }
                             }
-                            if (targetPkg != null) {
-                                viewIntent.setPackage(targetPkg)
+
+                            val launchIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+                                addCategory(Intent.CATEGORY_BROWSABLE)
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                if (targetPkg != null) {
+                                    setPackage(targetPkg)
+                                }
                             }
-                            viewIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            startActivity(viewIntent)
+
+                            if (targetPkg != null) {
+                                startActivity(launchIntent)
+                            } else {
+                                val chooser = Intent.createChooser(launchIntent, "Open with Web Browser").apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                startActivity(chooser)
+                            }
                             result.success(true)
                         } catch (e: Exception) {
                             result.error("LAUNCH_FAILED", e.message, null)

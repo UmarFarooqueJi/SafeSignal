@@ -429,6 +429,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
   // ---------------------------------------------------------------------------
   Widget _buildModeSelector(bool isDark) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF111827) : const Color(0xFFE2E8F0),
@@ -438,21 +439,25 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
         ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          _buildTabButton(
-            title: 'Email Breach',
-            icon: CupertinoIcons.mail,
-            isActive: _mode == _ScanMode.email,
-            onTap: () => _switchMode(_ScanMode.email),
-            isDark: isDark,
+          Expanded(
+            child: _buildTabButton(
+              title: 'Email Breach',
+              icon: CupertinoIcons.mail,
+              isActive: _mode == _ScanMode.email,
+              onTap: () => _switchMode(_ScanMode.email),
+              isDark: isDark,
+            ),
           ),
-          _buildTabButton(
-            title: 'Phone OSINT Leak',
-            icon: CupertinoIcons.phone,
-            isActive: _mode == _ScanMode.phone,
-            onTap: () => _switchMode(_ScanMode.phone),
-            isDark: isDark,
+          const SizedBox(width: 4),
+          Expanded(
+            child: _buildTabButton(
+              title: 'Phone OSINT Leak',
+              icon: CupertinoIcons.phone,
+              isActive: _mode == _ScanMode.phone,
+              onTap: () => _switchMode(_ScanMode.phone),
+              isDark: isDark,
+            ),
           ),
         ],
       ),
@@ -469,8 +474,9 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isActive
               ? (isDark ? const Color(0xFF2563EB) : Colors.white)
@@ -487,6 +493,8 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
               : null,
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
@@ -496,14 +504,18 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                   : (isDark ? Colors.white54 : Colors.black54),
             ),
             const SizedBox(width: 6),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                color: isActive
-                    ? (isDark ? Colors.white : const Color(0xFF1E293B))
-                    : (isDark ? Colors.white54 : Colors.black54),
+            Flexible(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isActive
+                      ? (isDark ? Colors.white : const Color(0xFF1E293B))
+                      : (isDark ? Colors.white54 : Colors.black54),
+                ),
               ),
             ),
           ],
@@ -760,23 +772,26 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
           ),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(width: 24),
-            Expanded(
-              child: Center(
-                child: Text(
-                  _phase == _Phase.scanning
-                      ? (isPhone ? 'Scanning Dark Web & Telecom...' : 'Scanning Breaches...')
-                      : (isPhone ? 'Scan Mobile Intelligence' : 'Scan Email'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
-                ),
+            if (_phase == _Phase.scanning) ...[
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
               ),
+              const SizedBox(width: 10),
+            ],
+            Text(
+              _phase == _Phase.scanning
+                  ? (isPhone ? 'Scanning Dark Web & Telecom...' : 'Scanning Breaches...')
+                  : (isPhone ? 'Scan Mobile Intelligence' : 'Scan Email Breach'),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
             ),
-            _phase == _Phase.scanning
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Icon(isPhone ? CupertinoIcons.phone_fill : CupertinoIcons.mail, color: Colors.white, size: 24),
-            const SizedBox(width: 8),
+            if (_phase != _Phase.scanning) ...[
+              const SizedBox(width: 10),
+              Icon(isPhone ? CupertinoIcons.phone_fill : CupertinoIcons.mail, color: Colors.white, size: 20),
+            ],
           ],
         ),
       ),
@@ -797,6 +812,10 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
       children: [
         // 1. Likely Owner & Identity Header Card
         _buildIntelBaseIdentityCard(osint, isDark),
+        const SizedBox(height: 16),
+
+        // 1.5. Total Breaches & Incident Counter Hero Banner
+        _buildIntelBaseBreachOverviewBanner(osint, isDark),
         const SizedBox(height: 16),
 
         // 2. Dual Assessment Matrix (Authenticity & Exposure Scores)
@@ -876,6 +895,302 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
         const SizedBox(height: 30),
       ],
+    );
+  }
+
+  Widget _buildIntelBaseBreachOverviewBanner(LiveOsintProfile osint, bool isDark) {
+    final totalBreaches = osint.breaches.length;
+    final isBreached = totalBreaches > 0;
+    final passwordBreaches = osint.breaches.where((b) => b.dataClasses.any((c) => c.toLowerCase().contains('password'))).length;
+    final stealerCount = osint.stealerReport.stealerFamilies.length;
+
+    final primaryColor = isBreached ? const Color(0xFFEF4444) : const Color(0xFF10B981);
+    final bgColor = isDark
+        ? (isBreached ? const Color(0xFF1E1114) : const Color(0xFF062015))
+        : (isBreached ? const Color(0xFFFEF2F2) : const Color(0xFFECFDF5));
+    final borderColor = primaryColor.withValues(alpha: isDark ? 0.35 : 0.25);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withValues(alpha: isDark ? 0.12 : 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isBreached ? Icons.gpp_bad_rounded : Icons.verified_user_rounded,
+                  color: primaryColor,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TOTAL BREACH INCIDENTS',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1,
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isBreached
+                          ? '$totalBreaches Known Data ${totalBreaches == 1 ? "Breach" : "Breaches"} Detected'
+                          : 'Zero Breaches Detected (Safe)',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: primaryColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$totalBreaches',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, thickness: 1, color: Colors.white10),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _buildBreachKpiTile(
+                  label: 'Breaches',
+                  value: '$totalBreaches',
+                  color: primaryColor,
+                  isDark: isDark,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildBreachKpiTile(
+                  label: 'Passwords Exposed',
+                  value: '$passwordBreaches',
+                  color: passwordBreaches > 0 ? const Color(0xFFF97316) : const Color(0xFF10B981),
+                  isDark: isDark,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildBreachKpiTile(
+                  label: 'Stealer Logs',
+                  value: '$stealerCount',
+                  color: stealerCount > 0 ? const Color(0xFFDC2626) : const Color(0xFF10B981),
+                  isDark: isDark,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhoneBreachOverviewBanner(PhoneIntelligenceResult result, bool isDark) {
+    final totalBreaches = result.breaches.length;
+    final isBreached = totalBreaches > 0;
+    final primaryColor = isBreached ? const Color(0xFFEF4444) : const Color(0xFF10B981);
+    final bgColor = isDark
+        ? (isBreached ? const Color(0xFF1E1114) : const Color(0xFF062015))
+        : (isBreached ? const Color(0xFFFEF2F2) : const Color(0xFFECFDF5));
+    final borderColor = primaryColor.withValues(alpha: isDark ? 0.35 : 0.25);
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withValues(alpha: isDark ? 0.12 : 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isBreached ? Icons.phone_locked_rounded : Icons.verified_user_rounded,
+                  color: primaryColor,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TOTAL MOBILE LEAKS & BREACHES',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1,
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isBreached
+                          ? '$totalBreaches Known Data ${totalBreaches == 1 ? "Leak" : "Leaks"} Indexed'
+                          : 'Zero Public Leaks Detected',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: primaryColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$totalBreaches',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, thickness: 1, color: Colors.white10),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _buildBreachKpiTile(
+                  label: 'Data Leaks',
+                  value: '$totalBreaches',
+                  color: primaryColor,
+                  isDark: isDark,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildBreachKpiTile(
+                  label: 'SIM-Swap Threat',
+                  value: result.simSwapVulnerable ? 'CRITICAL' : 'PROTECTED',
+                  color: result.simSwapVulnerable ? const Color(0xFFDC2626) : const Color(0xFF10B981),
+                  isDark: isDark,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildBreachKpiTile(
+                  label: 'Allocated Circle',
+                  value: result.circle.split(' ').first,
+                  color: const Color(0xFF38BDF8),
+                  isDark: isDark,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBreachKpiTile({
+    required String label,
+    required String value,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1661,6 +1976,9 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
     return Column(
       children: [
+        // 0. Total Phone Breaches & Telecom Threat Banner
+        _buildPhoneBreachOverviewBanner(result, isDark),
+
         // Card 1: Risk Analysis & AI Synopsis
         Container(
           width: double.infinity,
@@ -2549,14 +2867,16 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                     );
                   },
                   icon: const Icon(Icons.copy_rounded, size: 14, color: Colors.white),
-                  label: const Text(
-                    'Copy API Threat Schema',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Copy Threat Schema',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFDC2626),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
@@ -2575,14 +2895,16 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                     size: 14,
                     color: const Color(0xFFEF4444),
                   ),
-                  label: Text(
-                    _unmaskLeakedData ? 'Mask PII' : 'Unmask PII',
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFEF4444)),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _unmaskLeakedData ? 'Mask Data' : 'Unmask PII',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFEF4444)),
+                    ),
                   ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFFEF4444)),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
