@@ -100,6 +100,34 @@ class LeakedIdentityDossier {
         'breachIncidentDate': breachIncidentDate,
         'rawDumpSyntax': rawDumpSyntax,
       };
+
+  LeakedIdentityDossier copyWith({
+    String? subscriberName,
+    String? fatherName,
+    String? rawCafAddress,
+    String? formattedAddress,
+    String? alternateNumber,
+    String? telecomCircle,
+    String? primaryCarrier,
+    String? idProofToken,
+    String? cafRetailerOrigin,
+    String? breachIncidentDate,
+    String? rawDumpSyntax,
+  }) {
+    return LeakedIdentityDossier(
+      subscriberName: subscriberName ?? this.subscriberName,
+      fatherName: fatherName ?? this.fatherName,
+      rawCafAddress: rawCafAddress ?? this.rawCafAddress,
+      formattedAddress: formattedAddress ?? this.formattedAddress,
+      alternateNumber: alternateNumber ?? this.alternateNumber,
+      telecomCircle: telecomCircle ?? this.telecomCircle,
+      primaryCarrier: primaryCarrier ?? this.primaryCarrier,
+      idProofToken: idProofToken ?? this.idProofToken,
+      cafRetailerOrigin: cafRetailerOrigin ?? this.cafRetailerOrigin,
+      breachIncidentDate: breachIncidentDate ?? this.breachIncidentDate,
+      rawDumpSyntax: rawDumpSyntax ?? this.rawDumpSyntax,
+    );
+  }
 }
 
 class PhoneIntelligenceResult {
@@ -117,6 +145,7 @@ class PhoneIntelligenceResult {
   final List<String> actionableSteps;
   final List<ExposedDossierField> exposedProfile;
   final LeakedIdentityDossier? leakedDossier;
+  final bool isPorted;
 
   const PhoneIntelligenceResult({
     required this.rawNumber,
@@ -133,7 +162,44 @@ class PhoneIntelligenceResult {
     required this.actionableSteps,
     required this.exposedProfile,
     this.leakedDossier,
+    this.isPorted = false,
   });
+
+  PhoneIntelligenceResult copyWith({
+    String? rawNumber,
+    String? formattedNumber,
+    String? carrier,
+    String? circle,
+    String? lineType,
+    bool? isValid,
+    int? riskScore,
+    String? securityGrade,
+    List<PhoneBreachInfo>? breaches,
+    bool? simSwapVulnerable,
+    List<String>? topLeakedData,
+    List<String>? actionableSteps,
+    List<ExposedDossierField>? exposedProfile,
+    LeakedIdentityDossier? leakedDossier,
+    bool? isPorted,
+  }) {
+    return PhoneIntelligenceResult(
+      rawNumber: rawNumber ?? this.rawNumber,
+      formattedNumber: formattedNumber ?? this.formattedNumber,
+      carrier: carrier ?? this.carrier,
+      circle: circle ?? this.circle,
+      lineType: lineType ?? this.lineType,
+      isValid: isValid ?? this.isValid,
+      riskScore: riskScore ?? this.riskScore,
+      securityGrade: securityGrade ?? this.securityGrade,
+      breaches: breaches ?? this.breaches,
+      simSwapVulnerable: simSwapVulnerable ?? this.simSwapVulnerable,
+      topLeakedData: topLeakedData ?? this.topLeakedData,
+      actionableSteps: actionableSteps ?? this.actionableSteps,
+      exposedProfile: exposedProfile ?? this.exposedProfile,
+      leakedDossier: leakedDossier ?? this.leakedDossier,
+      isPorted: isPorted ?? this.isPorted,
+    );
+  }
 }
 
 class PhoneBreachService {
@@ -365,6 +431,66 @@ class PhoneBreachService {
       actionableSteps: steps,
       exposedProfile: profile,
       leakedDossier: dossier,
+    );
+  }
+
+  /// Updates carrier attribution when the user has ported via MNP (Mobile Number Portability)
+  /// or when correcting network operator detection.
+  PhoneIntelligenceResult updateCarrierWithMnp(
+    PhoneIntelligenceResult original,
+    String newCarrier, {
+    String? newCircle,
+  }) {
+    final activeCircle = newCircle ?? original.circle;
+
+    // 1. Update raw dump syntax if dossier exists
+    LeakedIdentityDossier? updatedDossier;
+    if (original.leakedDossier != null) {
+      final oldDossier = original.leakedDossier!;
+      final updatedRawDump = oldDossier.rawDumpSyntax.replaceFirst(
+        RegExp(r'"circle":\s*"[^"]*"'),
+        '"circle": "${newCarrier.toUpperCase()} ${activeCircle.toUpperCase()} (MNP_PORTED)"',
+      );
+
+      updatedDossier = oldDossier.copyWith(
+        primaryCarrier: newCarrier,
+        telecomCircle: activeCircle,
+        rawDumpSyntax: updatedRawDump,
+      );
+    }
+
+    // 2. Update exposed profile telemetry items
+    final updatedProfile = original.exposedProfile.map((field) {
+      if (field.fieldName.contains('Carrier') || field.category.contains('Telemetry')) {
+        return ExposedDossierField(
+          fieldName: field.fieldName,
+          icon: field.icon,
+          category: field.category,
+          exposureStatus: 'Active: $activeCircle ($newCarrier - MNP Active)',
+          threatDescription:
+              'Network operator verified via MNP. Telecom-specific SIM swap vectors and customer care procedures apply directly to $newCarrier.',
+          isCompromised: field.isCompromised,
+          severity: field.severity,
+        );
+      }
+      return field;
+    }).toList();
+
+    // 3. Update actionable steps to target the selected carrier's SIM lock portal
+    final updatedSteps = original.actionableSteps.map((step) {
+      if (step.contains('SIM Lock PIN')) {
+        return 'Enable Carrier SIM Lock PIN with $newCarrier to block unauthorized SIM card swaps.';
+      }
+      return step;
+    }).toList();
+
+    return original.copyWith(
+      carrier: newCarrier,
+      circle: activeCircle,
+      isPorted: true,
+      leakedDossier: updatedDossier,
+      exposedProfile: updatedProfile,
+      actionableSteps: updatedSteps,
     );
   }
 
@@ -906,8 +1032,9 @@ class PhoneBreachService {
       return {'carrier': 'BSNL Mobile (Bharat Sanchar Nigam Ltd)', 'circle': 'North East Circle'};
     }
 
-    // 3. 4G/5G Allotted Series (6xxx, 7xxx, 8xxx, 9xxx)
-    if (prefix2 >= 62 && prefix2 <= 63) {
+    // 3. High-Precision 4G/5G Allotted Series (6xxx, 7xxx, 8xxx, 9xxx)
+    // 6xxx series - Reliance Jio Pan-India Greenfield Allocations
+    if (prefix2 >= 60 && prefix2 <= 63) {
       carrier = 'Reliance Jio Infocomm';
       if (prefix3 == 620 || prefix3 == 621) {
         circle = 'Bihar & Jharkhand Circle';
@@ -928,7 +1055,7 @@ class PhoneBreachService {
       } else if (prefix3 == 637) {
         circle = 'Odisha Circle';
       } else if (prefix3 == 638) {
-        circle = 'Tamil Nadu Circle';
+        circle = 'Tamil Nadu & Chennai Circle';
       } else if (prefix3 == 639) {
         circle = 'Uttar Pradesh (East) Circle';
       } else {
@@ -937,6 +1064,7 @@ class PhoneBreachService {
       return {'carrier': carrier, 'circle': circle};
     }
 
+    // 70xx series - Reliance Jio Infocomm Pan-India (Full 7000-7099 block)
     if (prefix2 == 70) {
       carrier = 'Reliance Jio Infocomm';
       if (prefix3 == 700) {
@@ -965,7 +1093,28 @@ class PhoneBreachService {
       return {'carrier': carrier, 'circle': circle};
     }
 
-    if (prefix2 == 72 || prefix2 == 73 || prefix2 == 74 || prefix2 == 77) {
+    // 72xx to 78xx series - Granular MSC allocations
+    if (prefix2 >= 72 && prefix2 <= 78) {
+      // Jio 4G specific series in 7xxx
+      if (prefix4 == 7208 ||
+          prefix4 == 7400 ||
+          prefix4 == 7506 ||
+          prefix4 == 7666 ||
+          prefix4 == 7667 ||
+          prefix4 == 7710 ||
+          prefix4 == 7715 ||
+          prefix4 == 7718 ||
+          prefix4 == 7738 ||
+          prefix4 == 7777 ||
+          prefix4 == 7827 ||
+          prefix4 == 7838) {
+        carrier = 'Reliance Jio Infocomm';
+        circle = (prefix4 == 7827 || prefix4 == 7838)
+            ? 'Delhi NCR Circle'
+            : (prefix4 == 7777 ? 'Gujarat Circle' : 'Mumbai Metro Circle');
+        return {'carrier': carrier, 'circle': circle};
+      }
+
       if (prefix2 == 72 || prefix2 == 74 || prefix2 == 77) {
         carrier = 'Vodafone Idea (Vi)';
         if (prefix3 >= 740 && prefix3 <= 742) {
@@ -979,25 +1128,20 @@ class PhoneBreachService {
         }
       } else {
         carrier = 'Bharti Airtel';
-        circle = 'Uttar Pradesh (East) Circle';
+        if (prefix3 >= 750 && prefix3 <= 754) {
+          circle = 'Uttar Pradesh (West) Circle';
+        } else if (prefix3 >= 760 && prefix3 <= 764) {
+          circle = 'Gujarat Circle';
+        } else if (prefix3 >= 780 && prefix3 <= 784) {
+          circle = 'Delhi NCR Circle';
+        } else {
+          circle = 'Uttar Pradesh (East) Circle';
+        }
       }
       return {'carrier': carrier, 'circle': circle};
     }
 
-    if (prefix2 == 75 || prefix2 == 76 || prefix2 == 78) {
-      carrier = 'Bharti Airtel';
-      if (prefix3 >= 750 && prefix3 <= 754) {
-        circle = 'Uttar Pradesh (West) Circle';
-      } else if (prefix3 >= 760 && prefix3 <= 764) {
-        circle = 'Gujarat Circle';
-      } else if (prefix3 >= 780 && prefix3 <= 784) {
-        circle = 'Delhi NCR Circle';
-      } else {
-        circle = 'Bihar & Jharkhand Circle';
-      }
-      return {'carrier': carrier, 'circle': circle};
-    }
-
+    // 79xx series - Reliance Jio Infocomm Pan-India
     if (prefix2 == 79) {
       carrier = 'Reliance Jio Infocomm';
       if (prefix3 == 790) {
@@ -1006,13 +1150,62 @@ class PhoneBreachService {
         circle = 'Bihar & Jharkhand Circle';
       } else if (prefix3 == 798) {
         circle = 'Kolkata Circle';
+      } else if (prefix3 == 799) {
+        circle = 'Andhra Pradesh & Telangana Circle';
       } else {
         circle = 'Delhi NCR Circle';
       }
       return {'carrier': carrier, 'circle': circle};
     }
 
+    // 8xxx series - 80 to 89
     if (prefix2 >= 80 && prefix2 <= 89) {
+      // High-precision Jio blocks in 8xxx
+      final isJio8Series = (prefix2 == 82 || prefix2 == 83 || prefix2 == 87 || prefix2 == 89) ||
+          (prefix4 == 8080 ||
+              prefix4 == 8097 ||
+              prefix4 == 8104 ||
+              prefix4 == 8108 ||
+              prefix4 == 8169 ||
+              prefix4 == 8178 ||
+              prefix4 == 8179 ||
+              prefix4 == 8400 ||
+              prefix4 == 8433 ||
+              prefix4 == 8447 ||
+              prefix4 == 8448 ||
+              prefix4 == 8505 ||
+              prefix4 == 8510 ||
+              prefix4 == 8512 ||
+              prefix4 == 8527 ||
+              prefix4 == 8588 ||
+              prefix4 == 8595 ||
+              prefix4 == 8600 ||
+              prefix4 == 8652 ||
+              prefix4 == 8655 ||
+              prefix4 == 8800 ||
+              prefix4 == 8826 ||
+              prefix4 == 8851 ||
+              prefix4 == 8860 ||
+              prefix4 == 8882);
+
+      if (isJio8Series) {
+        carrier = 'Reliance Jio Infocomm';
+        if (prefix3 >= 820 && prefix3 <= 822) {
+          circle = 'Gujarat Circle';
+        } else if (prefix3 >= 830 && prefix3 <= 833) {
+          circle = 'Uttar Pradesh (East) Circle';
+        } else if (prefix3 >= 870 && prefix3 <= 874) {
+          circle = 'Delhi NCR Circle';
+        } else if (prefix3 >= 890 && prefix3 <= 894) {
+          circle = 'Uttar Pradesh (West) Circle';
+        } else if (prefix4 == 8080 || prefix4 == 8097 || prefix4 == 8104 || prefix4 == 8108 || prefix4 == 8169) {
+          circle = 'Mumbai Metro Circle';
+        } else {
+          circle = 'Delhi NCR Circle';
+        }
+        return {'carrier': carrier, 'circle': circle};
+      }
+
       if (prefix2 == 80) {
         if (prefix3 == 808) {
           carrier = 'Vodafone Idea (Vi)';
@@ -1036,17 +1229,6 @@ class PhoneBreachService {
               ? 'Delhi NCR Circle'
               : (prefix3 == 814 ? 'Gujarat Circle' : 'Rajasthan Circle');
         }
-      } else if (prefix2 == 82 || prefix2 == 83 || prefix2 == 87 || prefix2 == 89) {
-        carrier = 'Reliance Jio Infocomm';
-        if (prefix3 >= 820 && prefix3 <= 822) {
-          circle = 'Gujarat Circle';
-        } else if (prefix3 >= 830 && prefix3 <= 833) {
-          circle = 'Uttar Pradesh (East) Circle';
-        } else if (prefix3 >= 870 && prefix3 <= 874) {
-          circle = 'Delhi NCR Circle';
-        } else {
-          circle = 'Karnataka Circle';
-        }
       } else if (prefix2 == 84 || prefix2 == 85 || prefix2 == 86) {
         carrier = 'Vodafone Idea (Vi)';
         if (prefix3 >= 840 && prefix3 <= 843) {
@@ -1057,7 +1239,7 @@ class PhoneBreachService {
           circle = 'Maharashtra & Goa Circle';
         }
       } else {
-        // 88
+        // 88 fallback
         carrier = 'Bharti Airtel';
         if (prefix3 == 880 || prefix3 == 886) {
           circle = 'Delhi NCR Circle';
@@ -1072,32 +1254,7 @@ class PhoneBreachService {
       return {'carrier': carrier, 'circle': circle};
     }
 
-    if (prefix2 == 90 || prefix2 == 95 || prefix2 == 96) {
-      carrier = 'Bharti Airtel';
-      if (prefix3 >= 900 && prefix3 <= 903) {
-        circle = 'Andhra Pradesh & Telangana Circle';
-      } else if (prefix3 >= 954 && prefix3 <= 956) {
-        circle = 'Delhi NCR Circle';
-      } else if (prefix3 >= 960 && prefix3 <= 963) {
-        circle = 'Tamil Nadu & Chennai Circle';
-      } else {
-        circle = 'Uttar Pradesh (East) Circle';
-      }
-      return {'carrier': carrier, 'circle': circle};
-    }
-
-    if (prefix2 == 91) {
-      carrier = 'Vodafone Idea (Vi)';
-      if (prefix3 >= 910 && prefix3 <= 912) {
-        circle = 'Uttar Pradesh (East) Circle';
-      } else if (prefix3 >= 913 && prefix3 <= 915) {
-        circle = 'Maharashtra & Goa Circle';
-      } else {
-        circle = 'Delhi NCR Circle';
-      }
-      return {'carrier': carrier, 'circle': circle};
-    }
-
+    // 92xx and 93xx series - Reliance Jio Infocomm Pan-India
     if (prefix2 == 92 || prefix2 == 93) {
       carrier = 'Reliance Jio Infocomm';
       if (prefix3 == 921 || prefix3 == 931) {
@@ -1112,13 +1269,59 @@ class PhoneBreachService {
       return {'carrier': carrier, 'circle': circle};
     }
 
+    // 90xx, 95xx, 96xx series
+    if (prefix2 == 90 || prefix2 == 95 || prefix2 == 96) {
+      // Check Jio series in 95xx / 96xx
+      if (prefix4 == 9540 || prefix4 == 9560 || prefix4 == 9582 || prefix4 == 9599 ||
+          prefix4 == 9619 || prefix4 == 9625 || prefix4 == 9643 || prefix4 == 9650) {
+        return {
+          'carrier': 'Reliance Jio Infocomm',
+          'circle': (prefix4 == 9619 ? 'Mumbai Metro Circle' : 'Delhi NCR Circle'),
+        };
+      }
+
+      carrier = 'Bharti Airtel';
+      if (prefix3 >= 900 && prefix3 <= 903) {
+        circle = 'Andhra Pradesh & Telangana Circle';
+      } else if (prefix3 >= 954 && prefix3 <= 956) {
+        circle = 'Delhi NCR Circle';
+      } else if (prefix3 >= 960 && prefix3 <= 963) {
+        circle = 'Tamil Nadu & Chennai Circle';
+      } else {
+        circle = 'Uttar Pradesh (East) Circle';
+      }
+      return {'carrier': carrier, 'circle': circle};
+    }
+
+    // 91xx series
+    if (prefix2 == 91) {
+      if (prefix4 == 9136 || prefix4 == 9152 || prefix4 == 9167) {
+        return {
+          'carrier': 'Reliance Jio Infocomm',
+          'circle': 'Mumbai Metro Circle',
+        };
+      }
+      carrier = 'Vodafone Idea (Vi)';
+      if (prefix3 >= 910 && prefix3 <= 912) {
+        circle = 'Uttar Pradesh (East) Circle';
+      } else if (prefix3 >= 913 && prefix3 <= 915) {
+        circle = 'Maharashtra & Goa Circle';
+      } else {
+        circle = 'Delhi NCR Circle';
+      }
+      return {'carrier': carrier, 'circle': circle};
+    }
+
+    // 97xx series
     if (prefix2 == 97) {
-      if (prefix3 <= 970) {
+      if (prefix3 >= 977 || prefix4 == 9711 || prefix4 == 9717 || prefix4 == 9718) {
+        carrier = 'Reliance Jio Infocomm';
+        circle = prefix3 >= 977
+            ? 'Madhya Pradesh & Chhattisgarh Circle'
+            : 'Delhi NCR Circle';
+      } else if (prefix3 <= 970) {
         carrier = 'Bharti Airtel';
         circle = 'Andhra Pradesh & Telangana Circle';
-      } else if (prefix3 >= 977) {
-        carrier = 'Reliance Jio Infocomm';
-        circle = 'Madhya Pradesh & Chhattisgarh Circle';
       } else {
         carrier = 'Vodafone Idea (Vi)';
         circle = 'Delhi NCR Circle';

@@ -83,6 +83,38 @@ void main() {
       expect(addressField.severity, equals('Critical'));
     });
 
+    test('detects Reliance Jio Infocomm for 70, 79, 83, and 92 series', () async {
+      final res70 = await service.scanPhoneNumber('7003123456');
+      expect(res70.carrier, equals('Reliance Jio Infocomm'));
+      expect(res70.circle, equals('Kolkata Circle'));
+
+      final res79 = await service.scanPhoneNumber('7970123456');
+      expect(res79.carrier, equals('Reliance Jio Infocomm'));
+      expect(res79.circle, equals('Bihar & Jharkhand Circle'));
+
+      final res83 = await service.scanPhoneNumber('8303123456');
+      expect(res83.carrier, equals('Reliance Jio Infocomm'));
+
+      final res92 = await service.scanPhoneNumber('9210123456');
+      expect(res92.carrier, equals('Reliance Jio Infocomm'));
+      expect(res92.circle, equals('Delhi NCR Circle'));
+    });
+
+    test('supports MNP carrier switching and updates dossier and defense telemetry live', () async {
+      final initial = await service.scanPhoneNumber('9810123456');
+      expect(initial.carrier, equals('Bharti Airtel'));
+      expect(initial.isPorted, isFalse);
+
+      final ported = service.updateCarrierWithMnp(initial, 'Reliance Jio Infocomm');
+      expect(ported.carrier, equals('Reliance Jio Infocomm'));
+      expect(ported.isPorted, isTrue);
+      expect(ported.leakedDossier?.primaryCarrier, equals('Reliance Jio Infocomm'));
+      expect(ported.leakedDossier?.rawDumpSyntax, contains('RELIANCE JIO INFOCOMM'));
+      expect(ported.actionableSteps.any((s) => s.contains('Reliance Jio Infocomm')), isTrue);
+      final carrierField = ported.exposedProfile.firstWhere((p) => p.fieldName.contains('Carrier'));
+      expect(carrierField.exposureStatus, contains('Reliance Jio Infocomm - MNP Active'));
+    });
+
     test('gracefully rejects invalid numbers without crashing', () async {
       final res = await service.scanPhoneNumber('12345');
 
