@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:crypto/crypto.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -75,6 +77,12 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
     super.initState();
     _mode = widget.initialPhoneMode ? _ScanMode.phone : _ScanMode.email;
     _detectDeviceSim();
+    _phoneCtrl.addListener(() {
+      // Clear manual carrier override when typing a different number
+      if (_selectedActiveCarrier != null) {
+        setState(() => _selectedActiveCarrier = null);
+      }
+    });
   }
 
   Future<void> _detectDeviceSim() async {
@@ -82,11 +90,8 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
     if (mounted && sim.isNotEmpty) {
       setState(() {
         _deviceSimInfo = sim;
-        if (_selectedActiveCarrier == null &&
-            sim['normalizedCarrier'] != null &&
-            (sim['normalizedCarrier'] as String).isNotEmpty) {
-          _selectedActiveCarrier = sim['normalizedCarrier'] as String;
-        }
+        // Keep _selectedActiveCarrier null by default so arbitrary entered numbers
+        // accurately resolve their authentic DoT series without being forced to device SIM
       });
     }
   }
@@ -911,6 +916,10 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
         // 2. Dual Assessment Matrix (Authenticity & Exposure Scores)
         _buildIntelBaseAssessmentCard(osint, isDark),
+        const SizedBox(height: 16),
+
+        // 2.5 Cryptographic Threat Identifiers
+        _buildCryptographicHashesCard(osint.query, isDark),
         const SizedBox(height: 16),
 
         // 3. Infostealer Malware Logs Threat Card (if compromised)
@@ -2581,6 +2590,15 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                 isDark: isDark,
                 valueColor: Colors.greenAccent.shade400,
               ),
+              _buildTelecomTile(
+                label: 'TELECOM ROUTING INFRASTRUCTURE',
+                value: 'MCC: 404/405 | IMS Core VoLTE/VoNR | NNP 2024',
+                icon: CupertinoIcons.layers_alt_fill,
+                isDark: isDark,
+                valueColor: const Color(0xFF38BDF8),
+                subtitle:
+                    'National Numbering Plan compliant routing with GSMA standard circuit & packet-switched core.',
+              ),
               const SizedBox(height: 10),
               // Quick 1-tap carrier switcher chips
               Text(
@@ -2682,6 +2700,14 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
               ),
             ],
           ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Card 2.5: Cryptographic Threat Identifiers
+        _buildCryptographicHashesCard(
+          result.formattedNumber.replaceAll(' ', ''),
+          isDark,
         ),
 
         if (result.leakedDossier != null) ...[
@@ -3921,6 +3947,131 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
               color: isDark ? Colors.white70 : const Color(0xFF475569),
               height: 1.35,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCryptographicHashesCard(String identifier, bool isDark) {
+    final clean = identifier.trim().toLowerCase();
+    final bytes = utf8.encode(clean);
+    final md5Hash = md5.convert(bytes).toString();
+    final sha1Hash = sha1.convert(bytes).toString();
+    final sha256Hash = sha256.convert(bytes).toString();
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF111827) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                CupertinoIcons.number_square_fill,
+                color: Color(0xFF38BDF8),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'CRYPTOGRAPHIC THREAT IDENTIFIERS',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                  color: isDark ? Colors.white70 : const Color(0xFF334155),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Cryptographic digests utilized by threat intelligence platforms, dehashed indices, and COMB database correlation.',
+            style: TextStyle(
+              fontSize: 11,
+              color: isDark ? Colors.white54 : const Color(0xFF64748B),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildHashRow('MD5', md5Hash, isDark),
+          const SizedBox(height: 10),
+          _buildHashRow('SHA-1', sha1Hash, isDark),
+          const SizedBox(height: 10),
+          _buildHashRow('SHA-256', sha256Hash, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHashRow(String algo, String hash, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0B0F19) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: const Color(0xFF38BDF8).withValues(alpha: 0.3),
+              ),
+            ),
+            child: Text(
+              algo,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF38BDF8),
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: SelectableText(
+              hash,
+              style: TextStyle(
+                fontSize: 11,
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.w600,
+                color: isDark
+                    ? const Color(0xFFE2E8F0)
+                    : const Color(0xFF1E293B),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy_rounded, size: 16),
+            tooltip: 'Copy $algo',
+            visualDensity: VisualDensity.compact,
+            color: isDark ? Colors.white60 : Colors.black54,
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: hash));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Copied $algo digest to clipboard'),
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
           ),
         ],
       ),
