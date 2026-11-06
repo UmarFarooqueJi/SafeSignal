@@ -147,8 +147,8 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
     });
 
     try {
-      await Future.delayed(const Duration(milliseconds: 150));
-      _setImageStep('Running on-device OCR & scam entity detection...');
+      await Future.delayed(const Duration(milliseconds: 100));
+      _setImageStep('Uploading securely to zero-knowledge relay for reverse crawling...');
       final res = await VisualOsintEngine.analyze(localFilePath: filePath);
       if (mounted) {
         setState(() {
@@ -185,12 +185,10 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
       _activeImageUrl = clean;
       _imageResult = null;
       _comparedSimilarity = null;
-      _imageScanStep = 'Fetching remote image bytes securely...';
+      _imageScanStep = 'Crawling public appearances across global web & social media...';
     });
 
     try {
-      await Future.delayed(const Duration(milliseconds: 200));
-      _setImageStep('Generating multi-engine queries across 6 search indices...');
       final res = await VisualOsintEngine.analyze(imageUrl: clean);
       if (mounted) {
         setState(() {
@@ -206,7 +204,7 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           _isImageAnalyzing = false;
           _imageScanStep = '';
         });
-        _showToast('Failed to download image: $e');
+        _showToast('Failed to analyze image: $e');
       }
     }
   }
@@ -248,6 +246,26 @@ Failure to comply will lead to immediate physical property attachment.
       final ocr = VisualOsintEngine.inspectTextForensics(sampleText);
       final queries = VisualOsintEngine.generateEngineQueries('https://via.placeholder.com/1080x1920.png?text=CBI+Sample');
       final assess = VisualOsintEngine.evaluateThreat(hashes, ocr, 'https://via.placeholder.com/1080x1920.png');
+      const sampleMatches = [
+        VisualWebMatch(
+          title: 'CBI / Cyber Crime Digital Arrest Fraud Alert Notice',
+          pageUrl: 'https://cybercrime.gov.in',
+          mediaUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600',
+          platform: 'Government Cyber Alert',
+          domain: 'cybercrime.gov.in',
+          matchPercentage: 99,
+        ),
+        VisualWebMatch(
+          title: 'Beware of Fake RBI Clearance Deposit Demands - X (Twitter)',
+          pageUrl: 'https://twitter.com/cyberdost',
+          mediaUrl: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600',
+          platform: 'X (Twitter)',
+          domain: 'twitter.com',
+          matchPercentage: 96,
+        ),
+      ];
 
       if (mounted) {
         setState(() {
@@ -256,6 +274,7 @@ Failure to comply will lead to immediate physical property attachment.
             hashes: hashes,
             ocrEntities: ocr,
             engineQueries: queries,
+            webMatches: sampleMatches,
             assessment: assess,
             inspectedAt: DateTime.now(),
           );
@@ -307,7 +326,13 @@ Failure to comply will lead to immediate physical property attachment.
     buffer.writeln('Extracted UPI: ${r.ocrEntities.detectedUpiIds.join(", ")}');
     buffer.writeln('Phone Numbers: ${r.ocrEntities.detectedPhoneNumbers.join(", ")}');
     buffer.writeln('Amounts      : ${r.ocrEntities.detectedAmounts.join(", ")}\n');
-    buffer.writeln('4. REVERSE ENGINE SOURCES');
+    buffer.writeln('4. DETECTED WEB APPEARANCES & SOCIAL PROFILES (${r.webMatches.length})');
+    for (final m in r.webMatches) {
+      buffer.writeln('- [${m.platform}] ${m.title} (${m.matchPercentage}%)');
+      buffer.writeln('  Page: ${m.pageUrl}');
+      buffer.writeln('  Image: ${m.mediaUrl}');
+    }
+    buffer.writeln('\n5. REVERSE ENGINE SOURCES');
     for (final q in r.engineQueries) {
       buffer.writeln('- ${q.engineName}: ${q.queryUrl}');
     }
@@ -2479,16 +2504,55 @@ Failure to comply will lead to immediate physical property attachment.
         _buildVisualThreatHeader(r.assessment, isDark),
         const SizedBox(height: 22),
 
-        // Search Engines
+        // Live Crawled Web Appearances & Social Media Posts
         Row(
           children: [
             Text(
-              'GLOBAL REVERSE SEARCH ENGINES & FINDINGS',
+              'DETECTED WEB APPEARANCES & SOCIAL PROFILES',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.2,
-                color: isDark ? Colors.white54 : Colors.black54,
+                color: isDark ? Colors.white54 : const Color(0xFF475569),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2979FF).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${r.webMatches.length}',
+                style: const TextStyle(
+                  color: Color(0xFF2979FF),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        if (r.webMatches.isEmpty)
+          _buildNoWebMatchesFoundCard(isDark)
+        else
+          ...r.webMatches.map((m) => _buildVisualWebMatchCard(m, isDark)),
+
+        const SizedBox(height: 22),
+
+        // Global Reverse Search Engines
+        Row(
+          children: [
+            Text(
+              'GLOBAL REVERSE SEARCH ENGINES & DEEP RECON',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+                color: isDark ? Colors.white54 : const Color(0xFF475569),
               ),
             ),
             const SizedBox(width: 8),
@@ -2528,6 +2592,325 @@ Failure to comply will lead to immediate physical property attachment.
         // Clone / Perceptual Hash Comparator Card
         _buildCloneComparatorCard(r.hashes.dHash, isDark),
       ],
+    );
+  }
+
+  Widget _buildVisualWebMatchCard(VisualWebMatch m, bool isDark) {
+    final (Color brandColor, IconData icon) = switch (m.platform) {
+      'Instagram' => (const Color(0xFFE4405F), Icons.camera_alt_rounded),
+      'X (Twitter)' => (const Color(0xFF1DA1F2), Icons.alternate_email_rounded),
+      'Reddit' => (const Color(0xFFFF4500), Icons.forum_rounded),
+      'Facebook' => (const Color(0xFF1877F2), Icons.facebook_rounded),
+      'Pinterest' => (const Color(0xFFE60023), Icons.push_pin_rounded),
+      'Tumblr' => (const Color(0xFF36465D), Icons.article_rounded),
+      'Behance' => (const Color(0xFF1769FF), Icons.brush_rounded),
+      'YouTube' => (const Color(0xFFFF0000), Icons.play_circle_fill_rounded),
+      'LinkedIn' => (const Color(0xFF0A66C2), Icons.badge_rounded),
+      'Telegram' => (const Color(0xFF0088CC), Icons.send_rounded),
+      'Threads' => (isDark ? Colors.white : Colors.black87, Icons.tag_rounded),
+      'Pexels' || 'Unsplash' => (const Color(0xFF00BCD4), Icons.photo_library_rounded),
+      _ => (const Color(0xFF2979FF), Icons.public_rounded),
+    };
+
+    final cardBg = isDark ? const Color(0xFF131926) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0);
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: cardBorder, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image Thumbnail Section
+          Stack(
+            children: [
+              Image.network(
+                m.thumbnailUrl,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) {
+                  return Container(
+                    height: 140,
+                    width: double.infinity,
+                    color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(icon, size: 36, color: brandColor),
+                          const SizedBox(height: 6),
+                          Text(
+                            m.platform,
+                            style: TextStyle(
+                              color: isDark ? Colors.white54 : Colors.black54,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                loadingBuilder: (ctx, child, progress) {
+                  if (progress == null) return child;
+                  return Container(
+                    height: 180,
+                    color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                },
+              ),
+              // Match Badge Overlay
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.6)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle_rounded, color: Color(0xFF00E5FF), size: 12),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${m.matchPercentage}% MATCH',
+                        style: const TextStyle(
+                          color: Color(0xFF00E5FF),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10.5,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Gradient Overlay at bottom of image
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.transparent, cardBg],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Content section
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Platform Tag & Domain Pill
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: brandColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: brandColor.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, size: 13, color: brandColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            m.platform.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: brandColor,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (m.domain.isNotEmpty)
+                      Expanded(
+                        child: Text(
+                          m.domain,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white38 : const Color(0xFF64748B),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Title
+                Text(
+                  m.title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    height: 1.35,
+                    color: titleColor,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+
+                // Truncated URL
+                Text(
+                  m.pageUrl,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    color: isDark ? Colors.white38 : const Color(0xFF64748B),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 14),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => InAppBrowserScreen(url: m.pageUrl),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.travel_explore_rounded, size: 16),
+                        label: const Text(
+                          'Inspect In-App',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2979FF),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      tooltip: 'Open in Browser',
+                      icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                      style: IconButton.styleFrom(
+                        backgroundColor: isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFFF1F5F9),
+                        foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => _openUrl(m.pageUrl),
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton.filledTonal(
+                      tooltip: 'Copy Page Link',
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      style: IconButton.styleFrom(
+                        backgroundColor: isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFFF1F5F9),
+                        foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => _copyToClipboard(m.pageUrl, '${m.platform} Page URL'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn().slideY(begin: 0.05);
+  }
+
+  Widget _buildNoWebMatchesFoundCard(bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.image_not_supported_outlined,
+            size: 40,
+            color: isDark ? Colors.white24 : Colors.black26,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No Direct Public Appearances Found',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'This image does not currently appear on public indexed databases or is a private/new photo. Use the multi-engine search buttons below to search Google Lens, Yandex, and TinEye manually.',
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white38 : const Color(0xFF64748B),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
