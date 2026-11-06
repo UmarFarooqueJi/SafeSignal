@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/url_intelligence_engine.dart';
+import '../../core/services/virus_total_service.dart';
 import '../../core/services/link_guard_service.dart';
 import 'in_app_browser_screen.dart';
 
@@ -141,8 +142,13 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
   }
 
   Future<UrlResult> _analyzeUrl(String url) async {
-    _setStatus('Analyzing domain integrity & threat radar...');
-    return await UrlIntelligenceEngine.analyze(url);
+    _setStatus('Querying threat intelligence & multi-engine radar...');
+    return await UrlIntelligenceEngine.analyze(
+      url,
+      traceShorteners: true,
+      checkVirusTotal: true,
+      checkSecurityDns: true,
+    );
   }
 
   @override
@@ -207,6 +213,26 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
           ),
         ),
         centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white24, width: 1.5),
+              ),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.vpn_key_rounded,
+                  color: Colors.white54,
+                  size: 20,
+                ),
+                tooltip: 'VirusTotal API Key',
+                onPressed: _showVirusTotalConfigDialog,
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -407,8 +433,9 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
         .where((c) => c.passed == false)
         .map((c) => c.detail)
         .join('. ');
-    if (synopsis.isEmpty)
+    if (synopsis.isEmpty) {
       synopsis = 'No major threats detected — all checks passed.';
+    }
     if (result.verdict == UrlVerdict.dangerous && synopsis.length < 20) {
       synopsis =
           'Multiple security risks detected: possible phishing, suspicious domain structure, or flagged by threat intelligence databases.';
@@ -899,7 +926,11 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
         ),
         const SizedBox(height: 16),
 
-        // ── Card 5: Threat Warning (only if dangerous/caution) ────────────────
+        // ── Card 6: VirusTotal & Multi-Engine Threat Radar ─────────────────────
+        _buildVirusTotalCard(result, isDark, outlineColor),
+        const SizedBox(height: 16),
+
+        // ── Threat Warning (only if dangerous/caution) ────────────────
         if (result.verdict == UrlVerdict.dangerous ||
             result.verdict == UrlVerdict.caution)
           Container(
@@ -1435,6 +1466,425 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildVirusTotalCard(
+    UrlResult result,
+    bool isDark,
+    Color outlineColor,
+  ) {
+    final vt = result.virusTotalResult;
+    final secDns = result.securityDnsResult;
+
+    final isVtMalicious = vt != null && vt.isMalicious;
+    final isDnsBlocked = secDns != null && secDns.isBlocked;
+    final hasThreatFound = isVtMalicious || isDnsBlocked;
+
+    final cardBorderColor = hasThreatFound
+        ? const Color(0xFFFF8A65)
+        : (vt?.hasScanData == true ? const Color(0xFF4CAF50) : outlineColor);
+
+    final cardStyle = BoxDecoration(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(color: cardBorderColor, width: 1.5),
+    );
+
+    return Container(
+      width: double.infinity,
+      decoration: cardStyle,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _cardHeader('VirusTotal & Threat Intel Feeds', isDark),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      (hasThreatFound
+                              ? const Color(0xFFFF8A65)
+                              : (vt?.hasScanData == true
+                                  ? const Color(0xFF4CAF50)
+                                  : const Color(0xFF38BDF8)))
+                          .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: hasThreatFound
+                        ? const Color(0xFFFF8A65)
+                        : (vt?.hasScanData == true
+                            ? const Color(0xFF4CAF50)
+                            : const Color(0xFF38BDF8)),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      hasThreatFound
+                          ? Icons.warning_amber_rounded
+                          : (vt?.hasScanData == true
+                              ? Icons.verified_user_rounded
+                              : Icons.cloud_done_rounded),
+                      size: 13,
+                      color: hasThreatFound
+                          ? const Color(0xFFFF8A65)
+                          : (vt?.hasScanData == true
+                              ? const Color(0xFF4CAF50)
+                              : const Color(0xFF38BDF8)),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isDnsBlocked
+                          ? 'DNS BLOCKED'
+                          : (isVtMalicious
+                              ? '${vt.malicious}/${vt.totalEngines} DETECTED'
+                              : (vt != null && vt.hasScanData
+                                  ? '0/${vt.totalEngines} CLEAN'
+                                  : 'TELEMETRY LIVE')),
+                      style: TextStyle(
+                        color: hasThreatFound
+                            ? const Color(0xFFFF8A65)
+                            : (vt?.hasScanData == true
+                                ? const Color(0xFF4CAF50)
+                                : const Color(0xFF38BDF8)),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10.5,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Cloudflare 1.1.1.2 Real-time Security DoH
+          _buildRow(
+            'Cloudflare 1.1.1.2 DoH',
+            isDnsBlocked
+                ? 'Blocked (Phishing/Malware)'
+                : 'Passed (Zero-Key Active)',
+            valueColor: isDnsBlocked
+                ? const Color(0xFFFF8A65)
+                : const Color(0xFF4CAF50),
+            isDark: isDark,
+          ),
+          if (isDnsBlocked && secDns.details.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 4),
+              child: Text(
+                secDns.details,
+                style: const TextStyle(
+                  color: Color(0xFFFF8A65),
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+          _divider(),
+
+          // VirusTotal Engine Consensus
+          _buildRow(
+            'VirusTotal Engine Consensus',
+            vt != null && vt.hasScanData
+                ? '${vt.malicious} Malicious / ${vt.suspicious} Suspicious (${vt.totalEngines} Engines)'
+                : (vt?.hasCustomApiKey == true
+                    ? 'No prior sample in VT database'
+                    : 'Community Telemetry Mode'),
+            valueColor: isVtMalicious
+                ? const Color(0xFFFF8A65)
+                : (vt?.hasScanData == true
+                    ? const Color(0xFF4CAF50)
+                    : outlineColor),
+            isDark: isDark,
+          ),
+
+          if (vt != null && vt.hasScanData && vt.scanDate.isNotEmpty) ...[
+            _divider(),
+            _buildRow(
+              'VT Scan Timestamp',
+              vt.scanDate,
+              valueColor: outlineColor,
+              isDark: isDark,
+            ),
+          ],
+
+          // Flagged vendors pills if any
+          if (vt != null && vt.flaggedVendors.isNotEmpty) ...[
+            _divider(),
+            Text(
+              'Flagged by Security Vendors:',
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.black87,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: vt.flaggedVendors.take(12).map((vendor) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF8A65).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFFF8A65),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    vendor,
+                    style: const TextStyle(
+                      color: Color(0xFFFF8A65),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+
+          const SizedBox(height: 16),
+
+          // Action row: Open Full VirusTotal Web Report + Config API key
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF38BDF8),
+                    side: const BorderSide(color: Color(0xFF38BDF8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onPressed: () async {
+                    final reportUrl =
+                        vt?.webReportUrl ??
+                        VirusTotalService.getWebReportUrl(result.url);
+                    final uri = Uri.parse(reportUrl);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.open_in_browser_rounded, size: 16),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'VirusTotal Web Report',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.outlined(
+                tooltip: 'Configure VirusTotal API Key',
+                style: IconButton.styleFrom(
+                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                  side: BorderSide(
+                    color: isDark ? Colors.white24 : Colors.black26,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.key_rounded, size: 18),
+                onPressed: _showVirusTotalConfigDialog,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showVirusTotalConfigDialog() async {
+    final currentKey = await VirusTotalService.getApiKey() ?? '';
+    final keyController = TextEditingController(text: currentKey);
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        final isDark = Theme.of(dialogCtx).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: isDark ? Colors.white12 : Colors.black12,
+            ),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.vpn_key_rounded,
+                  color: Color(0xFF38BDF8),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'VirusTotal Integration',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'SafeSignal automatically checks Cloudflare 1.1.1.2 Security telemetry with zero setup. To query 70+ AV vendor verdicts in real-time inside the app, add your free VirusTotal API key.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: keyController,
+                  obscureText: true,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'VirusTotal v3 API Key',
+                    hintText: 'Enter 64-character API key',
+                    hintStyle: TextStyle(
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                    filled: true,
+                    fillColor: isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFF1F5F9),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: const Icon(Icons.key_rounded, size: 18),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: () async {
+                    final uri = Uri.parse(
+                      'https://www.virustotal.com/gui/my-apikey',
+                    );
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    }
+                  },
+                  child: const Text(
+                    'Get a free API key at virustotal.com ↗',
+                    style: TextStyle(
+                      color: Color(0xFF38BDF8),
+                      fontSize: 12,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            if (currentKey.isNotEmpty)
+              TextButton(
+                onPressed: () async {
+                  await VirusTotalService.clearApiKey();
+                  if (mounted && dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('VirusTotal API key cleared.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                child: const Text(
+                  'Clear Key',
+                  style: TextStyle(color: Color(0xFFEF4444)),
+                ),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () async {
+                final key = keyController.text.trim();
+                if (key.isNotEmpty) {
+                  await VirusTotalService.saveApiKey(key);
+                } else {
+                  await VirusTotalService.clearApiKey();
+                }
+                if (mounted && dialogCtx.mounted) {
+                  Navigator.pop(dialogCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('VirusTotal API key saved successfully.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
     );
   }
 

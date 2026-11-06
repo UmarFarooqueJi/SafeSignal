@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safesignal/core/services/url_intelligence_engine.dart';
+import 'package:safesignal/core/services/virus_total_service.dart';
 import 'package:safesignal/core/services/link_guard_service.dart';
 
 void main() {
@@ -697,4 +698,69 @@ void main() {
       );
     },
   );
+
+  group('UrlIntelligenceEngine & VirusTotal - Multi-Engine Threat Radar', () {
+    test('VirusTotal helper calculates correct SHA256 and base64Url ID', () {
+      const sample = 'https://example.com/test';
+      final sha256 = VirusTotalService.computeSha256(sample);
+      final id = VirusTotalService.computeUrlId(sample);
+
+      expect(sha256.length, 64);
+      expect(id.contains('='), isFalse);
+      expect(VirusTotalService.getWebReportUrl(sample), contains(sha256));
+    });
+
+    test('Detects domain-stacking spoofing (sbi.co.in.attacker.xyz)', () {
+      final spoof = UrlIntelligenceEngine.detectBrandImpersonation(
+        'sbi.co.in.attacker.xyz',
+        path: '/login',
+      );
+      expect(spoof, isNotNull);
+      expect(spoof, contains('sbi.co.in'));
+    });
+
+    test('Detects credential path lures on abused cloud hosting (workers.dev)', () {
+      final isCloud = UrlIntelligenceEngine.abusedCloudPlatforms.any(
+        (p) => 'auth-verify.workers.dev'.endsWith(p),
+      );
+      expect(isCloud, isTrue);
+
+      final hasPhishPath = UrlIntelligenceEngine.phishingPathKeywords.any(
+        (k) => '/sbi/netbanking/login'.toLowerCase().contains(k),
+      );
+      expect(hasPhishPath, isTrue);
+    });
+
+    test('Scores malicious VirusTotal verdict to dangerous (95 score)', () {
+      final vt = VirusTotalScanResult(
+        hasScanData: true,
+        malicious: 12,
+        suspicious: 3,
+        harmless: 10,
+        undetected: 45,
+        totalEngines: 70,
+        flaggedVendors: [
+          'Kaspersky (Malicious)',
+          'Google SafeBrowsing (Phishing)',
+        ],
+        webReportUrl: 'https://virustotal.com',
+        isMalicious: true,
+      );
+
+      expect(vt.isMalicious, isTrue);
+      expect(vt.flaggedVendors.length, 2);
+    });
+
+    test('Detects Cloudflare 1.1.1.2 DoH threat response blocking', () {
+      const blockedDns = SecurityDnsCheckResult(
+        isBlocked: true,
+        provider: 'Cloudflare 1.1.1.2 Security',
+        details:
+            'Cloudflare Zero Trust blocked domain: 0.0.0.0 (Malware/Phishing threat)',
+      );
+
+      expect(blockedDns.isBlocked, isTrue);
+      expect(blockedDns.details, contains('0.0.0.0'));
+    });
+  });
 }

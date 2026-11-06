@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'virus_total_service.dart';
 
 /// Verdict tier for URL security analysis
 enum UrlVerdict { safe, caution, dangerous }
@@ -124,6 +125,8 @@ class UrlResult {
   final String threatCategoryBadge;
   final String threatForensicDetails;
   final List<String> redirectChain;
+  final VirusTotalScanResult? virusTotalResult;
+  final SecurityDnsCheckResult? securityDnsResult;
 
   UrlResult({
     required this.url,
@@ -160,6 +163,8 @@ class UrlResult {
     this.threatCategoryBadge = '',
     this.threatForensicDetails = '',
     this.redirectChain = const [],
+    this.virusTotalResult,
+    this.securityDnsResult,
   });
 
   factory UrlResult.error(
@@ -186,6 +191,8 @@ class UrlResult {
       threatCategoryBadge: 'ANALYSIS NOTICE',
       threatForensicDetails: message,
       redirectChain: const [],
+      virusTotalResult: VirusTotalScanResult.error(url, message),
+      securityDnsResult: SecurityDnsCheckResult.clean,
     );
   }
 }
@@ -205,13 +212,15 @@ class UrlIntelligenceEngine {
   // Maps target brands to all legitimate root domains.
   // Any domain matching these root domains is NEVER flagged as impersonating.
   static const Map<String, List<String>> brandRegistry = {
+    // Indian Banking & Payment
     'sbi': [
       'sbi.co.in',
       'onlinesbi.sbi',
       'onlinesbi.com',
       'statebankofindia.com',
+      'sbicard.com',
     ],
-    'hdfc': ['hdfcbank.com', 'hdfc.com', 'hdfcsec.com'],
+    'hdfc': ['hdfcbank.com', 'hdfc.com', 'hdfcsec.com', 'hdfclife.com'],
     'icici': [
       'icicibank.com',
       'icicidirect.com',
@@ -223,9 +232,44 @@ class UrlIntelligenceEngine {
     'pnb': ['pnbindia.in', 'pnbnet.net.in'],
     'bob': ['bankofbaroda.in', 'bankofbaroda.com'],
     'canara': ['canarabank.com'],
+    'indusind': ['indusind.com'],
+    'yesbank': ['yesbank.in', 'yesbank.com'],
+    'idfc': ['idfcfirstbank.com'],
+    'unionbank': ['unionbankofindia.co.in'],
     'paytm': ['paytm.com', 'paytmbank.com'],
     'phonepe': ['phonepe.com'],
     'gpay': ['google.com', 'google.co.in', 'gpay.app'],
+    'cred': ['cred.club'],
+    'bharatpe': ['bharatpe.com'],
+    'npci': ['npci.org.in'],
+    'bhim': ['bhimupi.org.in'],
+
+    // Global Banking & FinTech
+    'paypal': ['paypal.com', 'paypal.me'],
+    'chase': ['chase.com'],
+    'wellsfargo': ['wellsfargo.com'],
+    'bankofamerica': ['bankofamerica.com', 'bofa.com'],
+    'citi': ['citi.com', 'citibank.com'],
+    'hsbc': ['hsbc.com', 'hsbc.co.in', 'hsbc.co.uk'],
+    'barclays': ['barclays.co.uk', 'barclays.com'],
+    'santander': ['santander.com', 'santander.co.uk'],
+    'revolut': ['revolut.com'],
+    'wise': ['wise.com', 'transferwise.com'],
+    'venmo': ['venmo.com'],
+    'cashapp': ['cash.app'],
+    'stripe': ['stripe.com'],
+
+    // Indian Gov & Citizen Services
+    'incometax': ['incometax.gov.in', 'incometaxindia.gov.in', 'tin-nsdl.com'],
+    'uidai': ['uidai.gov.in', 'myaadhaar.uidai.gov.in'],
+    'aadhaar': ['uidai.gov.in', 'myaadhaar.uidai.gov.in'],
+    'epfo': ['epfindia.gov.in'],
+    'irctc': ['irctc.co.in'],
+    'indiapost': ['indiapost.gov.in', 'postalpincode.in'],
+    'parivahan': ['parivahan.gov.in', 'sarathi.parivahan.gov.in'],
+    'digilocker': ['digilocker.gov.in'],
+
+    // Big Tech & Social Platforms
     'google': [
       'google.com',
       'google.co.in',
@@ -235,28 +279,61 @@ class UrlIntelligenceEngine {
       'android.com',
       'withgoogle.com',
     ],
-    'incometax': ['incometax.gov.in', 'incometaxindia.gov.in', 'tin-nsdl.com'],
-    'uidai': ['uidai.gov.in', 'myaadhaar.uidai.gov.in'],
-    'aadhaar': ['uidai.gov.in', 'myaadhaar.uidai.gov.in'],
-    'epfo': ['epfindia.gov.in'],
-    'irctc': ['irctc.co.in'],
-    'indiapost': ['indiapost.gov.in'],
-    'parivahan': ['parivahan.gov.in'],
-    'jio': ['jio.com', 'reliancedigital.in'],
-    'airtel': ['airtel.in', 'airtel.com'],
-    'vi': ['myvi.in'],
+    'microsoft': [
+      'microsoft.com',
+      'live.com',
+      'office.com',
+      'office365.com',
+      'azure.com',
+      'outlook.com',
+      'sharepoint.com',
+      'microsoftonline.com',
+    ],
+    'apple': ['apple.com', 'icloud.com'],
     'amazon': [
       'amazon.in',
       'amazon.com',
       'media-amazon.com',
       'ssl-images-amazon.com',
+      'aws.amazon.com',
     ],
     'flipkart': ['flipkart.com', 'flipkart.net'],
-    'whatsapp': ['whatsapp.com', 'wa.me'],
     'netflix': ['netflix.com'],
-    'microsoft': ['microsoft.com', 'live.com', 'office.com', 'azure.com'],
-    'apple': ['apple.com', 'icloud.com'],
-    'paypal': ['paypal.com', 'paypal.me'],
+    'whatsapp': ['whatsapp.com', 'wa.me'],
+    'telegram': ['telegram.org', 't.me'],
+    'facebook': ['facebook.com', 'fb.com', 'meta.com'],
+    'instagram': ['instagram.com'],
+    'twitter': ['twitter.com', 'x.com', 't.co'],
+    'linkedin': ['linkedin.com'],
+    'steam': ['steampowered.com', 'steamcommunity.com'],
+    'spotify': ['spotify.com'],
+    'discord': ['discord.com', 'discord.gg'],
+
+    // Crypto & Web3
+    'binance': ['binance.com', 'binance.org'],
+    'coinbase': ['coinbase.com'],
+    'metamask': ['metamask.io'],
+    'trustwallet': ['trustwallet.com'],
+    'ledger': ['ledger.com'],
+    'trezor': ['trezor.io'],
+    'phantom': ['phantom.app'],
+    'bybit': ['bybit.com'],
+    'kucoin': ['kucoin.com'],
+    'opensea': ['opensea.io'],
+
+    // Couriers
+    'fedex': ['fedex.com'],
+    'dhl': ['dhl.com'],
+    'ups': ['ups.com'],
+    'bluedart': ['bluedart.com'],
+    'delhivery': ['delhivery.com'],
+    'dtdc': ['dtdc.in', 'dtdc.com'],
+
+    // Telecom
+    'jio': ['jio.com', 'reliancedigital.in'],
+    'airtel': ['airtel.in', 'airtel.com'],
+    'vi': ['myvi.in'],
+    'bsnl': ['bsnl.co.in'],
   };
 
   // Verified Institutional Allowlist
@@ -443,6 +520,61 @@ class UrlIntelligenceEngine {
     'immediate-refund',
   ];
 
+  // Cloud & Free Subdomain Hosting Services Frequently Abused by Phishing Kits
+  static const Set<String> abusedCloudPlatforms = {
+    'workers.dev',
+    'pages.dev',
+    'vercel.app',
+    'netlify.app',
+    'firebaseapp.com',
+    'web.app',
+    'github.io',
+    'gitlab.io',
+    'glitch.me',
+    'render.com',
+    'railway.app',
+    '000webhostapp.com',
+    'weebly.com',
+    'wixsite.com',
+    'sites.google.com',
+    'supabase.co',
+    'azurestaticapps.net',
+    'blob.core.windows.net',
+    's3.amazonaws.com',
+    'ipfs.io',
+    'dweb.link',
+    'pinata.cloud',
+    'cf-ipfs.com',
+    'duckdns.org',
+    'ngrok-free.app',
+    'ngrok.io',
+    'loca.lt',
+    'serveo.net',
+  };
+
+  // Credential Harvesting, Banking & Phishing Path Signatures
+  static const List<String> phishingPathKeywords = [
+    'login',
+    'signin',
+    'auth',
+    'webscr',
+    'wp-login',
+    'authenticate',
+    'account-verification',
+    'update-billing',
+    'secure-auth',
+    'reset-security',
+    'kyc-verification',
+    'netbanking',
+    'unblock-account',
+    'wallet-connect',
+    'seed-phrase',
+    'restore-wallet',
+    'confirm-identity',
+    'claim-reward',
+    'customer-support',
+  ];
+
   /// Validates and parses an untrusted raw URL string, returning structured input status
   static UrlValidationResult validateAndParse(String input) {
     final rawTrimmed = input.trim();
@@ -610,8 +742,9 @@ class UrlIntelligenceEngine {
         if (n0 == 10) return true; // 10.0.0.0/8
         if (n0 == 172 && n1 >= 16 && n1 <= 31) return true; // 172.16.0.0/12
         if (n0 == 192 && n1 == 168) return true; // 192.168.0.0/16
-        if (n0 == 169 && n1 == 254)
+        if (n0 == 169 && n1 == 254) {
           return true; // Link-local (AWS/cloud metadata)
+        }
         if (n0 == 0) return true;
         if (n0 >= 224) return true; // Multicast / Class E reserved
       }
@@ -651,8 +784,12 @@ class UrlIntelligenceEngine {
     return '${parts[parts.length - 2]}.${parts.last}';
   }
 
-  /// Checks if a domain is part of an institutional brand or an unauthorized impersonator
-  static String? detectBrandImpersonation(String domain) {
+  /// Checks if a domain or URL is part of an institutional brand or an unauthorized impersonator
+  static String? detectBrandImpersonation(
+    String domain, {
+    String? path,
+    String? query,
+  }) {
     final d = domain.toLowerCase();
 
     // Check if domain is an official government domain
@@ -660,12 +797,48 @@ class UrlIntelligenceEngine {
       return null; // Government domains under gov.in/nic.in are officially authenticated
     }
 
+    final p = path?.toLowerCase() ?? '';
+    final q = query?.toLowerCase() ?? '';
+
     for (final entry in brandRegistry.entries) {
       final brandKey = entry.key;
       final authorizedDomains = entry.value;
 
-      // Check if domain contains brand keyword
-      if (d.contains(brandKey)) {
+      // 1. Direct domain contains brand
+      bool containsBrand = d.contains(brandKey);
+
+      // 2. Domain stacking (e.g. sbi.co.in.scam-domain.com or netbanking.hdfcbank.com.phish.xyz)
+      bool domainStacking = false;
+      for (final authRoot in authorizedDomains) {
+        if (d != authRoot && !d.endsWith('.$authRoot') && d.contains(authRoot)) {
+          domainStacking = true;
+          break;
+        }
+      }
+
+      // 3. Path or query spoofing on unverified domain (e.g. /sbi/login, /paypal/verify)
+      bool pathOrQuerySpoof = false;
+      if (p.isNotEmpty || q.isNotEmpty) {
+        final hasBrandLure = p.contains('/$brandKey') ||
+            p.contains('$brandKey-') ||
+            p.contains('-$brandKey') ||
+            q.contains(brandKey);
+        final hasAuthLure = p.contains('login') ||
+            p.contains('auth') ||
+            p.contains('verify') ||
+            p.contains('kyc') ||
+            p.contains('account') ||
+            p.contains('secure') ||
+            p.contains('wallet') ||
+            p.contains('update') ||
+            q.contains('login') ||
+            q.contains('verify');
+        if (hasBrandLure && hasAuthLure) {
+          pathOrQuerySpoof = true;
+        }
+      }
+
+      if (containsBrand || domainStacking || pathOrQuerySpoof) {
         // Verify against all authorized root domains
         bool isAuthorized = false;
         for (final authRoot in authorizedDomains) {
@@ -677,6 +850,12 @@ class UrlIntelligenceEngine {
 
         if (!isAuthorized) {
           final officialSite = authorizedDomains.first;
+          if (domainStacking) {
+            return 'Deceptive domain-stacking imitating ${brandKey.toUpperCase()}! Official site is: $officialSite';
+          }
+          if (pathOrQuerySpoof && !containsBrand) {
+            return 'Deceptive credential portal impersonating ${brandKey.toUpperCase()}! Official site is: $officialSite';
+          }
           return 'Deceptive domain impersonating ${brandKey.toUpperCase()}! Official site is: $officialSite';
         }
       }
@@ -952,10 +1131,14 @@ class UrlIntelligenceEngine {
     );
   }
 
-  /// Performs deep multi-factor URL analysis
+  /// Performs deep multi-factor URL analysis integrating live VirusTotal v3 API,
+  /// Cloudflare 1.1.1.2 Security Telemetry, brand spoofing, and heuristic phishing radar.
   static Future<UrlResult> analyze(
     String rawUrl, {
     bool traceShorteners = false,
+    bool checkVirusTotal = true,
+    bool checkSecurityDns = true,
+    String? virusTotalApiKey,
     Dio? customDio,
   }) async {
     final validation = validateAndParse(rawUrl);
@@ -1052,6 +1235,58 @@ class UrlIntelligenceEngine {
       );
     }
 
+    // ─── 2.05 LIVE SECURITY DNS THREAT RADAR (CLOUDFLARE 1.1.1.2) ────────────
+    SecurityDnsCheckResult securityDnsRes = SecurityDnsCheckResult.clean;
+    if (checkSecurityDns && !isAllowlisted && !isSsrfHost) {
+      securityDnsRes = await VirusTotalService.checkSecurityDns(
+        rawHost,
+        customDio: customDio,
+      );
+      if (securityDnsRes.isBlocked) {
+        riskScore += 90;
+        domainChecks.insert(
+          0,
+          DomainCheckItem(
+            'Security Threat Intelligence',
+            false,
+            'CRITICAL: ${securityDnsRes.details}',
+          ),
+        );
+      }
+    }
+
+    // ─── 2.08 LIVE VIRUSTOTAL MULTI-ENGINE LOOKUP ────────────────────────────
+    VirusTotalScanResult? vtRes;
+    if (checkVirusTotal && !isSsrfHost) {
+      vtRes = await VirusTotalService.queryVirusTotal(
+        rawUrl,
+        explicitApiKey: virusTotalApiKey,
+        customDio: customDio,
+      );
+      if (vtRes.hasScanData) {
+        if (vtRes.isMalicious) {
+          riskScore += (vtRes.malicious * 30).clamp(75, 100);
+          final engineSummary = vtRes.flaggedVendors.take(3).join(', ');
+          domainChecks.insert(
+            0,
+            DomainCheckItem(
+              'VirusTotal Multi-Engine Intelligence',
+              false,
+              'CRITICAL: ${vtRes.malicious} security vendor(s) flagged as malicious/phishing ($engineSummary).',
+            ),
+          );
+        } else {
+          domainChecks.add(
+            DomainCheckItem(
+              'VirusTotal Multi-Engine Intelligence',
+              true,
+              'Clean across ${vtRes.totalEngines} antivirus & security intelligence engines.',
+            ),
+          );
+        }
+      }
+    }
+
     // ─── 2.1 COMMAND & CONTROL (C2) / THREAT INTEL CHECK ────────────────────
     final isKnownC2 =
         knownC2Domains.contains(domain) || knownC2Domains.contains(baseDomain);
@@ -1117,13 +1352,61 @@ class UrlIntelligenceEngine {
     }
 
     // ─── 3. BRAND IMPERSONATION & TYPOSQUATTING ──────────────────────────────
-    final brandSpoof = detectBrandImpersonation(domain);
+    final brandSpoof = detectBrandImpersonation(
+      domain,
+      path: urlPath,
+      query: urlQuery,
+    );
     if (brandSpoof != null) {
-      riskScore += 60;
+      riskScore += 65;
       domainChecks.insert(
         0,
         DomainCheckItem('Phishing & Brand Impersonation', false, brandSpoof),
       );
+    }
+
+    // ─── 3.1 ABUSED CLOUD PLATFORMS & CLOAKED SUBDOMAIN PHISHING ─────────────
+    bool isCloudPhish = false;
+    String? matchedCloudPlatform;
+    for (final platform in abusedCloudPlatforms) {
+      if (domain == platform || domain.endsWith('.$platform')) {
+        matchedCloudPlatform = platform;
+        break;
+      }
+    }
+
+    if (matchedCloudPlatform != null && !isAllowlisted) {
+      final hasPhishTokens = domain.contains('login') ||
+          domain.contains('verify') ||
+          domain.contains('secure') ||
+          domain.contains('bank') ||
+          urlPath.contains('login') ||
+          urlPath.contains('auth') ||
+          urlPath.contains('verify') ||
+          urlPath.contains('kyc') ||
+          urlPath.contains('wallet') ||
+          brandSpoof != null;
+
+      if (hasPhishTokens) {
+        isCloudPhish = true;
+        riskScore += 70;
+        domainChecks.insert(
+          0,
+          DomainCheckItem(
+            'Cloaked Cloud Phishing Platform',
+            false,
+            'CRITICAL: Shared cloud hosting infrastructure ($matchedCloudPlatform) hosting deceptive login or financial lure.',
+          ),
+        );
+      } else {
+        domainChecks.add(
+          DomainCheckItem(
+            'Shared Cloud Hosting Platform',
+            null,
+            'Hosted on shared cloud infrastructure ($matchedCloudPlatform). Review credentials before proceeding.',
+          ),
+        );
+      }
     }
 
     // ─── 4. HOMOGRAPH & PUNYCODE SPOOFING ────────────────────────────────────
@@ -1170,12 +1453,27 @@ class UrlIntelligenceEngine {
         .where((kw) => urlPath.contains(kw) || urlQuery.contains(kw))
         .toList();
     if (matchedUrgency.isNotEmpty) {
-      riskScore += 20;
+      riskScore += 25;
       domainChecks.add(
         DomainCheckItem(
           'Social Engineering Signatures',
           false,
           'Urgency or scam trigger keywords found in path/query: ${matchedUrgency.join(', ')}.',
+        ),
+      );
+    }
+
+    // ─── 6.1 CREDENTIAL & PHISHING PATH ENDPOINTS ────────────────────────────
+    final matchedPhishingPaths = phishingPathKeywords
+        .where((kw) => urlPath.contains(kw) || urlQuery.contains(kw))
+        .toList();
+    if (matchedPhishingPaths.isNotEmpty && !isAllowlisted) {
+      riskScore += 25;
+      domainChecks.add(
+        DomainCheckItem(
+          'Credential & Phishing Endpoints',
+          false,
+          'Authentication or login endpoints detected on unverified host (${matchedPhishingPaths.take(3).join(', ')}).',
         ),
       );
     }
@@ -1476,6 +1774,9 @@ class UrlIntelligenceEngine {
         isDesktopExecutable ||
         brandSpoof != null ||
         isHomograph ||
+        isCloudPhish ||
+        securityDnsRes.isBlocked ||
+        (vtRes?.isMalicious ?? false) ||
         uri.userInfo.isNotEmpty ||
         (redirectAnalysis.hasRedirect && redirectAnalysis.isExternal);
 
@@ -1508,6 +1809,9 @@ class UrlIntelligenceEngine {
               isDesktopExecutable ||
               brandSpoof != null ||
               isHomograph ||
+              isCloudPhish ||
+              securityDnsRes.isBlocked ||
+              (vtRes?.isMalicious ?? false) ||
               redirectAnalysis.isTargetDropper)
           ? UrlRiskLevel.knownMalicious
           : UrlRiskLevel.highRisk;
@@ -1520,7 +1824,15 @@ class UrlIntelligenceEngine {
     }
 
     String riskExplanation;
-    if (isKnownC2 || isDynamicDnsC2) {
+    if (vtRes?.isMalicious == true) {
+      riskExplanation =
+          'VirusTotal threat match: ${vtRes!.malicious} security vendor(s) flagged this destination.';
+    } else if (securityDnsRes.isBlocked) {
+      riskExplanation = 'Security threat intelligence feed blocked this domain.';
+    } else if (isCloudPhish) {
+      riskExplanation =
+          'Cloaked phishing kit hosted on shared cloud platform ($matchedCloudPlatform).';
+    } else if (isKnownC2 || isDynamicDnsC2) {
       riskExplanation = isKnownC2
           ? 'Active Command & Control (C2) threat intelligence match.'
           : 'Dynamic DNS C2 tunnel endpoint detected.';
@@ -1555,7 +1867,21 @@ class UrlIntelligenceEngine {
     final String threatCategoryBadge;
     final String threatForensicDetails;
 
-    if (isKnownC2 || isDynamicDnsC2) {
+    if (vtRes?.isMalicious == true) {
+      threatType = MalwareThreatType.phishingScam;
+      threatCategoryBadge = 'VIRUSTOTAL FLAGGED THREAT (${vtRes!.malicious} ENGINES)';
+      threatForensicDetails =
+          'Multiple security vendors on VirusTotal (${vtRes.flaggedVendors.take(3).join(', ')}) have classified this destination as active phishing, malware dropper, or fraudulent infrastructure.';
+    } else if (securityDnsRes.isBlocked) {
+      threatType = MalwareThreatType.phishingScam;
+      threatCategoryBadge = 'SECURITY THREAT RADAR (MALWARE/PHISHING)';
+      threatForensicDetails = securityDnsRes.details;
+    } else if (isCloudPhish) {
+      threatType = MalwareThreatType.phishingScam;
+      threatCategoryBadge = 'CLOUDFLARE/CLOUD HOSTED PHISHING';
+      threatForensicDetails =
+          'Deceptive authentication portal or financial harvesting form hosted on free shared cloud platform ($matchedCloudPlatform). High phishing certainty.';
+    } else if (isKnownC2 || isDynamicDnsC2) {
       threatType = MalwareThreatType.bankingTrojan;
       threatCategoryBadge = isKnownC2
           ? 'COMMAND & CONTROL (C2) INFRASTRUCTURE'
@@ -1656,6 +1982,8 @@ class UrlIntelligenceEngine {
       threatCategoryBadge: threatCategoryBadge,
       threatForensicDetails: threatForensicDetails,
       redirectChain: unraveledChain,
+      virusTotalResult: vtRes,
+      securityDnsResult: securityDnsRes,
     );
   }
 
