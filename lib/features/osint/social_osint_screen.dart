@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
 class SocialOsintScreen extends StatefulWidget {
   const SocialOsintScreen({super.key});
@@ -875,6 +876,13 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           ),
         ),
         centerTitle: false,
+        actions: [
+          IconButton(
+            tooltip: 'Visual & Reverse Image OSINT',
+            icon: const Icon(Icons.image_search_rounded, color: Color(0xFF00E5FF), size: 22),
+            onPressed: () => context.push('/image-osint'),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(

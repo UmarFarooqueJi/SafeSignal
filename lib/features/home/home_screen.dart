@@ -331,6 +331,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         route: '/social-osint',
       ),
       _CardData(
+        title: 'Visual OSINT Radar',
+        subtitle: 'Reverse Image & Fake ID',
+        icon: Icons.image_search_rounded,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0F172A), Color(0xFF002B49)],
+        ),
+        accentColor: const Color(0xFF00E5FF),
+        route: '/image-osint',
+      ),
+      _CardData(
         title: 'Scan QR & UPI Shield',
         subtitle: 'Safe Link & Pay Scan',
         icon: Icons.qr_code_scanner_rounded,

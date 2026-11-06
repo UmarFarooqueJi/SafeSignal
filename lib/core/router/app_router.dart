@@ -25,6 +25,7 @@ import '../../features/qr_scanner/qr_scanner_screen.dart';
 import '../../features/vault/vault_screen.dart';
 import '../../features/vault/vault_lock_screen.dart';
 import '../../features/osint/social_osint_screen.dart';
+import '../../features/osint/image_osint_screen.dart';
 import '../../features/incident_response/incident_response_screen.dart';
 import '../../features/history/history_screen.dart';
 import '../../data/models/verdict_model.dart';
@@ -153,6 +154,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/social-osint',
         builder: (context, state) => const SocialOsintScreen(),
+      ),
+      GoRoute(
+        path: '/image-osint',
+        builder: (context, state) {
+          final initialUrl =
+              state.extra as String? ?? state.uri.queryParameters['url'];
+          return ImageOsintScreen(initialImageUrl: initialUrl);
+        },
       ),
       GoRoute(path: '/vault', builder: (context, state) => const VaultScreen()),
       GoRoute(
