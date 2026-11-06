@@ -763,4 +763,115 @@ void main() {
       expect(blockedDns.details, contains('0.0.0.0'));
     });
   });
+
+  group('UrlIntelligenceEngine - SafeSignal Titan Autonomous Cyber Defense Radar', () {
+    test('Shannon Entropy correctly flags high-randomness algorithmic DGA names', () {
+      final normalEntropy = UrlIntelligenceEngine.calculateShannonEntropy('google');
+      final dgaEntropy = UrlIntelligenceEngine.calculateShannonEntropy('x7k9p2m4a10q');
+
+      expect(dgaEntropy, greaterThan(normalEntropy));
+      expect(dgaEntropy, greaterThan(3.4));
+    });
+
+    test('Zero-day DOM crawler detects banking card & OTP harvesting forms', () {
+      const phishHtml = '''
+        <html>
+          <body>
+            <h2>Verify Your Bank Account</h2>
+            <form action="/steal">
+              <input type="text" name="card_number" placeholder="Card Number" />
+              <input type="text" name="cvv" placeholder="CVV" />
+              <input type="password" name="password" placeholder="NetBanking Password" />
+              <button type="submit">Submit</button>
+            </form>
+          </body>
+        </html>
+      ''';
+
+      final res = UrlIntelligenceEngine.inspectHtmlDomForCredentialHarvesters(
+        phishHtml,
+        domain: 'secure-banking-update.xyz',
+        isAllowlisted: false,
+      );
+
+      expect(res.isThreat, isTrue);
+      expect(res.threatCategory, contains('BANKING CREDENTIAL'));
+      expect(res.confidenceDelta, 85);
+    });
+
+    test('Zero-day DOM crawler detects Web3 crypto recovery seed phrase theft', () {
+      const cryptoStealerHtml = '''
+        <div>
+          <h3>Connect to Claim Airdrop</h3>
+          <p>Please enter your 12-word secret recovery phrase to authenticate wallet:</p>
+          <textarea name="seed_phrase"></textarea>
+          <button>Confirm</button>
+        </div>
+      ''';
+
+      final res = UrlIntelligenceEngine.inspectHtmlDomForCredentialHarvesters(
+        cryptoStealerHtml,
+        domain: 'claim-metamask-bonus.online',
+        isAllowlisted: false,
+      );
+
+      expect(res.isThreat, isTrue);
+      expect(res.threatCategory, contains('CRYPTO SEED PHRASE'));
+      expect(res.confidenceDelta, 85);
+    });
+
+    test('Zero-day DOM crawler detects urgent electricity scam fraud lures', () {
+      const scamLureHtml = '''
+        <html>
+          <body>
+            <h1>Notice: Dear consumer your electricity power will be disconnected tonight at 9:30 PM</h1>
+            <p>Call our officer immediately or click below to update.</p>
+          </body>
+        </html>
+      ''';
+
+      final res = UrlIntelligenceEngine.inspectHtmlDomForCredentialHarvesters(
+        scamLureHtml,
+        domain: 'bijli-bill-support.biz',
+        isAllowlisted: false,
+      );
+
+      expect(res.isThreat, isTrue);
+      expect(res.threatCategory, contains('HIGH-PRESSURE FRAUD SCAM'));
+      expect(res.confidenceDelta, 75);
+    });
+
+    test('Zero-day DOM crawler detects obfuscated JavaScript packer payloads', () {
+      const obfuscatedHtml = '''
+        <script>
+          eval(function(p,a,c,k,e,r){e=String;return p}('0 1=2;',3,3,'var|x|10'.split('|'),0,{}))
+        </script>
+      ''';
+
+      final res = UrlIntelligenceEngine.inspectHtmlDomForCredentialHarvesters(
+        obfuscatedHtml,
+        domain: 'unknown-script-host.top',
+        isAllowlisted: false,
+      );
+
+      expect(res.isThreat, isTrue);
+      expect(res.threatCategory, contains('OBFUSCATED MALICIOUS SCRIPT'));
+    });
+
+    test('Zero-day DOM crawler does not flag allowlisted institutional services', () {
+      const sbiHtml = '''
+        <form>
+          <input type="password" name="password" />
+        </form>
+      ''';
+
+      final res = UrlIntelligenceEngine.inspectHtmlDomForCredentialHarvesters(
+        sbiHtml,
+        domain: 'sbi.co.in',
+        isAllowlisted: true,
+      );
+
+      expect(res.isThreat, isFalse);
+    });
+  });
 }

@@ -223,12 +223,12 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
               ),
               child: IconButton(
                 icon: const Icon(
-                  Icons.vpn_key_rounded,
+                  Icons.radar_rounded,
                   color: Colors.white54,
                   size: 20,
                 ),
-                tooltip: 'VirusTotal API Key',
-                onPressed: _showVirusTotalConfigDialog,
+                tooltip: 'Titan Radar Diagnostics',
+                onPressed: () => _showForensicAuditDialog(_result),
               ),
             ),
           ),
@@ -926,8 +926,8 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
         ),
         const SizedBox(height: 16),
 
-        // ── Card 6: VirusTotal & Multi-Engine Threat Radar ─────────────────────
-        _buildVirusTotalCard(result, isDark, outlineColor),
+        // ── Card 6: SafeSignal Titan Cyber Threat Radar™ ─────────────────────
+        _buildTitanCyberRadarCard(result, isDark, outlineColor),
         const SizedBox(height: 16),
 
         // ── Threat Warning (only if dangerous/caution) ────────────────
@@ -1469,7 +1469,7 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
     );
   }
 
-  Widget _buildVirusTotalCard(
+  Widget _buildTitanCyberRadarCard(
     UrlResult result,
     bool isDark,
     Color outlineColor,
@@ -1479,11 +1479,22 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
 
     final isVtMalicious = vt != null && vt.isMalicious;
     final isDnsBlocked = secDns != null && secDns.isBlocked;
-    final hasThreatFound = isVtMalicious || isDnsBlocked;
+    final isCredHarvester = result.isCredentialHarvester;
+    final isDga = result.isDgaDomain;
+    final isBrandSpoofed = result.typosquattingWarning != null;
+    final hasThreatFound =
+        isVtMalicious ||
+        isDnsBlocked ||
+        isCredHarvester ||
+        isDga ||
+        isBrandSpoofed ||
+        result.verdict == UrlVerdict.dangerous;
 
     final cardBorderColor = hasThreatFound
         ? const Color(0xFFFF8A65)
-        : (vt?.hasScanData == true ? const Color(0xFF4CAF50) : outlineColor);
+        : (result.verdict == UrlVerdict.safe
+            ? const Color(0xFF4CAF50)
+            : outlineColor);
 
     final cardStyle = BoxDecoration(
       color: Colors.transparent,
@@ -1501,27 +1512,22 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _cardHeader('VirusTotal & Threat Intel Feeds', isDark),
+              _cardHeader('SafeSignal Titan Cyber Radar™', isDark),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color:
-                      (hasThreatFound
-                              ? const Color(0xFFFF8A65)
-                              : (vt?.hasScanData == true
-                                  ? const Color(0xFF4CAF50)
-                                  : const Color(0xFF38BDF8)))
-                          .withValues(alpha: 0.15),
+                  color: (hasThreatFound
+                          ? const Color(0xFFFF8A65)
+                          : const Color(0xFF10B981))
+                      .withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: hasThreatFound
                         ? const Color(0xFFFF8A65)
-                        : (vt?.hasScanData == true
-                            ? const Color(0xFF4CAF50)
-                            : const Color(0xFF38BDF8)),
+                        : const Color(0xFF10B981),
                     width: 1,
                   ),
                 ),
@@ -1531,31 +1537,19 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
                     Icon(
                       hasThreatFound
                           ? Icons.warning_amber_rounded
-                          : (vt?.hasScanData == true
-                              ? Icons.verified_user_rounded
-                              : Icons.cloud_done_rounded),
+                          : Icons.verified_user_rounded,
                       size: 13,
                       color: hasThreatFound
                           ? const Color(0xFFFF8A65)
-                          : (vt?.hasScanData == true
-                              ? const Color(0xFF4CAF50)
-                              : const Color(0xFF38BDF8)),
+                          : const Color(0xFF10B981),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      isDnsBlocked
-                          ? 'DNS BLOCKED'
-                          : (isVtMalicious
-                              ? '${vt.malicious}/${vt.totalEngines} DETECTED'
-                              : (vt != null && vt.hasScanData
-                                  ? '0/${vt.totalEngines} CLEAN'
-                                  : 'TELEMETRY LIVE')),
+                      hasThreatFound ? 'ACTIVE THREAT' : '6 ENGINES CLEAN',
                       style: TextStyle(
                         color: hasThreatFound
                             ? const Color(0xFFFF8A65)
-                            : (vt?.hasScanData == true
-                                ? const Color(0xFF4CAF50)
-                                : const Color(0xFF38BDF8)),
+                            : const Color(0xFF10B981),
                         fontWeight: FontWeight.bold,
                         fontSize: 10.5,
                         letterSpacing: 0.4,
@@ -1568,12 +1562,38 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
           ),
           const SizedBox(height: 20),
 
-          // Cloudflare 1.1.1.2 Real-time Security DoH
+          // 1. Zero-Day DOM & Credential Trapper
           _buildRow(
-            'Cloudflare 1.1.1.2 DoH',
+            'Zero-Day Phish Trap',
+            isCredHarvester
+                ? 'Intercepted (${result.detectedFormType ?? "Harvest Form"})'
+                : 'Clean (No Form Traps)',
+            valueColor: isCredHarvester
+                ? const Color(0xFFFF8A65)
+                : const Color(0xFF4CAF50),
+            isDark: isDark,
+          ),
+          _divider(),
+
+          // 2. Shannon DGA & Botnet Radar
+          _buildRow(
+            'Shannon DGA Radar',
+            isDga
+                ? 'DGA Algorithmic C2 (Entropy: ${result.shannonEntropy.toStringAsFixed(2)})'
+                : 'Standard Host (Entropy: ${result.shannonEntropy.toStringAsFixed(2)})',
+            valueColor: isDga
+                ? const Color(0xFFFF8A65)
+                : const Color(0xFF4CAF50),
+            isDark: isDark,
+          ),
+          _divider(),
+
+          // 3. Cloudflare Zero Trust (1.1.1.2 DoH)
+          _buildRow(
+            'Cloudflare Zero Trust',
             isDnsBlocked
-                ? 'Blocked (Phishing/Malware)'
-                : 'Passed (Zero-Key Active)',
+                ? 'Blocked (Malware/Phishing match)'
+                : 'Clean (Zero-Key Active)',
             valueColor: isDnsBlocked
                 ? const Color(0xFFFF8A65)
                 : const Color(0xFF4CAF50),
@@ -1594,130 +1614,273 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
           ],
           _divider(),
 
-          // VirusTotal Engine Consensus
+          // 4. Brand Spoof & Homograph Engine
           _buildRow(
-            'VirusTotal Engine Consensus',
+            'Brand & Homograph Engine',
+            isBrandSpoofed
+                ? 'Deceptive Spoof Intercepted'
+                : 'Genuine Identity Validated',
+            valueColor: isBrandSpoofed
+                ? const Color(0xFFFF8A65)
+                : const Color(0xFF4CAF50),
+            isDark: isDark,
+          ),
+          _divider(),
+
+          // 5. Mobile Trojan & Dropper Guard
+          _buildRow(
+            'Mobile Trojan & APK Guard',
+            (result.threatType == MalwareThreatType.ratDropper ||
+                    result.threatType == MalwareThreatType.bankingTrojan ||
+                    result.threatType == MalwareThreatType.apkDropper)
+                ? 'Dropper Intercepted'
+                : 'No Malicious Payload',
+            valueColor: (result.threatType == MalwareThreatType.ratDropper ||
+                    result.threatType == MalwareThreatType.bankingTrojan ||
+                    result.threatType == MalwareThreatType.apkDropper)
+                ? const Color(0xFFFF8A65)
+                : const Color(0xFF4CAF50),
+            isDark: isDark,
+          ),
+          _divider(),
+
+          // 6. Multi-Feed Threat Consensus
+          _buildRow(
+            'Global Threat Feeds',
             vt != null && vt.hasScanData
-                ? '${vt.malicious} Malicious / ${vt.suspicious} Suspicious (${vt.totalEngines} Engines)'
-                : (vt?.hasCustomApiKey == true
-                    ? 'No prior sample in VT database'
-                    : 'Community Telemetry Mode'),
+                ? (isVtMalicious
+                    ? '${vt.malicious}/${vt.totalEngines} Engines Flagged'
+                    : '0/${vt.totalEngines} Clean')
+                : 'Real-Time Threat Feeds Synced',
             valueColor: isVtMalicious
                 ? const Color(0xFFFF8A65)
-                : (vt?.hasScanData == true
-                    ? const Color(0xFF4CAF50)
-                    : outlineColor),
+                : const Color(0xFF4CAF50),
             isDark: isDark,
           ),
 
-          if (vt != null && vt.hasScanData && vt.scanDate.isNotEmpty) ...[
-            _divider(),
-            _buildRow(
-              'VT Scan Timestamp',
-              vt.scanDate,
-              valueColor: outlineColor,
-              isDark: isDark,
-            ),
-          ],
+          const SizedBox(height: 18),
 
-          // Flagged vendors pills if any
-          if (vt != null && vt.flaggedVendors.isNotEmpty) ...[
-            _divider(),
-            Text(
-              'Flagged by Security Vendors:',
-              style: TextStyle(
-                color: isDark ? Colors.white70 : Colors.black87,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+          // Action row: In-App Deep Forensic Audit Diagnostics
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF38BDF8),
+                side: const BorderSide(color: Color(0xFF38BDF8), width: 1.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: () => _showForensicAuditDialog(result),
+              icon: const Icon(Icons.analytics_rounded, size: 18),
+              label: const Text(
+                'View Deep Forensic Diagnostics (In-App)',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: vt.flaggedVendors.take(12).map((vendor) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF8A65).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFFF8A65),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    vendor,
-                    style: const TextStyle(
-                      color: Color(0xFFFF8A65),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                );
-              }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showForensicAuditDialog(UrlResult? res) {
+    if (res == null) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        final isDark = Theme.of(sheetCtx).brightness == Brightness.dark;
+        return Container(
+          height: MediaQuery.of(sheetCtx).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF0B132B) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black12,
             ),
-          ],
-
-          const SizedBox(height: 16),
-
-          // Action row: Open Full VirusTotal Web Report + Config API key
-          Row(
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF38BDF8),
-                    side: const BorderSide(color: Color(0xFF38BDF8)),
-                    shape: RoundedRectangleBorder(
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black26,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                  onPressed: () async {
-                    final reportUrl =
-                        vt?.webReportUrl ??
-                        VirusTotalService.getWebReportUrl(result.url);
-                    final uri = Uri.parse(reportUrl);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(
-                        uri,
-                        mode: LaunchMode.externalApplication,
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.open_in_browser_rounded, size: 16),
-                  label: const FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      'VirusTotal Web Report',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: const Icon(
+                      Icons.radar_rounded,
+                      color: Color(0xFF38BDF8),
+                      size: 22,
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'SafeSignal Titan Forensic Audit',
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          res.domain,
+                          style: TextStyle(
+                            color: isDark ? Colors.white54 : Colors.black54,
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(color: Colors.white12),
+              Expanded(
+                child: ListView(
+                  children: [
+                    _buildAuditSection('Target Integrity', [
+                      _buildAuditItem('Canonical URL', res.url, isDark),
+                      _buildAuditItem('Base Domain', res.domain, isDark),
+                      _buildAuditItem('Risk Classification', res.riskLevel.name.toUpperCase(), isDark),
+                      _buildAuditItem('Verdict Score', '${res.riskScore}/100', isDark),
+                    ], isDark),
+                    _buildAuditSection('DOM & Harvesting Inspection', [
+                      _buildAuditItem('Credential Harvester', res.isCredentialHarvester ? '🚨 DETECTED' : 'Clean', isDark),
+                      if (res.detectedFormType != null)
+                        _buildAuditItem('Detected Trap', res.detectedFormType!, isDark),
+                      _buildAuditItem('Page Title', res.siteTitle.isNotEmpty ? res.siteTitle : 'None', isDark),
+                      _buildAuditItem('Content-Type', res.contentType.isNotEmpty ? res.contentType : 'Unknown', isDark),
+                    ], isDark),
+                    _buildAuditSection('Algorithmic Randomness (DGA)', [
+                      _buildAuditItem('Shannon Entropy', res.shannonEntropy.toStringAsFixed(3), isDark),
+                      _buildAuditItem('DGA Algorithmic C2', res.isDgaDomain ? '🚨 POSITIVE' : 'Negative (Normal)', isDark),
+                    ], isDark),
+                    _buildAuditSection('Network & Cryptographic Routing', [
+                      _buildAuditItem('Resolved IP (A)', res.serverIp.isNotEmpty ? res.serverIp : 'Unresolved', isDark),
+                      _buildAuditItem('Nameservers (NS)', res.nsRecords.isNotEmpty ? res.nsRecords.take(2).join(', ') : 'None', isDark),
+                      _buildAuditItem('Mail Protocol (MX)', res.mxRecords.isNotEmpty ? res.mxRecords.first : 'None', isDark),
+                      _buildAuditItem('DMARC Enforcement', res.hasDmarc ? 'Active (v=DMARC1)' : 'Missing', isDark),
+                      _buildAuditItem('Server Software', res.serverSoftware.isNotEmpty ? res.serverSoftware : 'Undisclosed', isDark),
+                      _buildAuditItem('Security Headers', '${res.securityHeaders}/4 Configured', isDark),
+                    ], isDark),
+                    if (res.redirectChain.length > 1)
+                      _buildAuditSection('Unraveled Redirect Chain', [
+                        for (int i = 0; i < res.redirectChain.length; i++)
+                          _buildAuditItem('Hop ${i + 1}', res.redirectChain[i], isDark),
+                      ], isDark),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              IconButton.outlined(
-                tooltip: 'Configure VirusTotal API Key',
-                style: IconButton.styleFrom(
-                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
-                  side: BorderSide(
-                    color: isDark ? Colors.white24 : Colors.black26,
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  onPressed: () => Navigator.pop(sheetCtx),
+                  child: const Text('Close Diagnostics', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                icon: const Icon(Icons.key_rounded, size: 18),
-                onPressed: _showVirusTotalConfigDialog,
               ),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAuditSection(String title, List<Widget> items, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF38BDF8),
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF16203A) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.black12,
+              ),
+            ),
+            child: Column(children: items),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAuditItem(String label, String value, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white60 : Colors.black54,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.right,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

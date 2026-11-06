@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'virus_total_service.dart';
 
@@ -37,6 +38,25 @@ class DomainCheckItem {
   final String detail;
 
   DomainCheckItem(this.name, this.passed, this.detail);
+}
+
+/// Structured inspection result from zero-day DOM & credential harvesting analysis
+class DomInspectionResult {
+  final bool isThreat;
+  final MalwareThreatType threatType;
+  final String threatCategory;
+  final String detail;
+  final int confidenceDelta;
+
+  const DomInspectionResult({
+    required this.isThreat,
+    this.threatType = MalwareThreatType.clean,
+    this.threatCategory = '',
+    this.detail = '',
+    this.confidenceDelta = 0,
+  });
+
+  static const clean = DomInspectionResult(isThreat: false);
 }
 
 /// Validation result produced during early URL ingestion and parsing
@@ -127,6 +147,10 @@ class UrlResult {
   final List<String> redirectChain;
   final VirusTotalScanResult? virusTotalResult;
   final SecurityDnsCheckResult? securityDnsResult;
+  final bool isDgaDomain;
+  final bool isCredentialHarvester;
+  final String? detectedFormType;
+  final double shannonEntropy;
 
   UrlResult({
     required this.url,
@@ -165,6 +189,10 @@ class UrlResult {
     this.redirectChain = const [],
     this.virusTotalResult,
     this.securityDnsResult,
+    this.isDgaDomain = false,
+    this.isCredentialHarvester = false,
+    this.detectedFormType,
+    this.shannonEntropy = 0.0,
   });
 
   factory UrlResult.error(
@@ -888,6 +916,154 @@ class UrlIntelligenceEngine {
     }
 
     return false;
+  }
+
+  /// Computes Shannon entropy of a string (measures algorithmic randomness for DGA botnet detection)
+  static double calculateShannonEntropy(String s) {
+    if (s.isEmpty) return 0.0;
+    final map = <int, int>{};
+    for (final rune in s.runes) {
+      map[rune] = (map[rune] ?? 0) + 1;
+    }
+    double entropy = 0.0;
+    final len = s.runes.length;
+    for (final count in map.values) {
+      final p = count / len;
+      entropy -= p * (math.log(p) / math.ln2);
+    }
+    return entropy;
+  }
+
+  /// Safely inspects HTML markup for zero-day credential harvesters, seed phrase traps,
+  /// fake bank login overlays, and obfuscated payload scripts without executing JavaScript.
+  static DomInspectionResult inspectHtmlDomForCredentialHarvesters(
+    String html, {
+    required String domain,
+    required bool isAllowlisted,
+  }) {
+    if (html.isEmpty || isAllowlisted) {
+      return DomInspectionResult.clean;
+    }
+
+    final lower = html.toLowerCase();
+
+    // 1. Web3 Crypto Seed Phrase Theft (12/24 words, private keys)
+    final seedKeywords = [
+      'seed phrase',
+      'secret recovery phrase',
+      'recovery seed',
+      '12-word',
+      '24-word',
+      'private key',
+      'enter your phrase',
+      'confirm your secret phrase',
+      'wallet backup phrase',
+      'keystore json',
+      'import wallet with secret',
+    ];
+    for (final kw in seedKeywords) {
+      if (lower.contains(kw) &&
+          (lower.contains('textarea') ||
+              lower.contains('input') ||
+              lower.contains('confirm') ||
+              lower.contains('submit'))) {
+        return const DomInspectionResult(
+          isThreat: true,
+          threatType: MalwareThreatType.credentialHarvester,
+          threatCategory: 'CRYPTO SEED PHRASE THEFT TRAP',
+          detail:
+              'Zero-Day Web3 Trapping: Detected cryptocurrency seed phrase / private key harvesting form on unverified domain.',
+          confidenceDelta: 85,
+        );
+      }
+    }
+
+    // 2. Banking, OTP & Card Harvesters on Unverified Hosts
+    final hasPasswordInput = RegExp(
+      r'<input[^>]*type=["'']password["'']',
+      caseSensitive: false,
+    ).hasMatch(html);
+
+    final hasBankingFields = RegExp(
+      r'name=["''](?:cvv|card_number|cardnumber|card_num|expiry|pan_number|aadhaar|upi_pin|mpin|otp|netbanking_pass|trans_pwd)["'']',
+      caseSensitive: false,
+    ).hasMatch(html);
+
+    if (hasPasswordInput && hasBankingFields) {
+      return const DomInspectionResult(
+        isThreat: true,
+        threatType: MalwareThreatType.credentialHarvester,
+        threatCategory: 'BANKING CREDENTIAL & CARD HARVESTER',
+        detail:
+            'Zero-Day Phishing Trap: Web page contains password and payment card / CVV / OTP inputs on an unverified domain.',
+        confidenceDelta: 85,
+      );
+    }
+
+    if (hasPasswordInput) {
+      final hasLoginContext = lower.contains('login') ||
+          lower.contains('sign in') ||
+          lower.contains('authenticate') ||
+          lower.contains('verification') ||
+          lower.contains('account');
+
+      if (hasLoginContext) {
+        return const DomInspectionResult(
+          isThreat: true,
+          threatType: MalwareThreatType.credentialHarvester,
+          threatCategory: 'UNVERIFIED LOGIN CREDENTIAL HARVESTER',
+          detail:
+              'Zero-Day Phishing Trap: Password input form detected on unverified third-party host imitating authentication service.',
+          confidenceDelta: 75,
+        );
+      }
+    }
+
+    // 3. High-Pressure Social Engineering Scam Lures inside page
+    final fraudLures = [
+      'electricity bill will be disconnected',
+      'power will be disconnected',
+      'power supply will be disconnected tonight',
+      'lottery winning notification',
+      'congratulations! you won',
+      'pm kisan samman nidhi update mandatory',
+      'part-time job daily income',
+      'earn 5000 daily from mobile',
+      'claim your pending refund immediately',
+      'account suspended click to verify immediately',
+    ];
+    for (final lure in fraudLures) {
+      if (lower.contains(lure)) {
+        return DomInspectionResult(
+          isThreat: true,
+          threatType: MalwareThreatType.phishingScam,
+          threatCategory: 'HIGH-PRESSURE FRAUD SCAM LURE',
+          detail:
+              'Social Engineering Lure: Page contains high-urgency fraudulent threat ("$lure") designed to coerce victim action.',
+          confidenceDelta: 75,
+        );
+      }
+    }
+
+    // 4. Heavily Obfuscated JavaScript Payloads (Packer, Hex-escaped)
+    final isObfuscatedJs = RegExp(
+      r'eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*[dr]',
+      caseSensitive: false,
+    ).hasMatch(html) ||
+    lower.contains('document.write(unescape(');
+
+    if (isObfuscatedJs) {
+      return const DomInspectionResult(
+        isThreat: true,
+        threatType: MalwareThreatType.unknownThreat,
+        threatCategory: 'OBFUSCATED MALICIOUS SCRIPT PAYLOAD',
+        detail:
+            'Evasion Detection: Page embeds packed or obfuscated JavaScript payload commonly used in zero-day exploit kits.',
+        confidenceDelta: 65,
+      );
+    }
+
+    return DomInspectionResult.clean;
   }
 
   /// Safely traces recursive redirect hops (e.g. URL shorteners) via zero-browser HEAD requests.
@@ -1648,18 +1824,43 @@ class UrlIntelligenceEngine {
       }
     }
 
-    // ─── 9. DOMAIN STRUCTURE & HYPHEN ENTROPY ────────────────────────────────
-    final hyphenCount = domain.split('-').length - 1;
-    final dotCount = domain.split('.').length - 1;
-    if (hyphenCount >= 3 || dotCount >= 4) {
-      riskScore += 20;
-      domainChecks.add(
+    // ─── 9. DOMAIN STRUCTURE, SHANNON ENTROPY & ALGORITHMIC DGA BOTNET DETECTION ──
+    final domainParts = domain.split('.');
+    final primaryLabel = domainParts.length >= 2 ? domainParts[domainParts.length - 2] : domain;
+    final shannonEntropy = calculateShannonEntropy(primaryLabel);
+    bool isDga = false;
+    if (primaryLabel.length >= 9 && shannonEntropy >= 3.65 && !isAllowlisted) {
+      final digitCount = primaryLabel.replaceAll(RegExp(r'[^0-9]'), '').length;
+      final vowelCount = primaryLabel.replaceAll(RegExp(r'[^aeiouAEIOU]'), '').length;
+      final consonantCount = primaryLabel.length - digitCount - vowelCount;
+      if (consonantCount > vowelCount * 2 || digitCount >= 3) {
+        isDga = true;
+      }
+    }
+
+    if (isDga) {
+      riskScore += 75;
+      domainChecks.insert(
+        0,
         DomainCheckItem(
-          'Domain Structure & Entropy',
+          'Algorithmic DGA Botnet Radar',
           false,
-          'Unusually high complexity ($hyphenCount hyphens, $dotCount dots). Typical of disposable phishing hosts.',
+          'CRITICAL: Algorithmic Domain Generation (DGA) pattern detected (Shannon Entropy: ${shannonEntropy.toStringAsFixed(2)}). Typical of banking trojan & ransomware C2 infrastructure.',
         ),
       );
+    } else {
+      final hyphenCount = domain.split('-').length - 1;
+      final dotCount = domain.split('.').length - 1;
+      if (hyphenCount >= 3 || dotCount >= 4) {
+        riskScore += 20;
+        domainChecks.add(
+          DomainCheckItem(
+            'Domain Structure & Entropy',
+            false,
+            'Unusually high complexity ($hyphenCount hyphens, $dotCount dots, Entropy: ${shannonEntropy.toStringAsFixed(2)}). Typical of disposable phishing hosts.',
+          ),
+        );
+      }
     }
 
     // ─── 10. RAW IP ADDRESS AS HOST ──────────────────────────────────────────
@@ -1767,8 +1968,99 @@ class UrlIntelligenceEngine {
       );
     }
 
+    // ─── 13. LIVE MOBILE DOM & ZERO-DAY CREDENTIAL HARVESTER PROBE ───────────
+    DomInspectionResult domResult = DomInspectionResult.clean;
+    String siteTitle = '';
+    String siteDescription = '';
+    String serverSoftware = '';
+    String poweredBy = '';
+    String contentType = '';
+    int securityHeaders = 0;
+
+    if (!isSsrfHost && !isDirectApk && !isDesktopExecutable && aRecords.isNotEmpty) {
+      try {
+        final probeResponse = await (customDio ?? _dio).get(
+          rawUrl,
+          options: Options(
+            followRedirects: true,
+            maxRedirects: 3,
+            validateStatus: (status) => status != null && status < 500,
+            sendTimeout: const Duration(seconds: 3),
+            receiveTimeout: const Duration(seconds: 4),
+            headers: {
+              'User-Agent':
+                  'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36',
+              'Accept':
+                  'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8',
+            },
+            responseType: ResponseType.plain,
+          ),
+        );
+
+        if (probeResponse.headers.map.isNotEmpty) {
+          final headers = probeResponse.headers;
+          serverSoftware = headers.value('server') ?? '';
+          poweredBy = headers.value('x-powered-by') ?? '';
+          contentType = headers.value('content-type') ?? '';
+
+          if (headers.value('strict-transport-security') != null) {
+            securityHeaders++;
+          }
+          if (headers.value('x-content-type-options') != null) {
+            securityHeaders++;
+          }
+          if (headers.value('x-frame-options') != null) {
+            securityHeaders++;
+          }
+          if (headers.value('content-security-policy') != null) {
+            securityHeaders++;
+          }
+        }
+
+        final bodyStr = probeResponse.data?.toString() ?? '';
+        if (bodyStr.isNotEmpty) {
+          final titleMatch = RegExp(
+            r'<title[^>]*>([^<]+)</title>',
+            caseSensitive: false,
+          ).firstMatch(bodyStr);
+          if (titleMatch != null) {
+            siteTitle = titleMatch.group(1)?.trim() ?? '';
+          }
+
+          final descMatch = RegExp(
+            r'<meta[^>]*name=["'']description["''][^>]*content=["'']([^"'']+)["'']',
+            caseSensitive: false,
+          ).firstMatch(bodyStr);
+          if (descMatch != null) {
+            siteDescription = descMatch.group(1)?.trim() ?? '';
+          }
+
+          domResult = inspectHtmlDomForCredentialHarvesters(
+            bodyStr,
+            domain: domain,
+            isAllowlisted: isAllowlisted,
+          );
+
+          if (domResult.isThreat) {
+            riskScore += domResult.confidenceDelta;
+            domainChecks.insert(
+              0,
+              DomainCheckItem(
+                'Zero-Day Phishing & Credential Trap',
+                false,
+                'CRITICAL: ${domResult.detail}',
+              ),
+            );
+          }
+        }
+      } catch (_) {}
+    }
+
     // ─── VERDICT CALIBRATION & RISK LEVEL CLASSIFICATION ─────────────────────
     final bool hasCriticalThreats =
+        domResult.isThreat ||
+        isDga ||
         isRatDropper ||
         isMaliciousDropper ||
         isDesktopExecutable ||
@@ -1802,7 +2094,9 @@ class UrlIntelligenceEngine {
     final UrlRiskLevel riskLevel;
     if (riskScore >= 75) {
       riskLevel =
-          (isKnownC2 ||
+          (domResult.isThreat ||
+              isDga ||
+              isKnownC2 ||
               isDynamicDnsC2 ||
               isRatDropper ||
               isMaliciousDropper ||
@@ -1824,7 +2118,12 @@ class UrlIntelligenceEngine {
     }
 
     String riskExplanation;
-    if (vtRes?.isMalicious == true) {
+    if (domResult.isThreat) {
+      riskExplanation = domResult.detail;
+    } else if (isDga) {
+      riskExplanation =
+          'Algorithmic DGA botnet node detected (Entropy: ${shannonEntropy.toStringAsFixed(2)}).';
+    } else if (vtRes?.isMalicious == true) {
       riskExplanation =
           'VirusTotal threat match: ${vtRes!.malicious} security vendor(s) flagged this destination.';
     } else if (securityDnsRes.isBlocked) {
@@ -1867,11 +2166,20 @@ class UrlIntelligenceEngine {
     final String threatCategoryBadge;
     final String threatForensicDetails;
 
-    if (vtRes?.isMalicious == true) {
-      threatType = MalwareThreatType.phishingScam;
-      threatCategoryBadge = 'VIRUSTOTAL FLAGGED THREAT (${vtRes!.malicious} ENGINES)';
+    if (domResult.isThreat) {
+      threatType = domResult.threatType;
+      threatCategoryBadge = domResult.threatCategory;
+      threatForensicDetails = domResult.detail;
+    } else if (isDga) {
+      threatType = MalwareThreatType.bankingTrojan;
+      threatCategoryBadge = 'ALGORITHMIC DGA BOTNET C2 NODE';
       threatForensicDetails =
-          'Multiple security vendors on VirusTotal (${vtRes.flaggedVendors.take(3).join(', ')}) have classified this destination as active phishing, malware dropper, or fraudulent infrastructure.';
+          'High Shannon entropy (${shannonEntropy.toStringAsFixed(2)}) detected in domain label ($primaryLabel). Characteristic of algorithmic domain generation used by botnets and banking trojans.';
+    } else if (vtRes?.isMalicious == true) {
+      threatType = MalwareThreatType.phishingScam;
+      threatCategoryBadge = 'GLOBAL THREAT FEEDS MATCH (${vtRes!.malicious} ENGINES)';
+      threatForensicDetails =
+          'Multiple security vendors (${vtRes.flaggedVendors.take(3).join(', ')}) have classified this destination as active phishing, malware dropper, or fraudulent infrastructure.';
     } else if (securityDnsRes.isBlocked) {
       threatType = MalwareThreatType.phishingScam;
       threatCategoryBadge = 'SECURITY THREAT RADAR (MALWARE/PHISHING)';
@@ -1966,6 +2274,12 @@ class UrlIntelligenceEngine {
       positives: [],
       domainChecks: domainChecks,
       isVerifiedSafe: isAllowlisted && riskScore <= 20,
+      siteTitle: siteTitle,
+      siteDescription: siteDescription,
+      serverSoftware: serverSoftware,
+      poweredBy: poweredBy,
+      contentType: contentType,
+      securityHeaders: securityHeaders,
       aRecords: aRecords,
       mxRecords: mxRecords,
       nsRecords: nsRecords,
@@ -1984,6 +2298,10 @@ class UrlIntelligenceEngine {
       redirectChain: unraveledChain,
       virusTotalResult: vtRes,
       securityDnsResult: securityDnsRes,
+      isDgaDomain: isDga,
+      isCredentialHarvester: domResult.isThreat,
+      detectedFormType: domResult.isThreat ? domResult.threatCategory : null,
+      shannonEntropy: shannonEntropy,
     );
   }
 
