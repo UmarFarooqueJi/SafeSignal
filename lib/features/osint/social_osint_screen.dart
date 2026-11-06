@@ -1,12 +1,19 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
-import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../core/services/visual_osint_engine.dart';
+import '../url_scanner/in_app_browser_screen.dart';
+
+enum _OsintTab { username, reverseImage }
 
 class SocialOsintScreen extends StatefulWidget {
-  const SocialOsintScreen({super.key});
+  final int initialTab;
+  const SocialOsintScreen({super.key, this.initialTab = 0});
 
   @override
   State<SocialOsintScreen> createState() => _SocialOsintScreenState();
@@ -57,7 +64,20 @@ class OsintProfile {
 }
 
 class _SocialOsintScreenState extends State<SocialOsintScreen> {
+  late _OsintTab _activeTab;
+
   final _controller = TextEditingController();
+  final _imagePicker = ImagePicker();
+  final _imageUrlController = TextEditingController();
+  final _compareHashController = TextEditingController();
+
+  bool _isImageAnalyzing = false;
+  String _imageScanStep = '';
+  VisualOsintResult? _imageResult;
+  String? _selectedImagePath;
+  String? _activeImageUrl;
+  double? _comparedSimilarity;
+
   final _dio = Dio(
     BaseOptions(
       connectTimeout: const Duration(seconds: 7),
@@ -78,10 +98,223 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
   String _currentStep = '';
 
   @override
+  void initState() {
+    super.initState();
+    _activeTab = widget.initialTab == 1 ? _OsintTab.reverseImage : _OsintTab.username;
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
+    _imageUrlController.dispose();
+    _compareHashController.dispose();
     _dio.close();
     super.dispose();
+  }
+
+  void _setImageStep(String step) {
+    if (mounted) setState(() => _imageScanStep = step);
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      HapticFeedback.lightImpact();
+      final picked = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 88,
+      );
+
+      if (picked != null) {
+        setState(() {
+          _selectedImagePath = picked.path;
+          _activeImageUrl = null;
+          _imageResult = null;
+          _comparedSimilarity = null;
+        });
+        await _analyzeLocalFile(picked.path);
+      }
+    } catch (e) {
+      _showToast('Failed to access camera/gallery: $e');
+    }
+  }
+
+  Future<void> _analyzeLocalFile(String filePath) async {
+    setState(() {
+      _isImageAnalyzing = true;
+      _imageScanStep = 'Computing cryptographic hashes & 64-bit dHash...';
+    });
+
+    try {
+      await Future.delayed(const Duration(milliseconds: 150));
+      _setImageStep('Running on-device OCR & scam entity detection...');
+      final res = await VisualOsintEngine.analyze(localFilePath: filePath);
+      if (mounted) {
+        setState(() {
+          _imageResult = res;
+          _isImageAnalyzing = false;
+          _imageScanStep = '';
+        });
+        HapticFeedback.mediumImpact();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isImageAnalyzing = false;
+          _imageScanStep = '';
+        });
+        _showToast('Analysis error: $e');
+      }
+    }
+  }
+
+  Future<void> _analyzeImageUrl(String url) async {
+    final clean = url.trim();
+    if (clean.isEmpty || (!clean.startsWith('http://') && !clean.startsWith('https://'))) {
+      _showToast('Please enter a valid HTTP/HTTPS image URL');
+      return;
+    }
+
+    HapticFeedback.lightImpact();
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isImageAnalyzing = true;
+      _selectedImagePath = null;
+      _activeImageUrl = clean;
+      _imageResult = null;
+      _comparedSimilarity = null;
+      _imageScanStep = 'Fetching remote image bytes securely...';
+    });
+
+    try {
+      await Future.delayed(const Duration(milliseconds: 200));
+      _setImageStep('Generating multi-engine queries across 6 search indices...');
+      final res = await VisualOsintEngine.analyze(imageUrl: clean);
+      if (mounted) {
+        setState(() {
+          _imageResult = res;
+          _isImageAnalyzing = false;
+          _imageScanStep = '';
+        });
+        HapticFeedback.mediumImpact();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isImageAnalyzing = false;
+          _imageScanStep = '';
+        });
+        _showToast('Failed to download image: $e');
+      }
+    }
+  }
+
+  void _loadSampleScamNotice() {
+    const sampleText = '''
+CENTRAL BUREAU OF INVESTIGATION (CBI) - CYBER CRIME CELL
+NEW DELHI HEADQUARTERS
+NOTICE OF DIGITAL ARREST & NON-BAILABLE WARRANT
+Case Reference: PMLA/NCB/2026/09428-B
+To: Accused Person
+You are placed under immediate DIGITAL ARREST under Section 420 IPC and IT Act Section 66D.
+Money laundering and illegal narcotics trafficking detected via your Aadhaar linked bank accounts.
+Do not disconnect video call verification. Transfer security clearance deposit to verified RBI vault:
+Target UPI ID: centralvault.clearance@okhdfcbank
+Penalty Amount: ₹98,500
+Failure to comply will lead to immediate physical property attachment.
+    ''';
+
+    setState(() {
+      _selectedImagePath = null;
+      _activeImageUrl = null;
+      _isImageAnalyzing = true;
+      _imageScanStep = 'Emulating forensic sample scan...';
+    });
+
+    Future.delayed(const Duration(milliseconds: 250), () async {
+      const hashes = VisualHashReport(
+        sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
+        md5: '5d41402abc4b2a76b9719d911017c592',
+        sha1: '2fd4e1c67a2d28fced849ee1bb76e7391b93eb12',
+        dHash: 'F8C0E0E0E0C08000',
+        fileSizeBytes: 245600,
+        width: 1080,
+        height: 1920,
+        mimeType: 'image/jpeg',
+      );
+
+      final ocr = VisualOsintEngine.inspectTextForensics(sampleText);
+      final queries = VisualOsintEngine.generateEngineQueries('https://via.placeholder.com/1080x1920.png?text=CBI+Sample');
+      final assess = VisualOsintEngine.evaluateThreat(hashes, ocr, 'https://via.placeholder.com/1080x1920.png');
+
+      if (mounted) {
+        setState(() {
+          _imageResult = VisualOsintResult(
+            imageUrl: 'https://via.placeholder.com/1080x1920.png?text=CBI+Sample',
+            hashes: hashes,
+            ocrEntities: ocr,
+            engineQueries: queries,
+            assessment: assess,
+            inspectedAt: DateTime.now(),
+          );
+          _isImageAnalyzing = false;
+          _imageScanStep = '';
+        });
+      }
+    });
+  }
+
+  void _showToast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle(fontSize: 12, color: Colors.white)),
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _copyToClipboard(String text, String label) {
+    Clipboard.setData(ClipboardData(text: text));
+    HapticFeedback.selectionClick();
+    _showToast('$label copied to clipboard');
+  }
+
+  void _exportImageForensicReport() {
+    if (_imageResult == null) return;
+    final r = _imageResult!;
+    final buffer = StringBuffer();
+    buffer.writeln('====================================================');
+    buffer.writeln('SAFESIGNAL TITAN VISUAL OSINT & FORENSIC EVIDENCE REPORT');
+    buffer.writeln('Generated: ${r.inspectedAt.toIso8601String()}');
+    buffer.writeln('====================================================\n');
+    buffer.writeln('1. CRYPTOGRAPHIC INTEGRITY');
+    buffer.writeln('SHA-256 : ${r.hashes.sha256}');
+    buffer.writeln('MD5     : ${r.hashes.md5}');
+    buffer.writeln('64-dHash: ${r.hashes.dHash}');
+    buffer.writeln('Size    : ${(r.hashes.fileSizeBytes / 1024).toStringAsFixed(1)} KB');
+    buffer.writeln('Format  : ${r.hashes.mimeType} (${r.hashes.width ?? "?"}x${r.hashes.height ?? "?"}px)\n');
+    buffer.writeln('2. THREAT ASSESSMENT');
+    buffer.writeln('Verdict : ${r.assessment.verdictTitle}');
+    buffer.writeln('Score   : ${r.assessment.threatScore}/100 (${r.assessment.threatLevel.name.toUpperCase()})');
+    buffer.writeln('Category: ${r.assessment.primaryThreatType}\n');
+    buffer.writeln('3. DETECTED EXTORTION / FRAUD ENTITIES');
+    buffer.writeln('Authorities  : ${r.ocrEntities.detectedInstitutions.join(", ")}');
+    buffer.writeln('Scam Triggers: ${r.ocrEntities.detectedScamKeywords.join(", ")}');
+    buffer.writeln('Extracted UPI: ${r.ocrEntities.detectedUpiIds.join(", ")}');
+    buffer.writeln('Phone Numbers: ${r.ocrEntities.detectedPhoneNumbers.join(", ")}');
+    buffer.writeln('Amounts      : ${r.ocrEntities.detectedAmounts.join(", ")}\n');
+    buffer.writeln('4. REVERSE ENGINE SOURCES');
+    for (final q in r.engineQueries) {
+      buffer.writeln('- ${q.engineName}: ${q.queryUrl}');
+    }
+    buffer.writeln('\n====================================================');
+    buffer.writeln('Report this evidence to National Cyber Crime Portal (1930)');
+
+    _copyToClipboard(buffer.toString(), 'Full Forensic Evidence Report');
   }
 
   void _setStep(String step) {
@@ -866,21 +1099,62 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          'Social OSINT Recon',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 20,
-            color: isDark ? Colors.white : const Color(0xFF0D1117),
-            letterSpacing: -0.5,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Digital OSINT Suite',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 19,
+                color: isDark ? Colors.white : const Color(0xFF0D1117),
+                letterSpacing: -0.5,
+              ),
+            ),
+            Text(
+              _activeTab == _OsintTab.username
+                  ? 'Public Handles & Profile Intel'
+                  : 'Multi-Engine Visual Recon & OCR',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+            ),
+          ],
         ),
         centerTitle: false,
         actions: [
+          if (_activeTab == _OsintTab.reverseImage && _imageResult != null)
+            IconButton(
+              tooltip: 'Export Forensic Evidence Report',
+              icon: const Icon(Icons.share_outlined, color: Color(0xFF00E5FF), size: 21),
+              onPressed: _exportImageForensicReport,
+            ),
           IconButton(
-            tooltip: 'Visual & Reverse Image OSINT',
-            icon: const Icon(Icons.image_search_rounded, color: Color(0xFF00E5FF), size: 22),
-            onPressed: () => context.push('/image-osint'),
+            tooltip: 'Clear & Reset',
+            icon: Icon(
+              Icons.refresh_rounded,
+              color: isDark ? Colors.white60 : Colors.black54,
+              size: 22,
+            ),
+            onPressed: () {
+              setState(() {
+                if (_activeTab == _OsintTab.username) {
+                  _controller.clear();
+                  _state = _ScanState.idle;
+                  _foundProfiles.clear();
+                  _unconfirmedLinks.clear();
+                } else {
+                  _imageUrlController.clear();
+                  _compareHashController.clear();
+                  _selectedImagePath = null;
+                  _activeImageUrl = null;
+                  _imageResult = null;
+                  _comparedSimilarity = null;
+                }
+              });
+            },
           ),
         ],
       ),
@@ -891,91 +1165,101 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Search Box Card
-              _buildSearchCard(isDark),
-              const SizedBox(height: 16),
+              // Tab Selector
+              _buildTabSelector(isDark),
+              const SizedBox(height: 18),
 
-              // Scanning State
-              if (_state == _ScanState.scanning) _buildScanningProgress(isDark),
+              // Username Recon Tab
+              if (_activeTab == _OsintTab.username) ...[
+                _buildSearchCard(isDark),
+                const SizedBox(height: 16),
 
-              // Error State
-              if (_state == _ScanState.error) _buildErrorCard(isDark),
+                if (_state == _ScanState.scanning) _buildScanningProgress(isDark),
+                if (_state == _ScanState.error) _buildErrorCard(isDark),
+                if (_state == _ScanState.done) ...[
+                  _buildExposureSummaryHeader(isDark),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Text(
+                        'CONFIRMED PUBLIC PROFILES',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                          color: isDark ? Colors.white54 : Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2979FF).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${_foundProfiles.length}',
+                          style: const TextStyle(
+                            color: Color(0xFF2979FF),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
 
-              // Results
-              if (_state == _ScanState.done) ...[
-                _buildExposureSummaryHeader(isDark),
-                const SizedBox(height: 22),
+                  if (_foundProfiles.isEmpty)
+                    _buildNoProfilesFoundCard(isDark)
+                  else
+                    ..._foundProfiles.map((p) => _buildProfileCard(p, isDark)),
 
-                // Identified Profiles
-                Row(
-                  children: [
+                  const SizedBox(height: 24),
+
+                  if (_unconfirmedLinks.isNotEmpty) ...[
                     Text(
-                      'CONFIRMED PUBLIC PROFILES',
+                      'ADDITIONAL PLATFORM DIRECT PROBES',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.2,
-                        color: isDark ? Colors.white54 : Colors.black54,
+                        color: isDark ? Colors.white54 : Colors.black45,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2979FF).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${_foundProfiles.length}',
-                        style: const TextStyle(
-                          color: Color(0xFF2979FF),
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12,
-                        ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Tap to inspect if this handle is registered on other networks.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white38 : Colors.black45,
                       ),
                     ),
+                    const SizedBox(height: 14),
+
+                    _buildQuickProbeGrid(isDark),
+                    const SizedBox(height: 24),
                   ],
-                ),
-                const SizedBox(height: 14),
 
-                if (_foundProfiles.isEmpty)
-                  _buildNoProfilesFoundCard(isDark)
-                else
-                  ..._foundProfiles.map((p) => _buildProfileCard(p, isDark)),
-
-                const SizedBox(height: 24),
-
-                // Unconfirmed Presence Probes
-                if (_unconfirmedLinks.isNotEmpty) ...[
-                  Text(
-                    'ADDITIONAL PLATFORM DIRECT PROBES',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                      color: isDark ? Colors.white54 : Colors.black45,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Tap to inspect if this handle is registered on other networks.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? Colors.white38 : Colors.black45,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  _buildQuickProbeGrid(isDark),
-                  const SizedBox(height: 24),
+                  _buildThreatInsightCard(isDark),
+                  const SizedBox(height: 40),
                 ],
+              ],
 
-                // Security Analysis Card
-                _buildThreatInsightCard(isDark),
-                const SizedBox(height: 40),
+              // Reverse Image Recon Tab
+              if (_activeTab == _OsintTab.reverseImage) ...[
+                _buildImageSearchCard(isDark),
+                const SizedBox(height: 16),
+
+                if (_isImageAnalyzing) _buildImageScanningProgress(isDark),
+
+                if (_imageResult != null) ...[
+                  _buildVisualResultsSection(_imageResult!, isDark),
+                  const SizedBox(height: 40),
+                ],
               ],
             ],
           ),
@@ -1802,6 +2086,1221 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Visual OSINT Widgets ───────────────────────────────────────────────────
+
+  Widget _buildTabSelector(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : const Color(0xFFE2E8F0),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF232D42) : Colors.transparent,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildTabItem(
+              title: 'Username Recon',
+              icon: Icons.person_search_rounded,
+              isSelected: _activeTab == _OsintTab.username,
+              isDark: isDark,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _activeTab = _OsintTab.username);
+              },
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _buildTabItem(
+              title: 'Reverse Image Recon',
+              icon: Icons.image_search_rounded,
+              isSelected: _activeTab == _OsintTab.reverseImage,
+              isDark: isDark,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _activeTab = _OsintTab.reverseImage);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabItem({
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF2979FF) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF2979FF).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected
+                  ? Colors.white
+                  : (isDark ? Colors.white60 : Colors.black54),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                color: isSelected
+                    ? Colors.white
+                    : (isDark ? Colors.white60 : Colors.black54),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageSearchCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.image_search_rounded,
+                  color: Color(0xFF00E5FF),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Visual Reverse Search & Forensics',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15.5,
+                        color: isDark ? Colors.white : const Color(0xFF0D1117),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    Text(
+                      'Detect fake warrants, scammers & web appearances',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // Upload Options
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionBtn(
+                  icon: Icons.photo_library_rounded,
+                  label: 'Gallery',
+                  color: const Color(0xFF2979FF),
+                  isDark: isDark,
+                  onTap: () => _pickImage(ImageSource.gallery),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildActionBtn(
+                  icon: Icons.camera_alt_rounded,
+                  label: 'Camera',
+                  color: const Color(0xFF00E5FF),
+                  isDark: isDark,
+                  onTap: () => _pickImage(ImageSource.camera),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildActionBtn(
+                  icon: Icons.receipt_long_rounded,
+                  label: 'Sample',
+                  color: const Color(0xFFA855F7),
+                  isDark: isDark,
+                  onTap: _loadSampleScamNotice,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Divider
+          Row(
+            children: [
+              Expanded(
+                child: Divider(
+                  color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  'OR SCAN REMOTE URL',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                    color: isDark ? Colors.white38 : Colors.black38,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Divider(
+                  color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // URL Input
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _imageUrlController,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'https://example.com/scam-notice.jpg',
+                    hintStyle: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white24 : Colors.black26,
+                    ),
+                    prefixIcon: const Icon(Icons.link_rounded, size: 18),
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  onSubmitted: _analyzeImageUrl,
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFF00E5FF),
+                  padding: const EdgeInsets.all(12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: () => _analyzeImageUrl(_imageUrlController.text),
+              ),
+            ],
+          ),
+
+          // Selected Image Preview if local or remote
+          if (_selectedImagePath != null && File(_selectedImagePath!).existsSync()) ...[
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                File(_selectedImagePath!),
+                height: 140,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ] else if (_activeImageUrl != null && _activeImageUrl!.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                _activeImageUrl!,
+                height: 140,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionBtn({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageScanningProgress(bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          const LinearProgressIndicator(
+            backgroundColor: Color(0xFF0D1117),
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E5FF)),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E5FF)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  _imageScanStep.isEmpty ? 'Processing image...' : _imageScanStep,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn();
+  }
+
+  Widget _buildVisualResultsSection(VisualOsintResult r, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Threat Assessment Header
+        _buildVisualThreatHeader(r.assessment, isDark),
+        const SizedBox(height: 22),
+
+        // Search Engines
+        Row(
+          children: [
+            Text(
+              'GLOBAL REVERSE SEARCH ENGINES & FINDINGS',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${r.engineQueries.length}',
+                style: const TextStyle(
+                  color: Color(0xFF00E5FF),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // Engine Cards
+        ...r.engineQueries.map((q) => _buildVisualEngineCard(q, isDark)),
+        const SizedBox(height: 22),
+
+        // OCR Extortion findings if detected
+        if (r.ocrEntities.isFraudulentDocument || r.ocrEntities.rawText.isNotEmpty) ...[
+          _buildOcrFindingsCard(r.ocrEntities, isDark),
+          const SizedBox(height: 22),
+        ],
+
+        // Hashes Card
+        _buildHashesCard(r.hashes, isDark),
+        const SizedBox(height: 22),
+
+        // Clone / Perceptual Hash Comparator Card
+        _buildCloneComparatorCard(r.hashes.dHash, isDark),
+      ],
+    );
+  }
+
+  Widget _buildVisualThreatHeader(VisualThreatAssessment a, bool isDark) {
+    final color = switch (a.threatLevel) {
+      VisualThreatLevel.critical => const Color(0xFFFF1744),
+      VisualThreatLevel.high => const Color(0xFFFF5252),
+      VisualThreatLevel.medium => const Color(0xFFFF9100),
+      VisualThreatLevel.low => const Color(0xFFFFEA00),
+      VisualThreatLevel.safe => const Color(0xFF00E676),
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            color.withValues(alpha: 0.18),
+            isDark ? const Color(0xFF131926) : Colors.white,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  a.threatLevel == VisualThreatLevel.safe
+                      ? Icons.verified_user_rounded
+                      : Icons.security_rounded,
+                  color: color,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  a.verdictTitle,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14.5,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${a.threatScore}/100',
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            a.primaryThreatType,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : const Color(0xFF0D1117),
+            ),
+          ),
+          if (a.findings.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...a.findings.take(3).map(
+              (f) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('• ', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: Text(
+                        f,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? Colors.white70 : const Color(0xFF475569),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          ElevatedButton.icon(
+            onPressed: _exportImageForensicReport,
+            icon: const Icon(Icons.download_rounded, size: 16),
+            label: const Text('Export Forensic Evidence Report', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn().slideY(begin: 0.05);
+  }
+
+  Widget _buildVisualEngineCard(ReverseEngineQuery q, bool isDark) {
+    final (Color brandColor, IconData icon) = switch (q.engineKey) {
+      'google_lens' => (const Color(0xFF4285F4), Icons.travel_explore_rounded),
+      'yandex' => (const Color(0xFFFC3F1D), Icons.saved_search_rounded),
+      'tineye' => (const Color(0xFF00B4D8), Icons.manage_search_rounded),
+      'bing' => (const Color(0xFF008373), Icons.search_rounded),
+      'baidu' => (const Color(0xFF2932E1), Icons.radar_rounded),
+      _ => (const Color(0xFFE67E22), Icons.auto_awesome_rounded),
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Banner
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: brandColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: brandColor.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 14, color: brandColor),
+                    const SizedBox(width: 5),
+                    Text(
+                      q.engineName.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: brandColor,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  q.specialization,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white54 : Colors.black54,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (q.isPrimary)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'CORE',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF00E5FF),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Description
+          Text(
+            q.description,
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.4,
+              color: isDark ? Colors.white70 : const Color(0xFF334155),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Query URL snippet
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Text(
+              q.queryUrl,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 11,
+                color: isDark ? Colors.white38 : Colors.black45,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Action Buttons
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => InAppBrowserScreen(url: q.queryUrl),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.travel_explore_rounded, size: 16),
+                  label: const Text(
+                    'Search Lens',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: brandColor,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'Open in Browser',
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                style: IconButton.styleFrom(
+                  backgroundColor: isDark
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFFF1F5F9),
+                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () => _openUrl(q.queryUrl),
+              ),
+              const SizedBox(width: 6),
+              IconButton.filledTonal(
+                tooltip: 'Copy Query Link',
+                icon: const Icon(Icons.copy_rounded, size: 18),
+                style: IconButton.styleFrom(
+                  backgroundColor: isDark
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFFF1F5F9),
+                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () => _copyToClipboard(q.queryUrl, '${q.engineName} Query URL'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn().slideY(begin: 0.05);
+  }
+
+  Widget _buildOcrFindingsCard(OcrEntityExtraction ocr, bool isDark) {
+    final hasThreatEntities = ocr.isFraudulentDocument ||
+        ocr.detectedInstitutions.isNotEmpty ||
+        ocr.detectedScamKeywords.isNotEmpty ||
+        ocr.detectedUpiIds.isNotEmpty;
+
+    final headerColor = hasThreatEntities ? const Color(0xFFFF5252) : const Color(0xFF00E5FF);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: headerColor.withValues(alpha: 0.4),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: headerColor.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: headerColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  hasThreatEntities ? Icons.warning_amber_rounded : Icons.document_scanner_rounded,
+                  color: headerColor,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasThreatEntities ? 'OCR EXTORTION & FRAUD DETECTED' : 'OCR DOCUMENT FORENSICS',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        color: headerColor,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    Text(
+                      ocr.documentCategory,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          if (ocr.detectedInstitutions.isNotEmpty) ...[
+            Text(
+              'IMPERSONATED AUTHORITIES',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white38 : Colors.black45,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: ocr.detectedInstitutions.map((inst) {
+                return Chip(
+                  backgroundColor: const Color(0xFFFF5252).withValues(alpha: 0.15),
+                  side: BorderSide(color: const Color(0xFFFF5252).withValues(alpha: 0.4)),
+                  label: Text(
+                    inst,
+                    style: const TextStyle(
+                      color: Color(0xFFFF5252),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          if (ocr.detectedScamKeywords.isNotEmpty) ...[
+            Text(
+              'DETECTED FRAUD & EXTORTION PHRASES',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white38 : Colors.black45,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: ocr.detectedScamKeywords.map((kw) {
+                return Chip(
+                  backgroundColor: const Color(0xFFFF9100).withValues(alpha: 0.15),
+                  side: BorderSide(color: const Color(0xFFFF9100).withValues(alpha: 0.4)),
+                  label: Text(
+                    kw.toUpperCase(),
+                    style: const TextStyle(
+                      color: Color(0xFFFF9100),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          if (ocr.detectedUpiIds.isNotEmpty) ...[
+            Text(
+              'EXTRACTED PAYMENT VENDOR / UPI IDs',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white38 : Colors.black45,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ...ocr.detectedUpiIds.map((upi) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF2979FF).withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.account_balance_wallet_rounded, size: 14, color: Color(0xFF2979FF)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        upi,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: Color(0xFF2979FF),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy_rounded, size: 14),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => _copyToClipboard(upi, 'UPI ID'),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 10),
+          ],
+
+          if (ocr.detectedPhoneNumbers.isNotEmpty) ...[
+            Text(
+              'EXTRACTED CONTACT NUMBERS',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white38 : Colors.black45,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              children: ocr.detectedPhoneNumbers.map((phone) {
+                return ActionChip(
+                  avatar: const Icon(Icons.phone_rounded, size: 12, color: Colors.white70),
+                  label: Text(phone, style: const TextStyle(fontSize: 11)),
+                  onPressed: () => _copyToClipboard(phone, 'Phone number'),
+                );
+              }).toList(),
+            ),
+          ],
+        ],
+      ),
+    ).animate().fadeIn().slideY(begin: 0.05);
+  }
+
+  Widget _buildHashesCard(VisualHashReport h, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.fingerprint_rounded, color: Color(0xFF00E5FF), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'CRYPTOGRAPHIC & PERCEPTUAL SIGNATURES',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.8,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          _buildHashRow('64-bit dHash (Perceptual)', h.dHash, isDark, isHighlight: true),
+          const SizedBox(height: 8),
+          _buildHashRow('SHA-256 Checksum', h.sha256, isDark),
+          const SizedBox(height: 8),
+          _buildHashRow('MD5 Legacy Hash', h.md5, isDark),
+          const SizedBox(height: 12),
+
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildMetaPill('Size', '${(h.fileSizeBytes / 1024).toStringAsFixed(1)} KB', isDark),
+              _buildMetaPill('Type', h.mimeType.toUpperCase(), isDark),
+              if (h.width != null && h.height != null)
+                _buildMetaPill('Resolution', '${h.width}x${h.height} px', isDark),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHashRow(String title, String val, bool isDark, {bool isHighlight = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w800,
+            color: isHighlight
+                ? const Color(0xFF00E5FF)
+                : (isDark ? Colors.white38 : Colors.black45),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                val,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 11.5,
+                  fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.copy_rounded, size: 14),
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _copyToClipboard(val, title),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetaPill(String k, String v, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Text(
+        '$k: $v',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: isDark ? Colors.white60 : Colors.black54,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCloneComparatorCard(String currentDHash, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.compare_rounded, color: Color(0xFFA855F7), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'CLONE & TAMPER DETECTOR (dHash Matching)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.8,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Paste another image dHash to compute Hamming distance and detect cropped or re-encoded clones.',
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white54 : Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _compareHashController,
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Enter 16-hex char dHash...',
+                    hintStyle: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: isDark ? Colors.white24 : Colors.black26,
+                    ),
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () {
+                  final target = _compareHashController.text.trim();
+                  if (target.isEmpty) return;
+                  final sim = VisualOsintEngine.calculateVisualSimilarity(currentDHash, target);
+                  setState(() => _comparedSimilarity = sim);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFA855F7),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+                child: const Text('Compare', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+
+          if (_comparedSimilarity != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _comparedSimilarity! >= 80.0
+                    ? const Color(0xFFFF5252).withValues(alpha: 0.12)
+                    : const Color(0xFF00E5FF).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _comparedSimilarity! >= 80.0
+                      ? const Color(0xFFFF5252).withValues(alpha: 0.4)
+                      : const Color(0xFF00E5FF).withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _comparedSimilarity! >= 80.0
+                        ? Icons.copy_all_rounded
+                        : Icons.check_circle_outline_rounded,
+                    color: _comparedSimilarity! >= 80.0
+                        ? const Color(0xFFFF5252)
+                        : const Color(0xFF00E5FF),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _comparedSimilarity! >= 80.0
+                          ? 'HIGH MATCH (${_comparedSimilarity!.toStringAsFixed(1)}%): Visual clone or cropped derivative detected!'
+                          : 'LOW MATCH (${_comparedSimilarity!.toStringAsFixed(1)}%): Distinct visual composition.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: _comparedSimilarity! >= 80.0
+                            ? const Color(0xFFFF5252)
+                            : const Color(0xFF00E5FF),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

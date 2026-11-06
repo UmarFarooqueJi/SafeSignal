@@ -320,7 +320,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
       _CardData(
         title: 'Digital OSINT Footprint',
-        subtitle: 'Username & Profile Recon',
+        subtitle: 'Username & Visual Recon',
         icon: Icons.person_search_rounded,
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -329,18 +329,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ),
         accentColor: const Color(0xFFC084FC),
         route: '/social-osint',
-      ),
-      _CardData(
-        title: 'Visual OSINT Radar',
-        subtitle: 'Reverse Image & Fake ID',
-        icon: Icons.image_search_rounded,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0F172A), Color(0xFF002B49)],
-        ),
-        accentColor: const Color(0xFF00E5FF),
-        route: '/image-osint',
       ),
       _CardData(
         title: 'Scan QR & UPI Shield',
