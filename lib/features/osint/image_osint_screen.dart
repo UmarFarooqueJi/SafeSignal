@@ -369,26 +369,35 @@ Failure to comply will lead to immediate physical property attachment.
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.camera_enhance_rounded, color: _kCyan, size: 18),
-              const SizedBox(width: 8),
-              const Text(
-                'Ingest Target Image / Screenshot',
-                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.camera_enhance_rounded, color: _kCyan, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Ingest Target Image',
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
-              const Spacer(),
-              TextButton(
-                onPressed: _loadSampleScamNotice,
-                style: TextButton.styleFrom(
+              InkWell(
+                onTap: _loadSampleScamNotice,
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  decoration: BoxDecoration(
+                    color: _kPurple.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: _kPurple.withValues(alpha: 0.4)),
+                  ),
+                  child: const Text('Sample Scam', style: TextStyle(color: _kPurple, fontSize: 10, fontWeight: FontWeight.bold)),
                 ),
-                child: const Text('Try Sample Scam', style: TextStyle(color: _kPurple, fontSize: 11)),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -410,45 +419,51 @@ Failure to comply will lead to immediate physical property attachment.
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _urlController,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: 'Or paste image URL (https://...)',
-                    hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
-                    filled: true,
-                    fillColor: const Color(0xFF06090F),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    prefixIcon: const Icon(Icons.link_rounded, color: Colors.white54, size: 18),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: _kCardBorder),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: _kCardBorder),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: _kCyan),
+                child: SizedBox(
+                  height: 42,
+                  child: TextField(
+                    controller: _urlController,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    decoration: InputDecoration(
+                      hintText: 'Paste image link (https://...)',
+                      hintStyle: const TextStyle(color: Colors.white38, fontSize: 11),
+                      filled: true,
+                      fillColor: const Color(0xFF06090F),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                      prefixIcon: const Icon(Icons.link_rounded, color: Colors.white54, size: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: _kCardBorder),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: _kCardBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: _kCyan),
+                      ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () => _analyzeUrl(_urlController.text),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kCyan,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              SizedBox(
+                height: 42,
+                child: ElevatedButton(
+                  onPressed: () => _analyzeUrl(_urlController.text),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _kCyan,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Inspect', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                 ),
-                child: const Text('Inspect', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               ),
             ],
           ),
