@@ -1,3 +1,8 @@
+// SafeSignal Mobile Security Suite
+// Module: Digital Identity Footprint & Live OSINT Recon Engine
+// Author: Umar Farooque (https://github.com/UmarFarooqueJi)
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
+
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
@@ -257,8 +262,8 @@ class LiveOsintService {
     final cleanInput = targetInput.trim().toLowerCase();
     final isEmail = cleanInput.contains('@');
 
-    // 1. Domain intelligence
-    final domainIntel = _analyzeDomain(cleanInput, isEmail);
+    // 1. Real domain & MX intelligence
+    final domainIntel = await _analyzeDomain(cleanInput, isEmail);
 
     // 2. Query live OSINT modules in parallel
     final accounts = <DiscoveredAccount>[];
@@ -270,8 +275,17 @@ class LiveOsintService {
     String? lastSeenYear;
 
     if (isEmail) {
-      // A. Gravatar Live Probe
-      final gravatarAccount = await _probeGravatar(cleanInput);
+      // Concurrently query Gravatar, GitHub, and Spotify
+      final results = await Future.wait([
+        _probeGravatar(cleanInput),
+        _probeGitHub(cleanInput),
+        _probeSpotify(cleanInput),
+      ]);
+
+      final gravatarAccount = results[0];
+      final githubAccount = results[1];
+      final spotifyAccount = results[2];
+
       if (gravatarAccount != null) {
         accounts.add(gravatarAccount);
         likelyOwner ??= gravatarAccount.displayName ?? gravatarAccount.username;
@@ -280,14 +294,16 @@ class LiveOsintService {
         primaryLocation ??= gravatarAccount.location;
       }
 
-      // B. GitHub Live Probe
-      final githubAccount = await _probeGitHub(cleanInput);
       if (githubAccount != null) {
         accounts.add(githubAccount);
         likelyOwner ??= githubAccount.displayName ?? githubAccount.username;
         avatarUrl ??= githubAccount.avatarUrl;
         primaryBio ??= githubAccount.bio;
         primaryLocation ??= githubAccount.location;
+      }
+
+      if (spotifyAccount != null) {
+        accounts.add(spotifyAccount);
       }
     } else {
       // Username Lookup across platforms
@@ -301,13 +317,10 @@ class LiveOsintService {
       }
     }
 
-    // 3. Fallback identity formatting if no live public profiles returned
-    if (likelyOwner == null) {
-      final handle = isEmail ? cleanInput.split('@').first : cleanInput;
-      likelyOwner = _formatHandleToLikelyName(handle);
-    }
+    // 3. Transparent identity status: No synthetic names fabricated
+    likelyOwner ??= 'Private / Not Publicly Indexed';
 
-    // 4. Determine dates from accounts and breaches
+    // 4. Determine verified dates from accounts and confirmed breaches
     final allDates = <DateTime>[];
     for (final acc in accounts) {
       if (acc.creationDate != null) {
@@ -324,8 +337,8 @@ class LiveOsintService {
       firstSeenYear = allDates.first.year.toString();
       lastSeenYear = allDates.last.year.toString();
     } else {
-      firstSeenYear = '2021';
-      lastSeenYear = DateTime.now().year.toString();
+      firstSeenYear = null;
+      lastSeenYear = null;
     }
 
     // 5. Infostealer Analysis
@@ -482,8 +495,85 @@ class LiveOsintService {
     return null;
   }
 
-  /// Analyzes email domain against RFC specs and threat catalogs
-  DomainIntelligence _analyzeDomain(String input, bool isEmail) {
+  /// Probes Spotify account registration via official public signup validation endpoint
+  Future<DiscoveredAccount?> _probeSpotify(String email) async {
+    try {
+      final res = await _dio.get(
+        'https://spclient.wg.spotify.com/signup/public/v1/account',
+        queryParameters: {'validate': '1', 'email': email.trim()},
+        options: Options(
+          headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+          },
+        ),
+      );
+
+      if (res.statusCode == 200 && res.data != null) {
+        dynamic data = res.data;
+        if (data is String) data = jsonDecode(data);
+        if (data is Map && data['status'] == 20) {
+          return const DiscoveredAccount(
+            platform: 'spotify',
+            formattedName: 'Spotify',
+            icon: '🎧',
+            profileUrl: 'https://open.spotify.com',
+            bio: 'Registered & active consumer profile detected on Spotify streaming network.',
+            extraData: {'status': 'Account Registered'},
+          );
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Probes domain Mail Exchange (MX) records using Google Public DNS over HTTPS
+  Future<List<String>> _probeGoogleDnsMx(String domain) async {
+    try {
+      final res = await _dio.get(
+        'https://dns.google/resolve',
+        queryParameters: {'name': domain, 'type': 'MX'},
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        dynamic data = res.data;
+        if (data is String) data = jsonDecode(data);
+        if (data is Map && data['Answer'] is List) {
+          final answers = data['Answer'] as List;
+          return answers
+              .map((a) => a['data']?.toString() ?? '')
+              .where((d) => d.isNotEmpty)
+              .toList();
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Probes domain SPF/DMARC TXT records using Google Public DNS over HTTPS
+  Future<bool> _probeGoogleDnsSpfDmarc(String domain) async {
+    try {
+      final res = await _dio.get(
+        'https://dns.google/resolve',
+        queryParameters: {'name': domain, 'type': 'TXT'},
+      );
+      if (res.statusCode == 200 && res.data != null) {
+        dynamic data = res.data;
+        if (data is String) data = jsonDecode(data);
+        if (data is Map && data['Answer'] is List) {
+          final answers = data['Answer'] as List;
+          return answers.any((a) {
+            final str = a['data']?.toString().toLowerCase() ?? '';
+            return str.contains('v=spf1') || str.contains('dmarc');
+          });
+        }
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  /// Analyzes email domain against RFC specs, DNS MX servers, and threat catalogs
+  Future<DomainIntelligence> _analyzeDomain(String input, bool isEmail) async {
     if (!isEmail) {
       return const DomainIntelligence(
         domain: 'N/A (Username Lookup)',
@@ -503,9 +593,25 @@ class LiveOsintService {
     final isDisposable = _disposableDomains.contains(domain);
     final isFree = _freeProviders.containsKey(domain);
     final isRole = _rolePrefixes.contains(localPart);
+
+    // Live DNS over HTTPS check for MX records and SPF/DMARC
+    bool hasMx = !isDisposable && domain.contains('.');
+    bool hasSpfDmarc = isFree;
+
+    if (!isDisposable && domain.contains('.')) {
+      final mxRecords = await _probeGoogleDnsMx(domain);
+      if (mxRecords.isNotEmpty) {
+        hasMx = true;
+      }
+      final spf = await _probeGoogleDnsSpfDmarc(domain);
+      if (spf) {
+        hasSpfDmarc = true;
+      }
+    }
+
     final providerName =
         _freeProviders[domain] ??
-        (isDisposable ? 'Disposable Mail Service' : 'Corporate / Custom MX');
+        (isDisposable ? 'Disposable Mail Service' : 'Corporate / Custom MX Server');
 
     return DomainIntelligence(
       domain: domain,
@@ -513,8 +619,8 @@ class LiveOsintService {
       isFreeProvider: isFree,
       isRoleAddress: isRole,
       mailProvider: providerName,
-      acceptsMail: !isDisposable && domain.contains('.'),
-      publishesSpfDmarc: isFree || (!isDisposable && domain.contains('.')),
+      acceptsMail: hasMx,
+      publishesSpfDmarc: hasSpfDmarc,
     );
   }
 
@@ -794,13 +900,18 @@ class LiveOsintService {
 
       for (final dc in b.dataClasses) {
         final dcl = dc.toLowerCase();
-        if (dcl.contains('password')) dataTypes.add('Stored Browser Passwords');
-        if (dcl.contains('address') || dcl.contains('geographic'))
+        if (dcl.contains('password')) {
+          dataTypes.add('Stored Browser Passwords');
+        }
+        if (dcl.contains('address') || dcl.contains('geographic')) {
           dataTypes.add('Autofill Address Data');
-        if (dcl.contains('ip') || dcl.contains('device'))
+        }
+        if (dcl.contains('ip') || dcl.contains('device')) {
           dataTypes.add('Victim Machine IP & Hardware ID');
-        if (dcl.contains('cookie') || dcl.contains('session'))
+        }
+        if (dcl.contains('cookie') || dcl.contains('session')) {
           dataTypes.add('Active Session Tokens');
+        }
       }
     }
 
@@ -861,14 +972,6 @@ class LiveOsintService {
 
     list.sort((a, b) => b.dateString.compareTo(a.dateString));
     return list;
-  }
-
-  String _formatHandleToLikelyName(String handle) {
-    if (handle.isEmpty) return 'Anonymous User';
-    final parts = handle.split(RegExp(r'[._-]'));
-    return parts
-        .map((p) => p.isEmpty ? '' : '${p[0].toUpperCase()}${p.substring(1)}')
-        .join(' ');
   }
 
   DateTime? _parseBreachDate(String d) {

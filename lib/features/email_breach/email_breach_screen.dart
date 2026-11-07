@@ -1,3 +1,8 @@
+// SafeSignal Mobile Security Suite
+// Module: Breach Intelligence & Mobile OSINT Analyzer
+// Author: Umar Farooque (https://github.com/UmarFarooqueJi)
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -10,6 +15,7 @@ import '../../core/services/hibp_service.dart';
 import '../../core/services/phone_breach_service.dart';
 import '../../core/services/live_osint_service.dart';
 import '../../core/services/llm_orchestrator.dart';
+import '../url_scanner/in_app_browser_screen.dart';
 
 enum _ScanMode { email, phone }
 
@@ -67,7 +73,6 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
   // Phone state
   PhoneIntelligenceResult? _phoneResult;
   String _phoneVerdict = '';
-  bool _unmaskLeakedData = false;
   bool _showRawJsonPayload = false;
   Map<String, dynamic>? _deviceSimInfo;
   String? _selectedActiveCarrier;
@@ -2704,6 +2709,18 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
         const SizedBox(height: 16),
 
+        // Card 2.2: Live Messaging Footprint Probes (WhatsApp, Telegram, Truecaller)
+        if (result.messagingProbes.isNotEmpty) ...[
+          _buildPhoneMessagingProbesCard(result.messagingProbes, isDark),
+          const SizedBox(height: 16),
+        ],
+
+        // Card 2.3: SafeSignal Deep OSINT Recon Matrix
+        if (result.osintDorks.isNotEmpty) ...[
+          _buildOsintDorkMatrixCard(result.osintDorks, isDark),
+          const SizedBox(height: 16),
+        ],
+
         // Card 2.5: Cryptographic Threat Identifiers
         _buildCryptographicHashesCard(
           result.formattedNumber.replaceAll(' ', ''),
@@ -2757,7 +2774,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'This is the personal identity data that dark-web aggregators & commercial search portals (e.g. stacademy.in) sell for ₹10 per search:',
+                'DoT National Numbering Plan allocation, series epoch, and SIM architecture telemetry:',
                 style: TextStyle(
                   fontSize: 12,
                   color: isDark ? Colors.white54 : Colors.black54,
@@ -2920,25 +2937,456 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
         const SizedBox(height: 24),
 
         // Section: Real Individual Breaches Breakdown
-        if (result.breaches.isNotEmpty) ...[
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'COMPROMISED EXPOSURES & LEAKS (${result.breaches.length})',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-                color: isDark ? Colors.white54 : Colors.black54,
-              ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'COMPROMISED EXPOSURES & LEAKS (${result.breaches.length})',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+              color: isDark ? Colors.white54 : Colors.black54,
             ),
           ),
-          const SizedBox(height: 12),
+        ),
+        const SizedBox(height: 12),
+        if (result.breaches.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF064E3B).withValues(alpha: 0.3)
+                  : const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: const Color(0xFF10B981).withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.verified_user_rounded,
+                  color: Color(0xFF10B981),
+                  size: 28,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Zero Known Breaches Found',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF10B981),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'This phone number has zero confirmed compromised records across indexed dark-web leak databases.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF065F46),
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
           ...result.breaches.map((b) => _buildPhoneBreachCard(b, isDark)),
-        ],
 
         const SizedBox(height: 30),
       ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // PHONE MESSAGING PROBES & OSINT DORK CARDS
+  // ---------------------------------------------------------------------------
+  Widget _buildPhoneMessagingProbesCard(
+    List<PhoneMessagingProbe> probes,
+    bool isDark,
+  ) {
+    if (probes.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF111827) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('💬', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'LIVE MESSAGING FOOTPRINT (${probes.length} CHANNELS)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                    color: isDark ? Colors.white70 : const Color(0xFF334155),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'ACTIVE PROBES',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF10B981),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Direct communication vectors to verify subscriber activity, active chat profiles, and crowdsourced directory presence.',
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white54 : Colors.black54,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...probes.map((p) => _buildMessagingProbeRow(p, isDark)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessagingProbeRow(PhoneMessagingProbe p, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF1E293B).withValues(alpha: 0.6)
+            : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black12,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(p.icon, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p.platform,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      p.status,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF10B981),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  HapticFeedback.lightImpact();
+                  if (p.platform.contains('Truecaller')) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => InAppBrowserScreen(url: p.deepLink),
+                      ),
+                    );
+                  } else {
+                    final uri = Uri.tryParse(p.deepLink);
+                    if (uri != null && await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  p.actionLabel.split(' ').first,
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            p.description,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: isDark ? Colors.white60 : const Color(0xFF475569),
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOsintDorkMatrixCard(
+    List<PhoneOsintDork> dorks,
+    bool isDark,
+  ) {
+    if (dorks.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF111827) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🔍', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'SAFESIGNAL DEEP OSINT RECON MATRIX',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                    color: isDark ? Colors.white70 : const Color(0xFF334155),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'LIVE ENGINES',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF38BDF8),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Automated search engine dork queries targeting publicly indexed document leaks, PDF forms, cybercrime reports, and commercial directory traces.',
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white54 : Colors.black54,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...dorks.map((d) => _buildOsintDorkTile(d, isDark)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOsintDorkTile(PhoneOsintDork d, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(d.icon, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  d.title,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white10 : Colors.black12,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  d.category,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            d.purpose,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: isDark ? Colors.white60 : const Color(0xFF64748B),
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF06090F)
+                  : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              d.dorkSyntax,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 10.5,
+                color: isDark
+                    ? const Color(0xFF38BDF8)
+                    : const Color(0xFF0284C7),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => InAppBrowserScreen(url: d.queryUrl),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.travel_explore_rounded, size: 16),
+                  label: const Text(
+                    'Run Dork in App Browser',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'Copy Dork Query',
+                icon: const Icon(Icons.copy_rounded, size: 16),
+                style: IconButton.styleFrom(
+                  backgroundColor: isDark
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFFE2E8F0),
+                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: d.dorkSyntax));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Copied dork: ${d.title}'),
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -3450,20 +3898,20 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () {
                     setState(() {
-                      _unmaskLeakedData = !_unmaskLeakedData;
+                      _showRawJsonPayload = !_showRawJsonPayload;
                     });
                   },
                   icon: Icon(
-                    _unmaskLeakedData
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
+                    _showRawJsonPayload
+                        ? Icons.data_object_rounded
+                        : Icons.code_rounded,
                     size: 14,
                     color: const Color(0xFFEF4444),
                   ),
                   label: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      _unmaskLeakedData ? 'Mask Data' : 'Unmask PII',
+                      _showRawJsonPayload ? 'Hide JSON' : 'Raw JSON',
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -3491,9 +3939,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
           // Field 1: Subscriber Registration Exposure
           _buildDossierValueBox(
             label: '👤 SUBSCRIBER REGISTRATION EXPOSURE',
-            value: _unmaskLeakedData
-                ? dossier.subscriberName
-                : _maskString(dossier.subscriberName),
+            value: dossier.subscriberName,
             highlightColor: const Color(0xFFF97316),
             isDark: isDark,
             subtitle: 'DoT KYC record status across historical retailer dumps',
@@ -3504,9 +3950,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
           // Field 2: Father's / Guardian Name (Critical vector in Digital Arrest)
           _buildDossierValueBox(
             label: "👨 FATHER'S / GUARDIAN NAME EXPLOITATION",
-            value: _unmaskLeakedData
-                ? dossier.fatherName
-                : _maskString(dossier.fatherName),
+            value: dossier.fatherName,
             highlightColor: const Color(0xFFEF4444),
             isDark: isDark,
             isCriticalAlert: true,
@@ -3521,7 +3965,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
           _buildDossierAddressBox(
             dossier: dossier,
             isDark: isDark,
-            unmask: _unmaskLeakedData,
+            unmask: true,
           ),
 
           const SizedBox(height: 10),
@@ -3529,9 +3973,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
           // Field 4: Alternate Contact Number
           _buildDossierValueBox(
             label: '📱 ALTERNATE EMERGENCY CONTACT STATUS',
-            value: _unmaskLeakedData
-                ? dossier.alternateNumber
-                : _maskPhone(dossier.alternateNumber),
+            value: dossier.alternateNumber,
             highlightColor: const Color(0xFF38BDF8),
             isDark: isDark,
             subtitle: 'Secondary contact numbers recorded during SIM purchase',
@@ -3732,12 +4174,8 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
     required bool isDark,
     required bool unmask,
   }) {
-    final rawDisplay = unmask
-        ? dossier.rawCafAddress
-        : _maskAddress(dossier.rawCafAddress);
-    final cleanDisplay = unmask
-        ? dossier.formattedAddress
-        : _maskAddress(dossier.formattedAddress);
+    final rawDisplay = dossier.rawCafAddress;
+    final cleanDisplay = dossier.formattedAddress;
 
     return Container(
       width: double.infinity,
@@ -3819,28 +4257,6 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
         ],
       ),
     );
-  }
-
-  String _maskString(String s) {
-    if (s.length <= 4) return s;
-    final words = s.split(' ');
-    return words
-        .map((w) {
-          if (w.length <= 2) return w;
-          return '${w[0]}${'*' * (w.length - 2)}${w[w.length - 1]}';
-        })
-        .join(' ');
-  }
-
-  String _maskAddress(String addr) {
-    final parts = addr.split('!');
-    if (parts.length < 3) return addr;
-    return '${parts.first}!***!***!${parts[parts.length - 2]}!${parts.last}';
-  }
-
-  String _maskPhone(String p) {
-    if (p.length < 8) return p;
-    return '${p.substring(0, 7)} XXXX ${p.substring(p.length - 2)}';
   }
 
   Widget _buildDossierFieldTile(ExposedDossierField field, bool isDark) {

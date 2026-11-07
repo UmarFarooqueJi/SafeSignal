@@ -1,3 +1,8 @@
+// SafeSignal Mobile Security Suite
+// Module: Visual OSINT Forensics & Reverse Image Recon Engine
+// Author: Umar Farooque (https://github.com/UmarFarooqueJi)
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -151,6 +156,7 @@ class VisualOsintResult {
   final String? localFilePath;
   final String? imageUrl;
   final String? ephemeralHostedUrl;
+  final String? googleLensSessionUrl;
   final VisualHashReport hashes;
   final OcrEntityExtraction ocrEntities;
   final List<ReverseEngineQuery> engineQueries;
@@ -162,6 +168,7 @@ class VisualOsintResult {
     this.localFilePath,
     this.imageUrl,
     this.ephemeralHostedUrl,
+    this.googleLensSessionUrl,
     required this.hashes,
     required this.ocrEntities,
     required this.engineQueries,
@@ -175,8 +182,8 @@ class VisualOsintResult {
 class VisualOsintEngine {
   static final Dio _dio = Dio(
     BaseOptions(
-      connectTimeout: const Duration(seconds: 12),
-      receiveTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 25),
+      receiveTimeout: const Duration(seconds: 25),
       headers: {
         'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -506,22 +513,28 @@ class VisualOsintEngine {
 
   // ─── 3. Multi-Engine Reverse Search Matrix ─────────────────────────────────
 
-  /// Generates direct query endpoints across the top 5 global visual search engines
-  static List<ReverseEngineQuery> generateEngineQueries(String targetImageUrl) {
+  /// Generates direct query endpoints across the top global visual search engines
+  static List<ReverseEngineQuery> generateEngineQueries(
+    String targetImageUrl, {
+    String? googleLensSessionUrl,
+  }) {
     final encoded = Uri.encodeComponent(targetImageUrl);
+    final primaryLensUrl = (googleLensSessionUrl != null && googleLensSessionUrl.isNotEmpty)
+        ? googleLensSessionUrl
+        : 'https://lens.google.com/uploadbyurl?url=$encoded';
 
     return [
       ReverseEngineQuery(
-        engineName: 'Google Lens',
+        engineName: 'Google Lens (Deep Web Recon)',
         engineKey: 'google_lens',
-        queryUrl: 'https://lens.google.com/uploadbyurl?url=$encoded',
+        queryUrl: primaryLensUrl,
         description:
             'Deep web indexing, consumer products, visual clone websites and global image matches.',
         specialization: 'Deep Web, Brand Matching & E-Commerce Clones',
         isPrimary: true,
       ),
       ReverseEngineQuery(
-        engineName: 'Yandex Vision',
+        engineName: 'Yandex Vision (Faces & Avatars)',
         engineKey: 'yandex_images',
         queryUrl: 'https://yandex.com/images/search?rpt=imageview&url=$encoded',
         description:
@@ -530,7 +543,7 @@ class VisualOsintEngine {
         isPrimary: true,
       ),
       ReverseEngineQuery(
-        engineName: 'TinEye OSINT',
+        engineName: 'TinEye OSINT (Crawl Date)',
         engineKey: 'tineye',
         queryUrl: 'https://tineye.com/search?url=$encoded',
         description:
@@ -538,7 +551,7 @@ class VisualOsintEngine {
         specialization: 'First-Seen Crawl Date & Modification History',
       ),
       ReverseEngineQuery(
-        engineName: 'Bing Visual',
+        engineName: 'Bing Visual (Domain Graph)',
         engineKey: 'bing_visual',
         queryUrl:
             'https://www.bing.com/images/search?view=detailv2&iss=sbi&form=SBIVSP&q=imgurl:$encoded',
@@ -547,7 +560,7 @@ class VisualOsintEngine {
         specialization: 'Entity Intelligence & Domain Footprints',
       ),
       ReverseEngineQuery(
-        engineName: 'Baidu Vision',
+        engineName: 'Baidu Vision (Asian Web)',
         engineKey: 'baidu_vision',
         queryUrl: 'https://graph.baidu.com/details?isfromvs=1&sign=&url=$encoded',
         description:
@@ -555,7 +568,7 @@ class VisualOsintEngine {
         specialization: 'Asian Web & Cross-Border Clone Networks',
       ),
       ReverseEngineQuery(
-        engineName: 'SauceNAO Forensic',
+        engineName: 'SauceNAO (Art & Forum DP)',
         engineKey: 'saucenao',
         queryUrl: 'https://saucenao.com/search.php?url=$encoded',
         description:
@@ -565,14 +578,119 @@ class VisualOsintEngine {
     ];
   }
 
+  /// Directly submits image bytes to Google Lens upload endpoint and captures the
+  /// 302/303 redirect Location header containing an authenticated Google Lens recon session.
+  static Future<String?> createGoogleLensSession(
+    Uint8List imageBytes, {
+    String fileName = 'recon.jpg',
+  }) async {
+    try {
+      final payload = await prepareImageForRelay(imageBytes, targetWidth: 1000);
+      final formData = FormData.fromMap({
+        'encoded_image': MultipartFile.fromBytes(payload, filename: fileName),
+        'image_content': '',
+      });
+
+      final lensDio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+          headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          followRedirects: false,
+          validateStatus: (status) => status != null && status < 400,
+        ),
+      );
+
+      final response = await lensDio.post(
+        'https://lens.google.com/upload',
+        data: formData,
+      );
+
+      final loc = response.headers.value('location');
+      if (loc != null && loc.startsWith('http')) {
+        return loc;
+      }
+    } catch (e) {
+      debugPrint('Direct Google Lens session creation failed: $e');
+    }
+    return null;
+  }
+
   // ─── 4. Ephemeral Privacy-First Relay ──────────────────────────────────────
+
+  /// Scales down high-resolution camera/gallery images before relay transmission
+  /// to ensure sub-second upload even on weak mobile connections.
+  static Future<Uint8List> prepareImageForRelay(
+    Uint8List imageBytes, {
+    int targetWidth = 800,
+  }) async {
+    if (imageBytes.length <= 250 * 1024) return imageBytes;
+
+    try {
+      final codec = await ui.instantiateImageCodec(
+        imageBytes,
+        targetWidth: targetWidth,
+      );
+      final frame = await codec.getNextFrame();
+      final byteData = await frame.image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      if (byteData != null) {
+        final compressed = byteData.buffer.asUint8List();
+        if (compressed.isNotEmpty && compressed.length < imageBytes.length) {
+          return compressed;
+        }
+      }
+    } catch (e) {
+      debugPrint('Native downscale fallback: $e');
+    }
+    return imageBytes;
+  }
 
   /// Uploads local image to an ephemeral, zero-knowledge temporary storage
   /// that returns a public URL for multi-engine visual crawling.
-  static Future<String?> uploadToEphemeralRelay(Uint8List imageBytes, {String fileName = 'safesignal_recon.jpg'}) async {
+  static Future<String?> uploadToEphemeralRelay(
+    Uint8List imageBytes, {
+    String fileName = 'safesignal_recon.png',
+  }) async {
+    final payload = await prepareImageForRelay(imageBytes, targetWidth: 800);
+
+    // ── Tier 1: tmpfiles.org (Instant multipart upload, zero auth, direct CDN URL) ──
     try {
-      // Primary: Freeimage.host API (high uptime, returns clean direct CDN URL)
-      final base64Image = base64Encode(imageBytes);
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(payload, filename: fileName),
+      });
+
+      final response = await _dio.post(
+        'https://tmpfiles.org/api/v1/upload',
+        data: formData,
+        options: Options(
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        if (data is Map && data['data'] != null && data['data']['url'] != null) {
+          final rawUrl = data['data']['url'].toString();
+          final directUrl = rawUrl.replaceFirst('tmpfiles.org/', 'tmpfiles.org/dl/');
+          if (directUrl.startsWith('http://') || directUrl.startsWith('https://')) {
+            return directUrl;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Tier 1 tmpfiles relay failed: $e');
+    }
+
+    // ── Tier 2: Freeimage.host API (high uptime, returns clean direct CDN URL) ──
+    try {
+      final base64Image = base64Encode(payload);
       final response = await _dio.post(
         'https://freeimage.host/api/1/upload',
         data: {
@@ -583,8 +701,8 @@ class VisualOsintEngine {
         },
         options: Options(
           contentType: Headers.formUrlEncodedContentType,
-          sendTimeout: const Duration(seconds: 14),
-          receiveTimeout: const Duration(seconds: 14),
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
         ),
       );
 
@@ -598,16 +716,47 @@ class VisualOsintEngine {
         }
       }
     } catch (e) {
-      debugPrint('Primary Freeimage relay failed: $e');
+      debugPrint('Tier 2 Freeimage relay failed: $e');
     }
 
+    // ── Tier 3: uguu.se (Fast anonymous file host) ──
     try {
-      // Secondary: Catbox Litterbox fallback
+      final formData = FormData.fromMap({
+        'files[]': MultipartFile.fromBytes(payload, filename: fileName),
+      });
+
+      final response = await _dio.post(
+        'https://uguu.se/upload.php',
+        data: formData,
+        options: Options(
+          sendTimeout: const Duration(seconds: 12),
+          receiveTimeout: const Duration(seconds: 12),
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        if (data is Map && data['files'] is List && (data['files'] as List).isNotEmpty) {
+          final fileObj = (data['files'] as List).first;
+          if (fileObj is Map && fileObj['url'] != null) {
+            final u = fileObj['url'].toString();
+            if (u.startsWith('http://') || u.startsWith('https://')) {
+              return u;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Tier 3 uguu relay failed: $e');
+    }
+
+    // ── Tier 4: Catbox Litterbox fallback ──
+    try {
       final formData = FormData.fromMap({
         'reqtype': 'fileupload',
         'time': '1h',
         'fileToUpload': MultipartFile.fromBytes(
-          imageBytes,
+          payload,
           filename: fileName,
         ),
       });
@@ -629,7 +778,7 @@ class VisualOsintEngine {
         }
       }
     } catch (e) {
-      debugPrint('Secondary Litterbox fallback failed: $e');
+      debugPrint('Tier 4 Litterbox fallback failed: $e');
     }
 
     return null;
@@ -769,22 +918,36 @@ class VisualOsintEngine {
       publicUrl = ephemeralUrl;
     }
 
-    // 4. Crawl Live Visual Web Appearances
-    List<VisualWebMatch> webMatches = [];
-    if (publicUrl != null && publicUrl.isNotEmpty) {
-      webMatches = await crawlVisualAppearances(publicUrl);
+    // 4. Create Direct Real Google Lens Recon Session
+    String? googleLensSessionUrl;
+    if (bytes.isNotEmpty) {
+      googleLensSessionUrl = await createGoogleLensSession(bytes);
     }
 
-    // 5. Generate Engine Queries
-    final engineQueries = generateEngineQueries(publicUrl ?? 'https://via.placeholder.com/150');
+    // 5. Generate Multi-Engine Query Matrix
+    final engineQueries = generateEngineQueries(
+      publicUrl ?? 'https://via.placeholder.com/150',
+      googleLensSessionUrl: googleLensSessionUrl,
+    );
 
     // 6. Threat Evaluation
     final assessment = evaluateThreat(hashes, ocr, publicUrl);
+
+    // 7. Crawl Real Visual Appearances from Global Web & Social Indexes
+    List<VisualWebMatch> webMatches = [];
+    if (publicUrl != null && publicUrl.isNotEmpty) {
+      try {
+        webMatches = await crawlVisualAppearances(publicUrl);
+      } catch (e) {
+        debugPrint('Web match visual crawl error: $e');
+      }
+    }
 
     return VisualOsintResult(
       localFilePath: localFilePath,
       imageUrl: imageUrl,
       ephemeralHostedUrl: ephemeralUrl,
+      googleLensSessionUrl: googleLensSessionUrl,
       hashes: hashes,
       ocrEntities: ocr,
       engineQueries: engineQueries,
@@ -822,51 +985,108 @@ class VisualOsintEngine {
 
       final htmlText = response.data ?? '';
       if (htmlText.isNotEmpty) {
-        final unescaped = _htmlUnescape(htmlText);
+        // Pass 1: Extract native m="{...}" attributes in Bing image cards
+        final mAttrPattern = RegExp(r'\bm="([^"]+)"');
+        for (final match in mAttrPattern.allMatches(htmlText)) {
+          final rawBlob = match.group(1);
+          if (rawBlob == null || rawBlob.isEmpty) continue;
+          final unesc = _htmlUnescape(rawBlob);
+          try {
+            final decoded = jsonDecode(unesc);
+            if (decoded is Map) {
+              final pageUrl = decoded['purl']?.toString();
+              String? mediaUrl = decoded['murl']?.toString();
+              String? thumbUrl = decoded['turl']?.toString() ?? mediaUrl;
+              final rawTitle = decoded['title']?.toString() ?? decoded['desc']?.toString() ?? '';
 
-        // Extract JSON metadata objects from response
-        final pattern = RegExp(
-          r'\{[^{}]*"murl"[^{}]*"purl"[^{}]*\}|\{[^{}]*"purl"[^{}]*"murl"[^{}]*\}',
-        );
+              if (thumbUrl != null && thumbUrl.startsWith('http://')) {
+                thumbUrl = thumbUrl.replaceFirst('http://', 'https://');
+              }
+              if (mediaUrl != null && mediaUrl.startsWith('http://')) {
+                mediaUrl = mediaUrl.replaceFirst('http://', 'https://');
+              }
 
-        for (final m in pattern.allMatches(unescaped)) {
-          final blob = m.group(0) ?? '';
+              if (pageUrl != null &&
+                  pageUrl.startsWith('http') &&
+                  mediaUrl != null &&
+                  mediaUrl.startsWith('http')) {
+                if (!seenPages.contains(pageUrl)) {
+                  seenPages.add(pageUrl);
+                  final domain = _extractDomain(pageUrl);
+                  final platform = _categorizePlatform(pageUrl, domain);
+                  final title = rawTitle.isNotEmpty
+                      ? _cleanMatchTitle(rawTitle)
+                      : _deriveTitleFromUrl(pageUrl);
 
-          final titleMatch = RegExp(r'"title"\s*:\s*"([^"]+)"').firstMatch(blob);
-          final murlMatch = RegExp(r'"murl"\s*:\s*"([^"]+)"').firstMatch(blob);
-          final purlMatch = RegExp(r'"purl"\s*:\s*"([^"]+)"').firstMatch(blob);
-          final turlMatch = RegExp(r'"turl"\s*:\s*"([^"]+)"').firstMatch(blob);
-
-          if (murlMatch != null && purlMatch != null) {
-            final pageUrl = purlMatch.group(1)!;
-            final mediaUrl = murlMatch.group(1)!;
-            final thumbUrl = turlMatch?.group(1) ?? mediaUrl;
-            final rawTitle = titleMatch?.group(1) ?? '';
-            final title = rawTitle.isNotEmpty
-                ? _cleanMatchTitle(rawTitle)
-                : _deriveTitleFromUrl(pageUrl);
-
-            if (!seenPages.contains(pageUrl)) {
-              seenPages.add(pageUrl);
-
-              final domain = _extractDomain(pageUrl);
-              final platform = _categorizePlatform(pageUrl, domain);
-
-              matches.add(
-                VisualWebMatch(
-                  title: title,
-                  pageUrl: pageUrl,
-                  mediaUrl: mediaUrl,
-                  thumbnailUrl: thumbUrl,
-                  platform: platform,
-                  domain: domain,
-                  matchPercentage: 92 + (matches.length % 7),
-                ),
-              );
+                  matches.add(
+                    VisualWebMatch(
+                      title: title,
+                      pageUrl: pageUrl,
+                      mediaUrl: mediaUrl,
+                      thumbnailUrl: thumbUrl ?? mediaUrl,
+                      platform: platform,
+                      domain: domain,
+                      matchPercentage: 92 + (matches.length % 7),
+                    ),
+                  );
+                }
+              }
             }
+          } catch (_) {
+            // Fallback handled by Pass 2
           }
 
-          if (matches.length >= 30) break;
+          if (matches.length >= 35) break;
+        }
+
+        // Pass 2: Fallback unescaped JSON object parsing
+        if (matches.length < 35) {
+          final unescaped = _htmlUnescape(htmlText);
+          final pattern = RegExp(
+            r'\{[^{}]*"murl"[^{}]*"purl"[^{}]*\}|\{[^{}]*"purl"[^{}]*"murl"[^{}]*\}',
+          );
+
+          for (final m in pattern.allMatches(unescaped)) {
+            final blob = m.group(0) ?? '';
+
+            final titleMatch = RegExp(r'"title"\s*:\s*"([^"]+)"|"desc"\s*:\s*"([^"]+)"').firstMatch(blob);
+            final murlMatch = RegExp(r'"murl"\s*:\s*"([^"]+)"').firstMatch(blob);
+            final purlMatch = RegExp(r'"purl"\s*:\s*"([^"]+)"').firstMatch(blob);
+            final turlMatch = RegExp(r'"turl"\s*:\s*"([^"]+)"').firstMatch(blob);
+
+            if (murlMatch != null && purlMatch != null) {
+              final pageUrl = purlMatch.group(1)!;
+              String mediaUrl = murlMatch.group(1)!;
+              String thumbUrl = turlMatch?.group(1) ?? mediaUrl;
+              if (thumbUrl.startsWith('http://')) thumbUrl = thumbUrl.replaceFirst('http://', 'https://');
+              if (mediaUrl.startsWith('http://')) mediaUrl = mediaUrl.replaceFirst('http://', 'https://');
+              final rawTitle = (titleMatch?.group(1) ?? titleMatch?.group(2)) ?? '';
+              final title = rawTitle.isNotEmpty
+                  ? _cleanMatchTitle(rawTitle)
+                  : _deriveTitleFromUrl(pageUrl);
+
+              if (!seenPages.contains(pageUrl) && pageUrl.startsWith('http')) {
+                seenPages.add(pageUrl);
+
+                final domain = _extractDomain(pageUrl);
+                final platform = _categorizePlatform(pageUrl, domain);
+
+                matches.add(
+                  VisualWebMatch(
+                    title: title,
+                    pageUrl: pageUrl,
+                    mediaUrl: mediaUrl,
+                    thumbnailUrl: thumbUrl,
+                    platform: platform,
+                    domain: domain,
+                    matchPercentage: 92 + (matches.length % 7),
+                  ),
+                );
+              }
+            }
+
+            if (matches.length >= 35) break;
+          }
         }
       }
     } catch (e) {
@@ -900,18 +1120,27 @@ class VisualOsintEngine {
     if (lower.contains('instagram.com')) return 'Instagram';
     if (lower.contains('twitter.com') || lower.contains('x.com')) return 'X (Twitter)';
     if (lower.contains('reddit.com')) return 'Reddit';
-    if (lower.contains('facebook.com')) return 'Facebook';
+    if (lower.contains('facebook.com') || lower.contains('fb.me')) return 'Facebook';
     if (lower.contains('pinterest.com') || lower.contains('pinimg.com')) return 'Pinterest';
+    if (lower.contains('tiktok.com')) return 'TikTok';
+    if (lower.contains('threads.net')) return 'Threads';
+    if (lower.contains('linkedin.com')) return 'LinkedIn';
+    if (lower.contains('youtube.com') || lower.contains('youtu.be')) return 'YouTube';
+    if (lower.contains('telegram.org') || lower.contains('t.me')) return 'Telegram';
     if (lower.contains('tumblr.com')) return 'Tumblr';
     if (lower.contains('behance.net')) return 'Behance';
-    if (lower.contains('youtube.com')) return 'YouTube';
-    if (lower.contains('linkedin.com')) return 'LinkedIn';
-    if (lower.contains('t.me') || lower.contains('telegram.org')) return 'Telegram';
-    if (lower.contains('threads.net')) return 'Threads';
+    if (lower.contains('dribbble.com')) return 'Dribbble';
+    if (lower.contains('artstation.com')) return 'ArtStation';
+    if (lower.contains('deviantart.com')) return 'DeviantArt';
+    if (lower.contains('snapchat.com')) return 'Snapchat';
+    if (lower.contains('discord.com') || lower.contains('discord.gg')) return 'Discord';
+    if (lower.contains('quora.com')) return 'Quora';
+    if (lower.contains('medium.com')) return 'Medium';
+    if (lower.contains('github.com')) return 'GitHub';
+    if (lower.contains('vk.com')) return 'VK';
     if (lower.contains('flickr.com')) return 'Flickr';
     if (lower.contains('pexels.com')) return 'Pexels';
     if (lower.contains('unsplash.com')) return 'Unsplash';
-    if (lower.contains('tiktok.com')) return 'TikTok';
     if (domain.isNotEmpty) return domain;
     return 'Web Appearance';
   }

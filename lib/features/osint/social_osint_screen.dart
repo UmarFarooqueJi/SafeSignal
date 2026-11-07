@@ -1,3 +1,8 @@
+// SafeSignal Mobile Security Suite
+// Module: Digital OSINT Suite (Username & Visual Reverse Search)
+// Author: Umar Farooque (https://github.com/UmarFarooqueJi)
+// Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -148,7 +153,7 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
 
     try {
       await Future.delayed(const Duration(milliseconds: 100));
-      _setImageStep('Uploading securely to zero-knowledge relay for reverse crawling...');
+      _setImageStep('Optimizing visual payload & querying reverse web indexes...');
       final res = await VisualOsintEngine.analyze(localFilePath: filePath);
       if (mounted) {
         setState(() {
@@ -2502,7 +2507,13 @@ Failure to comply will lead to immediate physical property attachment.
       children: [
         // Threat Assessment Header
         _buildVisualThreatHeader(r.assessment, isDark),
-        const SizedBox(height: 22),
+        const SizedBox(height: 18),
+
+        // Google Lens Live Interactive Recon Session Card
+        if (r.googleLensSessionUrl != null && r.googleLensSessionUrl!.isNotEmpty) ...[
+          _buildGoogleLensHeroCard(r.googleLensSessionUrl!, isDark),
+          const SizedBox(height: 22),
+        ],
 
         // Live Crawled Web Appearances & Social Media Posts
         Row(
@@ -2602,19 +2613,27 @@ Failure to comply will lead to immediate physical property attachment.
       'Reddit' => (const Color(0xFFFF4500), Icons.forum_rounded),
       'Facebook' => (const Color(0xFF1877F2), Icons.facebook_rounded),
       'Pinterest' => (const Color(0xFFE60023), Icons.push_pin_rounded),
+      'TikTok' => (const Color(0xFF00F2FE), Icons.music_note_rounded),
       'Tumblr' => (const Color(0xFF36465D), Icons.article_rounded),
       'Behance' => (const Color(0xFF1769FF), Icons.brush_rounded),
+      'Dribbble' => (const Color(0xFFEA4C89), Icons.palette_rounded),
       'YouTube' => (const Color(0xFFFF0000), Icons.play_circle_fill_rounded),
       'LinkedIn' => (const Color(0xFF0A66C2), Icons.badge_rounded),
       'Telegram' => (const Color(0xFF0088CC), Icons.send_rounded),
       'Threads' => (isDark ? Colors.white : Colors.black87, Icons.tag_rounded),
-      'Pexels' || 'Unsplash' => (const Color(0xFF00BCD4), Icons.photo_library_rounded),
+      'Discord' => (const Color(0xFF5865F2), Icons.chat_bubble_rounded),
+      'Quora' => (const Color(0xFFB92B27), Icons.question_answer_rounded),
+      'Medium' => (const Color(0xFF00AB6C), Icons.menu_book_rounded),
+      'GitHub' => (isDark ? Colors.white : const Color(0xFF24292E), Icons.code_rounded),
+      'Snapchat' => (const Color(0xFFFFFC00), Icons.camera_rounded),
+      'Pexels' || 'Unsplash' || 'Flickr' => (const Color(0xFF00BCD4), Icons.photo_library_rounded),
       _ => (const Color(0xFF2979FF), Icons.public_rounded),
     };
 
     final cardBg = isDark ? const Color(0xFF131926) : Colors.white;
     final cardBorder = isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0);
     final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final effectiveThumbnail = m.thumbnailUrl.isNotEmpty ? m.thumbnailUrl : m.mediaUrl;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -2638,7 +2657,7 @@ Failure to comply will lead to immediate physical property attachment.
           Stack(
             children: [
               Image.network(
-                m.thumbnailUrl,
+                effectiveThumbnail,
                 height: 180,
                 width: double.infinity,
                 fit: BoxFit.cover,
@@ -2914,6 +2933,155 @@ Failure to comply will lead to immediate physical property attachment.
     );
   }
 
+  Widget _buildGoogleLensHeroCard(String lensUrl, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFF4285F4).withValues(alpha: isDark ? 0.6 : 0.4),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4285F4).withValues(alpha: isDark ? 0.2 : 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4285F4).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.travel_explore_rounded, color: Color(0xFF4285F4), size: 24),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Google Lens Live Recon',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'LIVE SESSION',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF10B981),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Live visual match query generated directly from photo payload',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Google Lens indexes billions of public social media posts, unmasked profile photos, news archives, and reverse matches. Inspect the complete interactive match view directly in SafeSignal:',
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.4,
+              color: isDark ? Colors.white70 : const Color(0xFF334155),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => InAppBrowserScreen(url: lensUrl),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.travel_explore_rounded, size: 18),
+                  label: const Text(
+                    'Open Lens Matches in App',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4285F4),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'Open in External Browser',
+                icon: const Icon(Icons.open_in_new_rounded, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                ),
+                onPressed: () async {
+                  final uri = Uri.tryParse(lensUrl);
+                  if (uri != null && await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildVisualThreatHeader(VisualThreatAssessment a, bool isDark) {
     final color = switch (a.threatLevel) {
       VisualThreatLevel.critical => const Color(0xFFFF1744),
@@ -3175,9 +3343,11 @@ Failure to comply will lead to immediate physical property attachment.
                     );
                   },
                   icon: const Icon(Icons.travel_explore_rounded, size: 16),
-                  label: const Text(
-                    'Search Lens',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  label: Text(
+                    q.engineName.toLowerCase().contains('lens')
+                        ? 'Search Lens'
+                        : 'Search ${q.engineName}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: brandColor,
