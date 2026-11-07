@@ -1212,13 +1212,16 @@ Failure to comply will lead to immediate physical property attachment.
                   const SizedBox(height: 22),
                   Row(
                     children: [
-                      Text(
-                        'CONFIRMED PUBLIC PROFILES',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
-                          color: isDark ? Colors.white54 : Colors.black54,
+                      Expanded(
+                        child: Text(
+                          'CONFIRMED PUBLIC PROFILES',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2,
+                            color: isDark ? Colors.white54 : Colors.black54,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -2519,13 +2522,16 @@ Failure to comply will lead to immediate physical property attachment.
         // Live Crawled Web Appearances & Social Media Posts
         Row(
           children: [
-            Text(
-              'DETECTED WEB APPEARANCES & SOCIAL PROFILES',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-                color: isDark ? Colors.white54 : const Color(0xFF475569),
+            Expanded(
+              child: Text(
+                'DETECTED WEB APPEARANCES & SOCIAL PROFILES',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                  color: isDark ? Colors.white54 : const Color(0xFF475569),
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 8),
@@ -2558,13 +2564,16 @@ Failure to comply will lead to immediate physical property attachment.
         // Global Reverse Search Engines
         Row(
           children: [
-            Text(
-              'GLOBAL REVERSE SEARCH ENGINES & DEEP RECON',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-                color: isDark ? Colors.white54 : const Color(0xFF475569),
+            Expanded(
+              child: Text(
+                'GLOBAL REVERSE SEARCH ENGINES & DEEP RECON',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                  color: isDark ? Colors.white54 : const Color(0xFF475569),
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 8),
@@ -3630,13 +3639,16 @@ Failure to comply will lead to immediate physical property attachment.
             children: [
               const Icon(Icons.fingerprint_rounded, color: Color(0xFF00E5FF), size: 20),
               const SizedBox(width: 8),
-              Text(
-                'CRYPTOGRAPHIC & PERCEPTUAL SIGNATURES',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
-                  color: isDark ? Colors.white70 : Colors.black87,
+              Expanded(
+                child: Text(
+                  'CRYPTOGRAPHIC & PERCEPTUAL SIGNATURES',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -3747,13 +3759,16 @@ Failure to comply will lead to immediate physical property attachment.
             children: [
               const Icon(Icons.compare_rounded, color: Color(0xFFA855F7), size: 20),
               const SizedBox(width: 8),
-              Text(
-                'CLONE & TAMPER DETECTOR (dHash Matching)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
-                  color: isDark ? Colors.white70 : Colors.black87,
+              Expanded(
+                child: Text(
+                  'CLONE & TAMPER DETECTOR (dHash Matching)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

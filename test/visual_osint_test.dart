@@ -62,7 +62,7 @@ void main() {
 
       // 1. Google Lens
       final google = queries.firstWhere((q) => q.engineKey == 'google_lens');
-      expect(google.queryUrl, contains('https://lens.google.com/uploadbyurl?url='));
+      expect(google.queryUrl, contains('https://www.google.com/searchbyimage?image_url='));
       expect(google.queryUrl, contains(Uri.encodeComponent(targetUrl)));
       expect(google.isPrimary, isTrue);
 
