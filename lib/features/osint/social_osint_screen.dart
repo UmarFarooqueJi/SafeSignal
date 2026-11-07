@@ -249,8 +249,9 @@ Failure to comply will lead to immediate physical property attachment.
       );
 
       final ocr = VisualOsintEngine.inspectTextForensics(sampleText);
-      final queries = VisualOsintEngine.generateEngineQueries('https://via.placeholder.com/1080x1920.png?text=CBI+Sample');
-      final assess = VisualOsintEngine.evaluateThreat(hashes, ocr, 'https://via.placeholder.com/1080x1920.png');
+      const sampleNoticeImg = 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=1080';
+      final queries = VisualOsintEngine.generateEngineQueries(sampleNoticeImg);
+      final assess = VisualOsintEngine.evaluateThreat(hashes, ocr, sampleNoticeImg);
       const sampleMatches = [
         VisualWebMatch(
           title: 'CBI / Cyber Crime Digital Arrest Fraud Alert Notice',
@@ -275,7 +276,7 @@ Failure to comply will lead to immediate physical property attachment.
       if (mounted) {
         setState(() {
           _imageResult = VisualOsintResult(
-            imageUrl: 'https://via.placeholder.com/1080x1920.png?text=CBI+Sample',
+            imageUrl: sampleNoticeImg,
             hashes: hashes,
             ocrEntities: ocr,
             engineQueries: queries,

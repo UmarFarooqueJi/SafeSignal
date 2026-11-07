@@ -3782,7 +3782,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'DARK-WEB CAF THREAT SURFACE (stacademy.in Vector)',
+                      'DARK-WEB CAF THREAT SURFACE & EXPOSURE AUDIT',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w900,
@@ -3792,7 +3792,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Forensic audit of stolen Customer Acquisition Forms (CAF) traded on illicit search sites (e.g. stacademy.in) for ₹10:',
+                      'Forensic audit of stolen Customer Acquisition Forms (CAF) traded on illicit search sites and dark-web markets:',
                       style: TextStyle(
                         fontSize: 11,
                         color: isDark ? Colors.white60 : Colors.black54,
@@ -4003,7 +4003,7 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
 
           const SizedBox(height: 12),
 
-          // Expandable: Raw JSON dump matching stacademy.in API
+          // Expandable: Raw JSON dump matching threat intelligence schema
           GestureDetector(
             onTap: () {
               setState(() {
@@ -4032,8 +4032,8 @@ class _EmailBreachScreenState extends State<EmailBreachScreen> {
                   Expanded(
                     child: Text(
                       _showRawJsonPayload
-                          ? 'Hide stacademy.in Threat Schema'
-                          : 'View stacademy.in Threat Payload Schema',
+                          ? 'Hide SafeSignal Threat Schema'
+                          : 'View SafeSignal Threat Payload Schema',
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                       style: TextStyle(

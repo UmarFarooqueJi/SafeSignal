@@ -518,10 +518,14 @@ class VisualOsintEngine {
     String targetImageUrl, {
     String? googleLensSessionUrl,
   }) {
-    final encoded = Uri.encodeComponent(targetImageUrl);
+    final cleanUrl = targetImageUrl.trim();
+    final hasUrl = cleanUrl.isNotEmpty && (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://'));
+    final encoded = hasUrl ? Uri.encodeComponent(cleanUrl) : '';
     final primaryLensUrl = (googleLensSessionUrl != null && googleLensSessionUrl.isNotEmpty)
         ? googleLensSessionUrl
-        : 'https://lens.google.com/uploadbyurl?url=$encoded';
+        : (hasUrl
+            ? 'https://www.google.com/searchbyimage?image_url=$encoded'
+            : 'https://lens.google.com');
 
     return [
       ReverseEngineQuery(
@@ -536,7 +540,9 @@ class VisualOsintEngine {
       ReverseEngineQuery(
         engineName: 'Yandex Vision (Faces & Avatars)',
         engineKey: 'yandex_images',
-        queryUrl: 'https://yandex.com/images/search?rpt=imageview&url=$encoded',
+        queryUrl: hasUrl
+            ? 'https://yandex.com/images/search?rpt=imageview&url=$encoded'
+            : 'https://yandex.com/images',
         description:
             'The undisputed gold standard for uncropped faces, VK/Telegram social avatars, and modified profile photos.',
         specialization: 'Faces, Catfish DP & Uncropped Social Avatars',
@@ -545,7 +551,9 @@ class VisualOsintEngine {
       ReverseEngineQuery(
         engineName: 'TinEye OSINT (Crawl Date)',
         engineKey: 'tineye',
-        queryUrl: 'https://tineye.com/search?url=$encoded',
+        queryUrl: hasUrl
+            ? 'https://tineye.com/search?url=$encoded'
+            : 'https://tineye.com',
         description:
             'Tracks exact crawl history, earliest upload date on the internet, and modified versions.',
         specialization: 'First-Seen Crawl Date & Modification History',
@@ -553,8 +561,9 @@ class VisualOsintEngine {
       ReverseEngineQuery(
         engineName: 'Bing Visual (Domain Graph)',
         engineKey: 'bing_visual',
-        queryUrl:
-            'https://www.bing.com/images/search?view=detailv2&iss=sbi&form=SBIVSP&q=imgurl:$encoded',
+        queryUrl: hasUrl
+            ? 'https://www.bing.com/images/search?view=detailv2&iss=sbi&form=SBIVSP&q=imgurl:$encoded'
+            : 'https://www.bing.com/visualsearch',
         description:
             'Microsoft visual graph for entity resolution, cropped region search, and web domain mapping.',
         specialization: 'Entity Intelligence & Domain Footprints',
@@ -562,7 +571,9 @@ class VisualOsintEngine {
       ReverseEngineQuery(
         engineName: 'Baidu Vision (Asian Web)',
         engineKey: 'baidu_vision',
-        queryUrl: 'https://graph.baidu.com/details?isfromvs=1&sign=&url=$encoded',
+        queryUrl: hasUrl
+            ? 'https://graph.baidu.com/details?isfromvs=1&sign=&url=$encoded'
+            : 'https://graph.baidu.com',
         description:
             'Essential for tracing Asian supply chains, cloned retail catalogs, and cross-border fraud syndicates.',
         specialization: 'Asian Web & Cross-Border Clone Networks',
@@ -570,7 +581,9 @@ class VisualOsintEngine {
       ReverseEngineQuery(
         engineName: 'SauceNAO (Art & Forum DP)',
         engineKey: 'saucenao',
-        queryUrl: 'https://saucenao.com/search.php?url=$encoded',
+        queryUrl: hasUrl
+            ? 'https://saucenao.com/search.php?url=$encoded'
+            : 'https://saucenao.com',
         description:
             'Database indexing anime, illustrations, stock art, and digital forum profile icons.',
         specialization: 'Stock Illustrations & Digital Artworks',
@@ -578,23 +591,21 @@ class VisualOsintEngine {
     ];
   }
 
-  /// Directly submits image bytes to Google Lens upload endpoint and captures the
-  /// 302/303 redirect Location header containing an authenticated Google Lens recon session.
-  static Future<String?> createGoogleLensSession(
-    Uint8List imageBytes, {
-    String fileName = 'recon.jpg',
-  }) async {
-    try {
-      final payload = await prepareImageForRelay(imageBytes, targetWidth: 1000);
-      final formData = FormData.fromMap({
-        'encoded_image': MultipartFile.fromBytes(payload, filename: fileName),
-        'image_content': '',
-      });
+  /// Queries Google searchbyimage endpoint with the public image URL and captures the
+  /// 303 redirect Location header containing an authenticated Google Lens live recon session.
+  static Future<String?> createGoogleLensSession(String directImageUrl) async {
+    final clean = directImageUrl.trim();
+    if (clean.isEmpty || (!clean.startsWith('http://') && !clean.startsWith('https://'))) {
+      return null;
+    }
 
+    try {
+      final encoded = Uri.encodeComponent(clean);
+      final searchUrl = 'https://www.google.com/searchbyimage?image_url=$encoded';
       final lensDio = Dio(
         BaseOptions(
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
+          connectTimeout: const Duration(seconds: 12),
+          receiveTimeout: const Duration(seconds: 12),
           headers: {
             'User-Agent':
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -605,11 +616,7 @@ class VisualOsintEngine {
         ),
       );
 
-      final response = await lensDio.post(
-        'https://lens.google.com/upload',
-        data: formData,
-      );
-
+      final response = await lensDio.get(searchUrl);
       final loc = response.headers.value('location');
       if (loc != null && loc.startsWith('http')) {
         return loc;
@@ -652,43 +659,45 @@ class VisualOsintEngine {
   }
 
   /// Uploads local image to an ephemeral, zero-knowledge temporary storage
-  /// that returns a public URL for multi-engine visual crawling.
+  /// that returns a public direct binary image URL for multi-engine visual crawling.
   static Future<String?> uploadToEphemeralRelay(
     Uint8List imageBytes, {
     String fileName = 'safesignal_recon.png',
   }) async {
     final payload = await prepareImageForRelay(imageBytes, targetWidth: 800);
 
-    // ── Tier 1: tmpfiles.org (Instant multipart upload, zero auth, direct CDN URL) ──
+    // ── Tier 1: uguu.se (Instant anonymous direct binary image host, zero redirects) ──
     try {
       final formData = FormData.fromMap({
-        'file': MultipartFile.fromBytes(payload, filename: fileName),
+        'files[]': MultipartFile.fromBytes(payload, filename: fileName),
       });
 
       final response = await _dio.post(
-        'https://tmpfiles.org/api/v1/upload',
+        'https://uguu.se/upload.php',
         data: formData,
         options: Options(
-          sendTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
+          sendTimeout: const Duration(seconds: 12),
+          receiveTimeout: const Duration(seconds: 12),
         ),
       );
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
-        if (data is Map && data['data'] != null && data['data']['url'] != null) {
-          final rawUrl = data['data']['url'].toString();
-          final directUrl = rawUrl.replaceFirst('tmpfiles.org/', 'tmpfiles.org/dl/');
-          if (directUrl.startsWith('http://') || directUrl.startsWith('https://')) {
-            return directUrl;
+        if (data is Map && data['files'] is List && (data['files'] as List).isNotEmpty) {
+          final fileObj = (data['files'] as List).first;
+          if (fileObj is Map && fileObj['url'] != null) {
+            final u = fileObj['url'].toString();
+            if (u.startsWith('http://') || u.startsWith('https://')) {
+              return u;
+            }
           }
         }
       }
     } catch (e) {
-      debugPrint('Tier 1 tmpfiles relay failed: $e');
+      debugPrint('Tier 1 uguu relay failed: $e');
     }
 
-    // ── Tier 2: Freeimage.host API (high uptime, returns clean direct CDN URL) ──
+    // ── Tier 2: Freeimage.host API (high uptime direct CDN image URL) ──
     try {
       final base64Image = base64Encode(payload);
       final response = await _dio.post(
@@ -719,14 +728,14 @@ class VisualOsintEngine {
       debugPrint('Tier 2 Freeimage relay failed: $e');
     }
 
-    // ── Tier 3: uguu.se (Fast anonymous file host) ──
+    // ── Tier 3: tmpfiles.org fallback ──
     try {
       final formData = FormData.fromMap({
-        'files[]': MultipartFile.fromBytes(payload, filename: fileName),
+        'file': MultipartFile.fromBytes(payload, filename: fileName),
       });
 
       final response = await _dio.post(
-        'https://uguu.se/upload.php',
+        'https://tmpfiles.org/api/v1/upload',
         data: formData,
         options: Options(
           sendTimeout: const Duration(seconds: 12),
@@ -736,49 +745,16 @@ class VisualOsintEngine {
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
-        if (data is Map && data['files'] is List && (data['files'] as List).isNotEmpty) {
-          final fileObj = (data['files'] as List).first;
-          if (fileObj is Map && fileObj['url'] != null) {
-            final u = fileObj['url'].toString();
-            if (u.startsWith('http://') || u.startsWith('https://')) {
-              return u;
-            }
+        if (data is Map && data['data'] != null && data['data']['url'] != null) {
+          final rawUrl = data['data']['url'].toString();
+          final directUrl = rawUrl.replaceFirst('tmpfiles.org/', 'tmpfiles.org/dl/');
+          if (directUrl.startsWith('http://') || directUrl.startsWith('https://')) {
+            return directUrl;
           }
         }
       }
     } catch (e) {
-      debugPrint('Tier 3 uguu relay failed: $e');
-    }
-
-    // ── Tier 4: Catbox Litterbox fallback ──
-    try {
-      final formData = FormData.fromMap({
-        'reqtype': 'fileupload',
-        'time': '1h',
-        'fileToUpload': MultipartFile.fromBytes(
-          payload,
-          filename: fileName,
-        ),
-      });
-
-      final response = await _dio.post(
-        'https://litterbox.catbox.moe/resources/internals/api.php',
-        data: formData,
-        options: Options(
-          headers: {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
-          sendTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
-        ),
-      );
-
-      if (response.statusCode == 200 && response.data != null) {
-        final resultUrl = response.data.toString().trim();
-        if (resultUrl.startsWith('http://') || resultUrl.startsWith('https://')) {
-          return resultUrl;
-        }
-      }
-    } catch (e) {
-      debugPrint('Tier 4 Litterbox fallback failed: $e');
+      debugPrint('Tier 3 tmpfiles relay failed: $e');
     }
 
     return null;
@@ -920,13 +896,13 @@ class VisualOsintEngine {
 
     // 4. Create Direct Real Google Lens Recon Session
     String? googleLensSessionUrl;
-    if (bytes.isNotEmpty) {
-      googleLensSessionUrl = await createGoogleLensSession(bytes);
+    if (publicUrl != null && publicUrl.isNotEmpty) {
+      googleLensSessionUrl = await createGoogleLensSession(publicUrl);
     }
 
     // 5. Generate Multi-Engine Query Matrix
     final engineQueries = generateEngineQueries(
-      publicUrl ?? 'https://via.placeholder.com/150',
+      publicUrl ?? '',
       googleLensSessionUrl: googleLensSessionUrl,
     );
 

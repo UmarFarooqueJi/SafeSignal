@@ -72,7 +72,7 @@ void main() {
     );
 
     test(
-      'identifies stacademy / MobileSearch commercial CAF scraping leak vector',
+      'identifies SafeSignal dark-web CAF scraping leak vector',
       () async {
         final res = await service.scanPhoneNumber('9810123456');
 
@@ -202,7 +202,7 @@ void main() {
         (t) => t.name == 'check_phone_breach_osint',
       );
 
-      expect(phoneTool.description, contains('stacademy'));
+      expect(phoneTool.description, contains('dark-web'));
       expect(phoneTool.inputSchema['properties'], contains('phoneNumber'));
       expect(phoneTool.inputSchema['required'], contains('phoneNumber'));
     });

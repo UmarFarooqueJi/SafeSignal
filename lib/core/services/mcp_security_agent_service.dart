@@ -185,7 +185,7 @@ class McpSecurityAgentService {
       McpToolDefinition(
         name: 'check_phone_breach_osint',
         description:
-            'Audits a mobile number for dark-web PII exposures, telecom CAF dumps (Father\'s name, residential address, alternate numbers exploited by lookup portals like stacademy.in), SIM-swap risk vectors, and DoT circle/carrier telemetry.',
+            'Audits a mobile number for dark-web PII exposures, telecom CAF dumps (Father\'s name, residential address, alternate numbers traded on dark-web search portals), SIM-swap risk vectors, and DoT circle/carrier telemetry.',
         inputSchema: {
           'type': 'object',
           'properties': {
