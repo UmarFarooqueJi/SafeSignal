@@ -151,6 +151,89 @@ class VisualWebMatch {
   };
 }
 
+/// Forensic Camera & Hardware EXIF Metadata Report
+class ExifForensicReport {
+  final bool hasExif;
+  final String? make;
+  final String? model;
+  final String? software;
+  final String? dateTimeOriginal;
+  final String? exposureTime;
+  final String? fNumber;
+  final String? isoSpeed;
+  final String? focalLength;
+  final double? latitude;
+  final double? longitude;
+  final double? altitude;
+  final String? colorSpace;
+  final String privacyStatus;
+  final Map<String, String> rawTags;
+
+  const ExifForensicReport({
+    required this.hasExif,
+    this.make,
+    this.model,
+    this.software,
+    this.dateTimeOriginal,
+    this.exposureTime,
+    this.fNumber,
+    this.isoSpeed,
+    this.focalLength,
+    this.latitude,
+    this.longitude,
+    this.altitude,
+    this.colorSpace,
+    required this.privacyStatus,
+    this.rawTags = const {},
+  });
+
+  Map<String, dynamic> toJson() => {
+    'hasExif': hasExif,
+    'make': make,
+    'model': model,
+    'software': software,
+    'dateTimeOriginal': dateTimeOriginal,
+    'exposureTime': exposureTime,
+    'fNumber': fNumber,
+    'isoSpeed': isoSpeed,
+    'focalLength': focalLength,
+    'latitude': latitude,
+    'longitude': longitude,
+    'altitude': altitude,
+    'colorSpace': colorSpace,
+    'privacyStatus': privacyStatus,
+    'rawTags': rawTags,
+  };
+}
+
+/// Catfish, Romance Scam & Facial Biometric Forensics Report
+class CatfishBiometricReport {
+  final bool isPortraitOrAvatar;
+  final int catfishRiskScore; // 0 - 100
+  final String catfishRiskLevel;
+  final String faceClassification;
+  final List<String> indicators;
+  final List<String> specializedFaceEngines;
+
+  const CatfishBiometricReport({
+    required this.isPortraitOrAvatar,
+    required this.catfishRiskScore,
+    required this.catfishRiskLevel,
+    required this.faceClassification,
+    this.indicators = const [],
+    this.specializedFaceEngines = const [],
+  });
+
+  Map<String, dynamic> toJson() => {
+    'isPortraitOrAvatar': isPortraitOrAvatar,
+    'catfishRiskScore': catfishRiskScore,
+    'catfishRiskLevel': catfishRiskLevel,
+    'faceClassification': faceClassification,
+    'indicators': indicators,
+    'specializedFaceEngines': specializedFaceEngines,
+  };
+}
+
 /// Comprehensive Visual OSINT Inspection Result
 class VisualOsintResult {
   final String? localFilePath;
@@ -159,6 +242,8 @@ class VisualOsintResult {
   final String? googleLensSessionUrl;
   final VisualHashReport hashes;
   final OcrEntityExtraction ocrEntities;
+  final ExifForensicReport exif;
+  final CatfishBiometricReport catfish;
   final List<ReverseEngineQuery> engineQueries;
   final List<VisualWebMatch> webMatches;
   final VisualThreatAssessment assessment;
@@ -171,6 +256,16 @@ class VisualOsintResult {
     this.googleLensSessionUrl,
     required this.hashes,
     required this.ocrEntities,
+    this.exif = const ExifForensicReport(
+      hasExif: false,
+      privacyStatus: 'EXIF Metadata Stripped (Consistent with Social Platforms)',
+    ),
+    this.catfish = const CatfishBiometricReport(
+      isPortraitOrAvatar: false,
+      catfishRiskScore: 10,
+      catfishRiskLevel: 'Low',
+      faceClassification: 'Standard Visual Document',
+    ),
     required this.engineQueries,
     this.webMatches = const [],
     required this.assessment,
@@ -511,6 +606,380 @@ class VisualOsintEngine {
     );
   }
 
+  // ─── 2.1 Hardware EXIF & Metadata Extraction ───────────────────────────────
+
+  /// Parses standard TIFF/EXIF blocks from raw image bytes (JPEG / APP1)
+  static ExifForensicReport parseExifMetadata(Uint8List bytes) {
+    try {
+      if (bytes.length < 16 || bytes[0] != 0xFF || bytes[1] != 0xD8) {
+        return const ExifForensicReport(
+          hasExif: false,
+          privacyStatus: 'Non-JPEG or Stream (No Standard EXIF Header)',
+        );
+      }
+
+      int offset = 2;
+      while (offset + 4 < bytes.length) {
+        if (bytes[offset] != 0xFF) break;
+        final marker = bytes[offset + 1];
+        if (marker == 0xDA || marker == 0xD9) break;
+
+        final length = (bytes[offset + 2] << 8) | bytes[offset + 3];
+        if (length < 2 || offset + 2 + length > bytes.length) break;
+
+        if (marker == 0xE1) {
+          final segment = bytes.sublist(offset + 4, offset + 2 + length);
+          if (segment.length > 6 &&
+              segment[0] == 0x45 &&
+              segment[1] == 0x78 &&
+              segment[2] == 0x69 &&
+              segment[3] == 0x66 &&
+              segment[4] == 0x00 &&
+              segment[5] == 0x00) {
+            return _parseTiffHeader(segment.sublist(6));
+          }
+        }
+        offset += 2 + length;
+      }
+    } catch (e) {
+      debugPrint('EXIF parse error: $e');
+    }
+
+    return const ExifForensicReport(
+      hasExif: false,
+      privacyStatus: 'EXIF Metadata Stripped (Consistent with WhatsApp, Telegram, or Web Re-compression)',
+    );
+  }
+
+  static ExifForensicReport _parseTiffHeader(Uint8List tiff) {
+    if (tiff.length < 8) {
+      return const ExifForensicReport(
+        hasExif: false,
+        privacyStatus: 'Malformed TIFF header',
+      );
+    }
+
+    final bool isLE;
+    if (tiff[0] == 0x49 && tiff[1] == 0x49) {
+      isLE = true;
+    } else if (tiff[0] == 0x4D && tiff[1] == 0x4D) {
+      isLE = false;
+    } else {
+      return const ExifForensicReport(
+        hasExif: false,
+        privacyStatus: 'Unknown TIFF endianness',
+      );
+    }
+
+    int u16(int pos) {
+      if (pos + 2 > tiff.length) return 0;
+      return isLE ? (tiff[pos] | (tiff[pos + 1] << 8)) : ((tiff[pos] << 8) | tiff[pos + 1]);
+    }
+
+    int u32(int pos) {
+      if (pos + 4 > tiff.length) return 0;
+      return isLE
+          ? (tiff[pos] | (tiff[pos + 1] << 8) | (tiff[pos + 2] << 16) | (tiff[pos + 3] << 24))
+          : ((tiff[pos] << 24) | (tiff[pos + 1] << 16) | (tiff[pos + 2] << 8) | tiff[pos + 3]);
+    }
+
+    final magic = u16(2);
+    if (magic != 42) {
+      return const ExifForensicReport(
+        hasExif: false,
+        privacyStatus: 'Invalid TIFF magic identifier',
+      );
+    }
+
+    final ifd0Offset = u32(4);
+    if (ifd0Offset < 8 || ifd0Offset >= tiff.length) {
+      return const ExifForensicReport(
+        hasExif: false,
+        privacyStatus: 'Invalid IFD0 offset',
+      );
+    }
+
+    String readAscii(int valOffset, int count) {
+      if (count <= 0) return '';
+      final start = count <= 4 ? valOffset : valOffset;
+      if (start < 0 || start >= tiff.length) return '';
+      int end = start + count;
+      if (end > tiff.length) end = tiff.length;
+      final slice = tiff.sublist(start, end);
+      return String.fromCharCodes(slice.takeWhile((c) => c != 0)).trim();
+    }
+
+    String? make;
+    String? model;
+    String? software;
+    String? dateTime;
+    int? exifSubIfdOffset;
+    int? gpsIfdOffset;
+
+    final numEntries = u16(ifd0Offset);
+    for (int i = 0; i < numEntries; i++) {
+      final entryPos = ifd0Offset + 2 + (i * 12);
+      if (entryPos + 12 > tiff.length) break;
+
+      final tag = u16(entryPos);
+      final count = u32(entryPos + 4);
+      final valOrOffset = u32(entryPos + 8);
+      final inlinePos = entryPos + 8;
+
+      if (tag == 0x010F) {
+        make = readAscii(count <= 4 ? inlinePos : valOrOffset, count);
+      } else if (tag == 0x0110) {
+        model = readAscii(count <= 4 ? inlinePos : valOrOffset, count);
+      } else if (tag == 0x0131) {
+        software = readAscii(count <= 4 ? inlinePos : valOrOffset, count);
+      } else if (tag == 0x0132) {
+        dateTime = readAscii(count <= 4 ? inlinePos : valOrOffset, count);
+      } else if (tag == 0x8769) {
+        exifSubIfdOffset = valOrOffset;
+      } else if (tag == 0x8825) {
+        gpsIfdOffset = valOrOffset;
+      }
+    }
+
+    String? dateTimeOriginal = dateTime;
+    String? exposureTime;
+    String? fNumber;
+    String? isoSpeed;
+    String? focalLength;
+    String? colorSpace;
+
+    if (exifSubIfdOffset != null && exifSubIfdOffset >= 8 && exifSubIfdOffset + 2 <= tiff.length) {
+      final subEntries = u16(exifSubIfdOffset);
+      for (int i = 0; i < subEntries; i++) {
+        final entryPos = exifSubIfdOffset + 2 + (i * 12);
+        if (entryPos + 12 > tiff.length) break;
+
+        final tag = u16(entryPos);
+        final count = u32(entryPos + 4);
+        final valOrOffset = u32(entryPos + 8);
+        final inlinePos = entryPos + 8;
+
+        if (tag == 0x9003) {
+          dateTimeOriginal = readAscii(count <= 4 ? inlinePos : valOrOffset, count);
+        } else if (tag == 0x829A) {
+          if (valOrOffset + 8 <= tiff.length) {
+            final n = u32(valOrOffset);
+            final d = u32(valOrOffset + 4);
+            if (d > 0) {
+              exposureTime = n == 1 ? '1/${d}s' : '${(n / d).toStringAsFixed(3)}s';
+            }
+          }
+        } else if (tag == 0x829D) {
+          if (valOrOffset + 8 <= tiff.length) {
+            final n = u32(valOrOffset);
+            final d = u32(valOrOffset + 4);
+            if (d > 0) {
+              fNumber = 'f/${(n / d).toStringAsFixed(1)}';
+            }
+          }
+        } else if (tag == 0x8827) {
+          final isoVal = u16(inlinePos);
+          if (isoVal > 0) {
+            isoSpeed = 'ISO $isoVal';
+          }
+        } else if (tag == 0x920A) {
+          if (valOrOffset + 8 <= tiff.length) {
+            final n = u32(valOrOffset);
+            final d = u32(valOrOffset + 4);
+            if (d > 0) {
+              focalLength = '${(n / d).toStringAsFixed(1)} mm';
+            }
+          }
+        } else if (tag == 0xA001) {
+          final cs = u16(inlinePos);
+          colorSpace = cs == 1 ? 'sRGB' : (cs == 65535 ? 'Uncalibrated' : 'ColorSpace($cs)');
+        }
+      }
+    }
+
+    double? lat;
+    double? lon;
+    double? alt;
+    if (gpsIfdOffset != null && gpsIfdOffset >= 8 && gpsIfdOffset + 2 <= tiff.length) {
+      String? latRef;
+      String? lonRef;
+      List<double>? latRats;
+      List<double>? lonRats;
+
+      final gpsEntries = u16(gpsIfdOffset);
+      for (int i = 0; i < gpsEntries; i++) {
+        final entryPos = gpsIfdOffset + 2 + (i * 12);
+        if (entryPos + 12 > tiff.length) break;
+
+        final tag = u16(entryPos);
+        final valOrOffset = u32(entryPos + 8);
+        final inlinePos = entryPos + 8;
+
+        if (tag == 0x0001) {
+          latRef = String.fromCharCode(tiff[inlinePos]);
+        } else if (tag == 0x0002) {
+          if (valOrOffset + 24 <= tiff.length) {
+            final dN = u32(valOrOffset); final dD = u32(valOrOffset + 4);
+            final mN = u32(valOrOffset + 8); final mD = u32(valOrOffset + 12);
+            final sN = u32(valOrOffset + 16); final sD = u32(valOrOffset + 20);
+            if (dD > 0 && mD > 0 && sD > 0) {
+              latRats = [dN / dD, mN / mD, sN / sD];
+            }
+          }
+        } else if (tag == 0x0003) {
+          lonRef = String.fromCharCode(tiff[inlinePos]);
+        } else if (tag == 0x0004) {
+          if (valOrOffset + 24 <= tiff.length) {
+            final dN = u32(valOrOffset); final dD = u32(valOrOffset + 4);
+            final mN = u32(valOrOffset + 8); final mD = u32(valOrOffset + 12);
+            final sN = u32(valOrOffset + 16); final sD = u32(valOrOffset + 20);
+            if (dD > 0 && mD > 0 && sD > 0) {
+              lonRats = [dN / dD, mN / mD, sN / sD];
+            }
+          }
+        } else if (tag == 0x0006) {
+          if (valOrOffset + 8 <= tiff.length) {
+            final num = u32(valOrOffset);
+            final den = u32(valOrOffset + 4);
+            if (den > 0) alt = num / den;
+          }
+        }
+      }
+
+      if (latRats != null && latRats.length == 3) {
+        lat = latRats[0] + (latRats[1] / 60.0) + (latRats[2] / 3600.0);
+        if (latRef == 'S') lat = -lat;
+      }
+      if (lonRats != null && lonRats.length == 3) {
+        lon = lonRats[0] + (lonRats[1] / 60.0) + (lonRats[2] / 3600.0);
+        if (lonRef == 'W') lon = -lon;
+      }
+    }
+
+    String privacyStatus = 'Camera Metadata Sanitized';
+    if (lat != null && lon != null) {
+      privacyStatus = 'CRITICAL: Embedded GPS Geolocation Coordinates Exposed';
+    } else if (make != null || model != null) {
+      privacyStatus = 'HARDWARE FINGERPRINT: Original Camera Make & Model Intact';
+    } else if (software != null) {
+      privacyStatus = 'SOFTWARE FINGERPRINT: Editing Suite Identifiers Found';
+    }
+
+    return ExifForensicReport(
+      hasExif: make != null || model != null || software != null || dateTimeOriginal != null || lat != null,
+      make: make,
+      model: model,
+      software: software,
+      dateTimeOriginal: dateTimeOriginal,
+      exposureTime: exposureTime,
+      fNumber: fNumber,
+      isoSpeed: isoSpeed,
+      focalLength: focalLength,
+      latitude: lat,
+      longitude: lon,
+      altitude: alt,
+      colorSpace: colorSpace,
+      privacyStatus: privacyStatus,
+    );
+  }
+
+  // ─── 2.2 Catfish & Facial Biometric Forensics ──────────────────────────────
+
+  /// Evaluates whether an image represents a potential stolen persona or catfish avatar
+  static CatfishBiometricReport evaluateCatfishRisk({
+    required VisualHashReport hashes,
+    required OcrEntityExtraction ocr,
+    required ExifForensicReport exif,
+  }) {
+    int riskScore = 0;
+    final List<String> indicators = [];
+    bool isPortrait = false;
+    String classification = 'General Visual Asset';
+
+    final w = hashes.width ?? 0;
+    final h = hashes.height ?? 0;
+    final ratio = h > 0 ? (w / h) : 1.0;
+
+    if (ratio >= 0.7 && ratio <= 1.25 && w > 0 && h > 0) {
+      isPortrait = true;
+    }
+
+    if (ocr.isFraudulentDocument || ocr.rawText.length > 80) {
+      return const CatfishBiometricReport(
+        isPortraitOrAvatar: false,
+        catfishRiskScore: 5,
+        catfishRiskLevel: 'Safe / Non-Catfish',
+        faceClassification: 'Official Document / Form Screenshot',
+        indicators: [
+          'Visual content consists of structured legal or administrative document paragraphs, not a social portrait.',
+        ],
+        specializedFaceEngines: [],
+      );
+    }
+
+    if (isPortrait) {
+      classification = 'Human Portrait / Profile Avatar';
+      indicators.add(
+        'Asset aspect ratio (${ratio.toStringAsFixed(2)}) matches standard social profile avatars and dating profile cards.',
+      );
+
+      if (!exif.hasExif) {
+        riskScore += 25;
+        indicators.add(
+          'Camera EXIF metadata is stripped: Consistent with re-compressed downloads from WhatsApp, Telegram, or Instagram.',
+        );
+      } else if (exif.software != null &&
+          (exif.software!.contains('Photoshop') ||
+              exif.software!.contains('Canva') ||
+              exif.software!.contains('FaceApp') ||
+              exif.software!.contains('BeautyPlus'))) {
+        riskScore += 30;
+        indicators.add('Altered via digital editing software: ${exif.software}');
+      }
+
+      if (w < 400 || h < 400) {
+        riskScore += 25;
+        indicators.add(
+          'Low resolution (${w}x${h}px): Common indicator of harvested thumbnails or cropped profile pictures.',
+        );
+      } else if (w >= 1000 && h >= 1000 && !exif.hasExif) {
+        riskScore += 20;
+        indicators.add(
+          'High-resolution studio portrait without camera metadata: Potential commercial stock photo or AI model generation.',
+        );
+      }
+
+      final dHash = hashes.dHash;
+      if (dHash.startsWith('0000') || dHash.endsWith('0000') || dHash == 'FFFFFFFFFFFFFFFF') {
+        riskScore += 15;
+        indicators.add(
+          'High spatial gradient symmetry: Frequently observed in synthetic AI faces (StyleGAN / ThisPersonDoesNotExist).',
+        );
+        classification = 'Potential AI-Generated Portrait / Deepfake';
+      }
+    }
+
+    String riskLevel = 'Low';
+    if (riskScore >= 60) {
+      riskLevel = 'High Risk (Likely Catfish / Stolen Profile)';
+    } else if (riskScore >= 35) {
+      riskLevel = 'Moderate Risk (Verify Identity)';
+    }
+
+    return CatfishBiometricReport(
+      isPortraitOrAvatar: isPortrait,
+      catfishRiskScore: riskScore,
+      catfishRiskLevel: riskLevel,
+      faceClassification: classification,
+      indicators: indicators,
+      specializedFaceEngines: const [
+        'FaceCheck.ID (Scammer & Social Face Matcher)',
+        'PimEyes (Facial Biometric Search)',
+        'Yandex Vision (Faces & Avatars)',
+      ],
+    );
+  }
+
   // ─── 3. Multi-Engine Reverse Search Matrix ─────────────────────────────────
 
   /// Generates direct query endpoints across the top global visual search engines
@@ -535,6 +1004,24 @@ class VisualOsintEngine {
         description:
             'Deep web indexing, consumer products, visual clone websites and global image matches.',
         specialization: 'Deep Web, Brand Matching & E-Commerce Clones',
+        isPrimary: true,
+      ),
+      ReverseEngineQuery(
+        engineName: 'FaceCheck.ID (Facial Recon)',
+        engineKey: 'facecheck_id',
+        queryUrl: 'https://facecheck.id',
+        description:
+            'Specialized AI face matcher indexing millions of social profiles, romance scam alerts, and suspect mugshots.',
+        specialization: 'Biometric Face Search & Known Scammer Profiles',
+        isPrimary: true,
+      ),
+      ReverseEngineQuery(
+        engineName: 'PimEyes (Biometric Search)',
+        engineKey: 'pimeyes',
+        queryUrl: 'https://pimeyes.com',
+        description:
+            'Advanced biometric facial recognition auditing clear-net appearances, online modeling catalogs, and hidden blogs.',
+        specialization: 'High-Precision Facial Biometric Index',
         isPrimary: true,
       ),
       ReverseEngineQuery(
@@ -567,6 +1054,16 @@ class VisualOsintEngine {
         description:
             'Microsoft visual graph for entity resolution, cropped region search, and web domain mapping.',
         specialization: 'Entity Intelligence & Domain Footprints',
+      ),
+      ReverseEngineQuery(
+        engineName: 'FotoForensics (ELA Tamper Analysis)',
+        engineKey: 'fotoforensics',
+        queryUrl: hasUrl
+            ? 'https://fotoforensics.com/analysis.php?url=$encoded'
+            : 'https://fotoforensics.com',
+        description:
+            'Error Level Analysis (ELA) uncovering digital manipulation, spliced signatures, Photoshop artifacts, and forged seals.',
+        specialization: 'Error Level Analysis & Image Tampering',
       ),
       ReverseEngineQuery(
         engineName: 'Baidu Vision (Asian Web)',
@@ -766,8 +1263,10 @@ class VisualOsintEngine {
   static VisualThreatAssessment evaluateThreat(
     VisualHashReport hashes,
     OcrEntityExtraction ocr,
-    String? webUrl,
-  ) {
+    String? webUrl, {
+    ExifForensicReport? exif,
+    CatfishBiometricReport? catfish,
+  }) {
     int score = 0;
     final List<String> findings = [];
     final List<String> recommendations = [];
@@ -809,7 +1308,24 @@ class VisualOsintEngine {
       }
       recommendations.add('Verify transaction balance directly inside your official banking app. Do not rely on customer-shown screenshots.');
     }
-    // 4. Low Resolution or Suspicious Profile Avatar
+    // 4. Catfish & Impersonation Alert (from CatfishBiometricReport)
+    else if (catfish != null && catfish.catfishRiskScore >= 60) {
+      score = catfish.catfishRiskScore;
+      threatType = 'High Catfish & Stolen Persona Risk';
+      verdictTitle = 'WARNING: Suspect Profile Avatar';
+      findings.addAll(catfish.indicators);
+      recommendations.add('Verify the person via live video call before sending money or private information.');
+      recommendations.add('Run reverse facial searches on FaceCheck.ID and PimEyes below to discover original identities.');
+    }
+    // 5. Embedded GPS Geolocation Leak
+    else if (exif != null && exif.latitude != null && exif.longitude != null) {
+      score = 40;
+      threatType = 'Geolocation & Privacy Data Exposure';
+      verdictTitle = 'CAUTION: Embedded GPS Coordinates';
+      findings.add('Exact GPS location coordinates (${exif.latitude!.toStringAsFixed(4)}, ${exif.longitude!.toStringAsFixed(4)}) are embedded in the image EXIF tags.');
+      recommendations.add('Strip EXIF location metadata before sharing images publicly to prevent physical stalker tracking.');
+    }
+    // 6. Low Resolution or Suspicious Profile Avatar
     else if ((hashes.width != null && hashes.width! < 250) || (hashes.height != null && hashes.height! < 250)) {
       score = 25;
       threatType = 'Low Resolution / Cropped Profile Icon';
@@ -879,13 +1395,23 @@ class VisualOsintEngine {
     // 1. Calculate Hashes
     final hashes = await calculateHashes(bytes, mimeType: mimeType);
 
-    // 2. OCR Entity Extraction
+    // 2. Hardware EXIF Metadata Extraction
+    final exif = parseExifMetadata(bytes);
+
+    // 3. OCR Entity Extraction
     final ocr = await extractOcrEntities(
       localFilePath ?? '',
       fallbackText: manualOcrText,
     );
 
-    // 3. Ephemeral Relay for Local Files if no external URL
+    // 4. Catfish & Biometric Assessment
+    final catfish = evaluateCatfishRisk(
+      hashes: hashes,
+      ocr: ocr,
+      exif: exif,
+    );
+
+    // 5. Ephemeral Relay for Local Files if no external URL
     String? publicUrl = imageUrl;
     String? ephemeralUrl;
 
@@ -894,22 +1420,28 @@ class VisualOsintEngine {
       publicUrl = ephemeralUrl;
     }
 
-    // 4. Create Direct Real Google Lens Recon Session
+    // 6. Create Direct Real Google Lens Recon Session
     String? googleLensSessionUrl;
     if (publicUrl != null && publicUrl.isNotEmpty) {
       googleLensSessionUrl = await createGoogleLensSession(publicUrl);
     }
 
-    // 5. Generate Multi-Engine Query Matrix
+    // 7. Generate Multi-Engine Query Matrix
     final engineQueries = generateEngineQueries(
       publicUrl ?? '',
       googleLensSessionUrl: googleLensSessionUrl,
     );
 
-    // 6. Threat Evaluation
-    final assessment = evaluateThreat(hashes, ocr, publicUrl);
+    // 8. Threat Evaluation
+    final assessment = evaluateThreat(
+      hashes,
+      ocr,
+      publicUrl,
+      exif: exif,
+      catfish: catfish,
+    );
 
-    // 7. Crawl Real Visual Appearances from Global Web & Social Indexes
+    // 9. Crawl Real Visual Appearances from Global Web & Social Indexes
     List<VisualWebMatch> webMatches = [];
     if (publicUrl != null && publicUrl.isNotEmpty) {
       try {
@@ -926,6 +1458,8 @@ class VisualOsintEngine {
       googleLensSessionUrl: googleLensSessionUrl,
       hashes: hashes,
       ocrEntities: ocr,
+      exif: exif,
+      catfish: catfish,
       engineQueries: engineQueries,
       webMatches: webMatches,
       assessment: assessment,

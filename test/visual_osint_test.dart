@@ -54,11 +54,11 @@ void main() {
   });
 
   group('VisualOsintEngine - Multi-Engine Query Generation', () {
-    test('Constructs compliant reverse image search URLs across 6 global engines', () {
+    test('Constructs compliant reverse image search URLs across 9 global engines', () {
       const targetUrl = 'https://example.com/suspicious_avatar.jpg';
       final queries = VisualOsintEngine.generateEngineQueries(targetUrl);
 
-      expect(queries.length, equals(6));
+      expect(queries.length, equals(9));
 
       // 1. Google Lens
       final google = queries.firstWhere((q) => q.engineKey == 'google_lens');
@@ -66,24 +66,38 @@ void main() {
       expect(google.queryUrl, contains(Uri.encodeComponent(targetUrl)));
       expect(google.isPrimary, isTrue);
 
-      // 2. Yandex Images (Face & Social Avatar specialist)
+      // 2. FaceCheck.ID (Facial Recon specialist)
+      final facecheck = queries.firstWhere((q) => q.engineKey == 'facecheck_id');
+      expect(facecheck.queryUrl, contains('https://facecheck.id'));
+      expect(facecheck.isPrimary, isTrue);
+
+      // 3. PimEyes (Biometric Search)
+      final pimeyes = queries.firstWhere((q) => q.engineKey == 'pimeyes');
+      expect(pimeyes.queryUrl, contains('https://pimeyes.com'));
+      expect(pimeyes.isPrimary, isTrue);
+
+      // 4. Yandex Images (Face & Social Avatar specialist)
       final yandex = queries.firstWhere((q) => q.engineKey == 'yandex_images');
       expect(yandex.queryUrl, contains('https://yandex.com/images/search?rpt=imageview&url='));
       expect(yandex.isPrimary, isTrue);
 
-      // 3. TinEye (Historical crawler)
+      // 5. TinEye (Historical crawler)
       final tineye = queries.firstWhere((q) => q.engineKey == 'tineye');
       expect(tineye.queryUrl, contains('https://tineye.com/search?url='));
 
-      // 4. Bing Visual
+      // 6. Bing Visual
       final bing = queries.firstWhere((q) => q.engineKey == 'bing_visual');
       expect(bing.queryUrl, contains('https://www.bing.com/images/search?view=detailv2'));
 
-      // 5. Baidu Vision
+      // 7. FotoForensics (ELA Tamper Analysis)
+      final foto = queries.firstWhere((q) => q.engineKey == 'fotoforensics');
+      expect(foto.queryUrl, contains('https://fotoforensics.com/analysis.php?url='));
+
+      // 8. Baidu Vision
       final baidu = queries.firstWhere((q) => q.engineKey == 'baidu_vision');
       expect(baidu.queryUrl, contains('https://graph.baidu.com/details'));
 
-      // 6. SauceNAO
+      // 9. SauceNAO
       final saucenao = queries.firstWhere((q) => q.engineKey == 'saucenao');
       expect(saucenao.queryUrl, contains('https://saucenao.com/search.php'));
     });
@@ -183,6 +197,42 @@ void main() {
       expect(assessment.threatLevel, equals(VisualThreatLevel.critical));
       expect(assessment.verdictTitle, contains('CRITICAL FRAUD'));
       expect(assessment.recommendations, isNotEmpty);
+    });
+  });
+
+  group('VisualOsintEngine - Hardware EXIF & Catfish Biometrics', () {
+    test('Parses clean non-JPEG stream gracefully', () {
+      final report = VisualOsintEngine.parseExifMetadata(Uint8List.fromList([1, 2, 3, 4]));
+      expect(report.hasExif, isFalse);
+      expect(report.privacyStatus, contains('Non-JPEG'));
+    });
+
+    test('Evaluates Catfish risk on portrait aspect ratio with stripped metadata', () {
+      const hashes = VisualHashReport(
+        sha256: 'abc',
+        md5: 'def',
+        sha1: 'ghi',
+        dHash: 'F0F0F0F00F0F0F0F',
+        fileSizeBytes: 45000,
+        width: 600,
+        height: 600,
+        mimeType: 'image/jpeg',
+      );
+      const ocr = OcrEntityExtraction(rawText: '');
+      const exif = ExifForensicReport(
+        hasExif: false,
+        privacyStatus: 'EXIF Metadata Stripped',
+      );
+
+      final catfish = VisualOsintEngine.evaluateCatfishRisk(
+        hashes: hashes,
+        ocr: ocr,
+        exif: exif,
+      );
+
+      expect(catfish.isPortraitOrAvatar, isTrue);
+      expect(catfish.faceClassification, contains('Human Portrait / Profile Avatar'));
+      expect(catfish.specializedFaceEngines, contains('FaceCheck.ID (Scammer & Social Face Matcher)'));
     });
   });
 }

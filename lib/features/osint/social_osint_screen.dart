@@ -11,6 +11,7 @@ import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/services/visual_osint_engine.dart';
 import '../url_scanner/in_app_browser_screen.dart';
 
@@ -233,7 +234,7 @@ Failure to comply will lead to immediate physical property attachment.
       _selectedImagePath = null;
       _activeImageUrl = null;
       _isImageAnalyzing = true;
-      _imageScanStep = 'Emulating forensic sample scan...';
+      _imageScanStep = 'Emulating forensic sample scan (CBI Arrest Forgery)...';
     });
 
     Future.delayed(const Duration(milliseconds: 250), () async {
@@ -279,8 +280,194 @@ Failure to comply will lead to immediate physical property attachment.
             imageUrl: sampleNoticeImg,
             hashes: hashes,
             ocrEntities: ocr,
+            exif: const ExifForensicReport(
+              hasExif: false,
+              software: 'Document Manipulation Template',
+              privacyStatus: 'EXIF Metadata Stripped (Suspect Government Forgery)',
+            ),
+            catfish: const CatfishBiometricReport(
+              isPortraitOrAvatar: false,
+              catfishRiskScore: 5,
+              catfishRiskLevel: 'Safe / Non-Catfish',
+              faceClassification: 'Official Document Order',
+              indicators: [
+                'Document layout with judicial extortion clauses and forged stamps.',
+              ],
+            ),
             engineQueries: queries,
             webMatches: sampleMatches,
+            assessment: assess,
+            inspectedAt: DateTime.now(),
+          );
+          _isImageAnalyzing = false;
+          _imageScanStep = '';
+        });
+      }
+    });
+  }
+
+  void _loadSampleCatfishAvatar() {
+    setState(() {
+      _selectedImagePath = null;
+      _activeImageUrl = null;
+      _isImageAnalyzing = true;
+      _imageScanStep = 'Scanning portrait biometrics & catfish risk markers...';
+    });
+
+    Future.delayed(const Duration(milliseconds: 250), () async {
+      const hashes = VisualHashReport(
+        sha256: '7c9e3a1f8b4d2e5a6c1b3f9d8e7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a',
+        md5: '8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d',
+        sha1: '1f2e3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e',
+        dHash: '0000FFFF0000FFFF',
+        fileSizeBytes: 68400,
+        width: 640,
+        height: 640,
+        mimeType: 'image/jpeg',
+      );
+
+      const ocr = OcrEntityExtraction(
+        rawText: '',
+        documentCategory: 'Social Portrait Avatar',
+      );
+
+      const exif = ExifForensicReport(
+        hasExif: false,
+        privacyStatus: 'EXIF Metadata Stripped (Consistent with Social Platforms)',
+      );
+
+      const catfish = CatfishBiometricReport(
+        isPortraitOrAvatar: true,
+        catfishRiskScore: 82,
+        catfishRiskLevel: 'High Risk (Likely Catfish / Stolen Profile)',
+        faceClassification: 'Human Portrait / Profile Avatar',
+        indicators: [
+          'Square portrait ratio (1.00) matching dating app & Instagram profile cards.',
+          'Camera EXIF metadata completely stripped: Downloaded from messaging or social platforms.',
+          'Compressed thumbnail resolution (640x640px) typical of harvested profile photos.',
+          'High spatial gradient symmetry commonly observed in stolen model shots.',
+        ],
+        specializedFaceEngines: [
+          'FaceCheck.ID (Scammer & Social Face Matcher)',
+          'PimEyes (Facial Biometric Search)',
+          'Yandex Vision (Faces & Avatars)',
+        ],
+      );
+
+      const sampleCatfishImg = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=640';
+      final queries = VisualOsintEngine.generateEngineQueries(sampleCatfishImg);
+      const assess = VisualThreatAssessment(
+        threatScore: 82,
+        threatLevel: VisualThreatLevel.high,
+        verdictTitle: 'WARNING: Suspect Catfish Persona',
+        primaryThreatType: 'High Catfish & Stolen Persona Risk',
+        findings: [
+          'Suspect social avatar matching known online dating scam patterns.',
+          'Face image appears across unverified social platforms without matching identity.',
+        ],
+        recommendations: [
+          'Verify this individual via live audio-video call before sending funds or sensitive documents.',
+          'Run automated facial recognition on FaceCheck.ID and PimEyes below to discover original identities.',
+        ],
+      );
+
+      const sampleMatches = [
+        VisualWebMatch(
+          title: 'Suspicious Tinder / Dating Profile - Romance Fraud Report',
+          pageUrl: 'https://instagram.com',
+          mediaUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=640',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=640',
+          platform: 'Instagram',
+          domain: 'instagram.com',
+          matchPercentage: 98,
+        ),
+        VisualWebMatch(
+          title: 'Stolen Fashion Influencer Modeling Shot - Reddit Alert',
+          pageUrl: 'https://reddit.com/r/Catfish',
+          mediaUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=640',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=640',
+          platform: 'Reddit',
+          domain: 'reddit.com',
+          matchPercentage: 94,
+        ),
+      ];
+
+      if (mounted) {
+        setState(() {
+          _imageResult = VisualOsintResult(
+            imageUrl: sampleCatfishImg,
+            hashes: hashes,
+            ocrEntities: ocr,
+            exif: exif,
+            catfish: catfish,
+            engineQueries: queries,
+            webMatches: sampleMatches,
+            assessment: assess,
+            inspectedAt: DateTime.now(),
+          );
+          _isImageAnalyzing = false;
+          _imageScanStep = '';
+        });
+      }
+    });
+  }
+
+  void _loadSampleUpiReceipt() {
+    const sampleText = '''
+Transaction Successful
+Paid to: Rohit Sharma Stores
+UPI ID: rohitstores@okhdfcbank
+Amount: ₹45,000.00
+Google Pay Ref No: 409283910283
+Date: 08 Nov 2026, 01:15 PM
+    ''';
+
+    setState(() {
+      _selectedImagePath = null;
+      _activeImageUrl = null;
+      _isImageAnalyzing = true;
+      _imageScanStep = 'Analyzing banking receipt proof & transaction ID...';
+    });
+
+    Future.delayed(const Duration(milliseconds: 250), () async {
+      const hashes = VisualHashReport(
+        sha256: '5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b',
+        md5: '1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e',
+        sha1: '3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c',
+        dHash: 'AAAAAAAA55555555',
+        fileSizeBytes: 154000,
+        width: 1080,
+        height: 2400,
+        mimeType: 'image/png',
+      );
+
+      final ocr = VisualOsintEngine.inspectTextForensics(sampleText);
+      const sampleReceiptImg = 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=1080';
+      final queries = VisualOsintEngine.generateEngineQueries(sampleReceiptImg);
+      final assess = VisualOsintEngine.evaluateThreat(hashes, ocr, sampleReceiptImg);
+
+      if (mounted) {
+        setState(() {
+          _imageResult = VisualOsintResult(
+            imageUrl: sampleReceiptImg,
+            hashes: hashes,
+            ocrEntities: ocr,
+            exif: const ExifForensicReport(
+              hasExif: false,
+              software: 'Mobile Screenshot Editor',
+              privacyStatus: 'Screen Capture (No Camera Hardware EXIF)',
+            ),
+            catfish: const CatfishBiometricReport(
+              isPortraitOrAvatar: false,
+              catfishRiskScore: 10,
+              catfishRiskLevel: 'Safe / Non-Catfish',
+              faceClassification: 'Banking Screenshot Proof',
+              indicators: [
+                'Document screenshot layout with payment transaction metadata.',
+              ],
+            ),
+            engineQueries: queries,
+            webMatches: const [],
             assessment: assess,
             inspectedAt: DateTime.now(),
           );
@@ -2330,14 +2517,54 @@ Failure to comply will lead to immediate physical property attachment.
               const SizedBox(width: 8),
               Expanded(
                 child: _buildActionBtn(
-                  icon: Icons.receipt_long_rounded,
-                  label: 'Sample',
-                  color: const Color(0xFFA855F7),
+                  icon: Icons.face_retouching_natural_rounded,
+                  label: 'Catfish DP',
+                  color: const Color(0xFFEC4899),
                   isDark: isDark,
-                  onTap: _loadSampleScamNotice,
+                  onTap: _loadSampleCatfishAvatar,
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+
+          // Quick Forensic Test Samples Row
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Text(
+                  'SAMPLES:',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                    color: isDark ? Colors.white38 : Colors.black38,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildQuickSampleChip(
+                  label: '🏛️ CBI Warrant',
+                  color: const Color(0xFFFF5252),
+                  isDark: isDark,
+                  onTap: _loadSampleScamNotice,
+                ),
+                const SizedBox(width: 6),
+                _buildQuickSampleChip(
+                  label: '👤 Catfish Avatar',
+                  color: const Color(0xFFEC4899),
+                  isDark: isDark,
+                  onTap: _loadSampleCatfishAvatar,
+                ),
+                const SizedBox(width: 6),
+                _buildQuickSampleChip(
+                  label: '💳 UPI Receipt',
+                  color: const Color(0xFF10B981),
+                  isDark: isDark,
+                  onTap: _loadSampleUpiReceipt,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -2423,6 +2650,33 @@ Failure to comply will lead to immediate physical property attachment.
                 fit: BoxFit.cover,
               ),
             ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  SharePlus.instance.share(
+                    ShareParams(
+                      files: [XFile(_selectedImagePath!)],
+                      text: 'SafeSignal Visual OSINT Forensics & Google Lens Recon',
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.share_rounded, size: 16),
+                label: const Text(
+                  'Search via Native Google Lens / Share',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4285F4),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
           ] else if (_activeImageUrl != null && _activeImageUrl!.isNotEmpty) ...[
             const SizedBox(height: 14),
             ClipRRect(
@@ -2435,8 +2689,63 @@ Failure to comply will lead to immediate physical property attachment.
                 errorBuilder: (_, _, _) => const SizedBox.shrink(),
               ),
             ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  SharePlus.instance.share(
+                    ShareParams(
+                      text: _activeImageUrl!,
+                      subject: 'SafeSignal Visual OSINT Forensics',
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.share_rounded, size: 16),
+                label: const Text(
+                  'Share / Send Image to Device Google Lens',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4285F4),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickSampleChip({
+    required String label,
+    required Color color,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ),
     );
   }
@@ -2530,6 +2839,14 @@ Failure to comply will lead to immediate physical property attachment.
       children: [
         // Threat Assessment Header
         _buildVisualThreatHeader(r.assessment, isDark),
+        const SizedBox(height: 18),
+
+        // Catfish & Biometric Forensics Card
+        _buildCatfishForensicsCard(r.catfish, isDark),
+        const SizedBox(height: 18),
+
+        // Camera & Hardware EXIF Metadata Card
+        _buildExifMetadataCard(r.exif, isDark),
         const SizedBox(height: 18),
 
         // Google Lens Live Interactive Recon Session Card
@@ -3243,14 +3560,458 @@ Failure to comply will lead to immediate physical property attachment.
     ).animate().fadeIn().slideY(begin: 0.05);
   }
 
+  Widget _buildCatfishForensicsCard(CatfishBiometricReport c, bool isDark) {
+    final riskColor = c.catfishRiskScore >= 60
+        ? const Color(0xFFFF1744)
+        : c.catfishRiskScore >= 30
+            ? const Color(0xFFFF9100)
+            : const Color(0xFF00E676);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: riskColor.withValues(alpha: isDark ? 0.4 : 0.3),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: riskColor.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: riskColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  c.isPortraitOrAvatar
+                      ? Icons.face_retouching_natural_rounded
+                      : Icons.perm_identity_rounded,
+                  color: riskColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'BIOMETRIC CATFISH & FACE RADAR',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                        color: riskColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      c.faceClassification,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: riskColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${c.catfishRiskScore}% RISK',
+                  style: TextStyle(
+                    color: riskColor,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Risk Level Banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: riskColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: riskColor.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  c.catfishRiskScore >= 60 ? Icons.warning_rounded : Icons.info_outline_rounded,
+                  size: 16,
+                  color: riskColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    c.catfishRiskLevel,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF0D1117),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Indicators list
+          if (c.indicators.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'BIOMETRIC & PROFILE INDICATORS',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white38 : Colors.black45,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ...c.indicators.map((ind) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('• ', style: TextStyle(color: riskColor, fontWeight: FontWeight.bold)),
+                  Expanded(
+                    child: Text(
+                      ind,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? Colors.white70 : const Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
+
+          // Face Search Quick Engine Shortcuts
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const InAppBrowserScreen(url: 'https://facecheck.id'),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.face_retouching_natural_rounded, size: 14, color: Color(0xFFEC4899)),
+                  label: const Text('FaceCheck.ID', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFEC4899),
+                    side: const BorderSide(color: Color(0xFFEC4899)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const InAppBrowserScreen(url: 'https://pimeyes.com'),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.visibility_rounded, size: 14, color: Color(0xFF8B5CF6)),
+                  label: const Text('PimEyes', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF8B5CF6),
+                    side: const BorderSide(color: Color(0xFF8B5CF6)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn().slideY(begin: 0.05);
+  }
+
+  Widget _buildExifMetadataCard(ExifForensicReport exif, bool isDark) {
+    final statusColor = exif.hasExif ? const Color(0xFF00E676) : const Color(0xFFFF9100);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.camera_rounded,
+                  color: Color(0xFF00E5FF),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'CAMERA & HARDWARE EXIF FORENSICS',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                        color: Color(0xFF00E5FF),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      exif.hasExif ? 'Original Hardware Tags Found' : 'Metadata Stripped / Sanitized',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  exif.hasExif ? 'INTACT' : 'STRIPPED',
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 9.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Privacy status text
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  exif.hasExif ? Icons.check_circle_outline_rounded : Icons.shield_outlined,
+                  size: 14,
+                  color: statusColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    exif.privacyStatus,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? Colors.white70 : const Color(0xFF475569),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          if (exif.hasExif) ...[
+            const SizedBox(height: 12),
+            _buildExifRow('Camera Hardware', '${exif.make ?? 'Unknown'} ${exif.model ?? ''}'.trim(), isDark),
+            if (exif.software != null)
+              _buildExifRow('Software / OS', exif.software!, isDark),
+            if (exif.dateTimeOriginal != null)
+              _buildExifRow('Captured Timestamp', exif.dateTimeOriginal!, isDark),
+            if (exif.exposureTime != null || exif.fNumber != null || exif.isoSpeed != null)
+              _buildExifRow(
+                'Exposure / Optics',
+                '${exif.exposureTime ?? ''} ${exif.fNumber ?? ''} ${exif.isoSpeed != null ? 'ISO ${exif.isoSpeed}' : ''}'.trim(),
+                isDark,
+              ),
+            if (exif.latitude != null && exif.longitude != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on_rounded, color: Color(0xFF10B981), size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'GPS Coordinates Embedded',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF10B981),
+                            ),
+                          ),
+                          Text(
+                            '${exif.latitude!.toStringAsFixed(5)}, ${exif.longitude!.toStringAsFixed(5)}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.map_rounded, size: 18, color: Color(0xFF10B981)),
+                      onPressed: () => _openUrl('https://maps.google.com/?q=${exif.latitude},${exif.longitude}'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ] else ...[
+            const SizedBox(height: 10),
+            Text(
+              'No EXIF hardware tags detected. Most messaging platforms (WhatsApp, Telegram) and social media (Instagram, Twitter) automatically strip metadata for user privacy. To inspect compression tampering, run FotoForensics Error Level Analysis (ELA) below.',
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? Colors.white54 : Colors.black54,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ],
+      ),
+    ).animate().fadeIn().slideY(begin: 0.05);
+  }
+
+  Widget _buildExifRow(String label, String value, bool isDark) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white38 : Colors.black45,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : const Color(0xFF0D1117),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildVisualEngineCard(ReverseEngineQuery q, bool isDark) {
     final (Color brandColor, IconData icon) = switch (q.engineKey) {
       'google_lens' => (const Color(0xFF4285F4), Icons.travel_explore_rounded),
+      'facecheck_id' => (const Color(0xFFEC4899), Icons.face_retouching_natural_rounded),
+      'pimeyes' => (const Color(0xFF8B5CF6), Icons.visibility_rounded),
+      'fotoforensics' => (const Color(0xFF10B981), Icons.camera_enhance_rounded),
       'yandex' => (const Color(0xFFFC3F1D), Icons.saved_search_rounded),
       'tineye' => (const Color(0xFF00B4D8), Icons.manage_search_rounded),
       'bing' => (const Color(0xFF008373), Icons.search_rounded),
       'baidu' => (const Color(0xFF2932E1), Icons.radar_rounded),
-      _ => (const Color(0xFFE67E22), Icons.auto_awesome_rounded),
+      'saucenao' => (const Color(0xFFE67E22), Icons.auto_awesome_rounded),
+      _ => (const Color(0xFF00E5FF), Icons.image_search_rounded),
     };
 
     return Container(
