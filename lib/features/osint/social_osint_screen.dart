@@ -1130,17 +1130,21 @@ Failure to comply will lead to immediate physical property attachment.
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        titleSpacing: 4,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'Digital OSINT Suite',
               style: TextStyle(
                 fontWeight: FontWeight.w900,
-                fontSize: 19,
+                fontSize: 18,
                 color: isDark ? Colors.white : const Color(0xFF0D1117),
                 letterSpacing: -0.5,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             Text(
               _activeTab == _OsintTab.username
@@ -1151,6 +1155,8 @@ Failure to comply will lead to immediate physical property attachment.
                 fontWeight: FontWeight.w500,
                 color: isDark ? Colors.white54 : Colors.black54,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
