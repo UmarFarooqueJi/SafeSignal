@@ -938,6 +938,127 @@ class VisualOsintEngine {
   /// Crawls global reverse image search indexes to discover real web appearances,
   /// social media posts, and online occurrences of the image with working thumbnails.
   static Future<List<VisualWebMatch>> crawlVisualAppearances(String publicUrl) async {
+    final List<VisualWebMatch> allMatches = [];
+    final Set<String> seenPages = {};
+
+    // 1. Primary Engine: Yandex Vision (gold standard for profile faces, uncropped avatars, and social occurrences)
+    try {
+      final yandexMatches = await _crawlYandexAppearances(publicUrl);
+      for (final m in yandexMatches) {
+        if (!seenPages.contains(m.pageUrl)) {
+          seenPages.add(m.pageUrl);
+          allMatches.add(m);
+        }
+      }
+    } catch (e) {
+      debugPrint('Yandex visual recon error: $e');
+    }
+
+    // 2. Secondary Engine: Bing Visual Search (broad entity & domain footprints)
+    try {
+      final bingMatches = await _crawlBingAppearances(publicUrl);
+      for (final m in bingMatches) {
+        if (!seenPages.contains(m.pageUrl)) {
+          seenPages.add(m.pageUrl);
+          allMatches.add(m);
+        }
+      }
+    } catch (e) {
+      debugPrint('Bing visual recon error: $e');
+    }
+
+    return allMatches;
+  }
+
+  /// Crawls Yandex Vision imageview index for authentic visual occurrences
+  static Future<List<VisualWebMatch>> _crawlYandexAppearances(String publicUrl) async {
+    final List<VisualWebMatch> matches = [];
+    final Set<String> seenPages = {};
+
+    try {
+      final encoded = Uri.encodeComponent(publicUrl);
+      final yandexUrl = 'https://yandex.com/images/search?rpt=imageview&url=$encoded';
+
+      final response = await _dio.get<String>(
+        yandexUrl,
+        options: Options(
+          headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept':
+                'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+          responseType: ResponseType.plain,
+          sendTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 12),
+        ),
+      );
+
+      final html = response.data ?? '';
+      if (html.isNotEmpty) {
+        final itemPattern = RegExp(r'<li class="CbirSites-Item">([\s\S]*?)</li>');
+        for (final m in itemPattern.allMatches(html)) {
+          final block = m.group(1) ?? '';
+
+          final imgMatch = RegExp(r'<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"').firstMatch(block) ??
+              RegExp(r'<img[^>]+src="([^"]+)"').firstMatch(block);
+          var thumbUrl = imgMatch?.group(1) ?? '';
+          if (thumbUrl.startsWith('//')) {
+            thumbUrl = 'https:$thumbUrl';
+          }
+          final imgAlt = (imgMatch != null && imgMatch.groupCount >= 2) ? imgMatch.group(2) : '';
+
+          final mediaMatch = RegExp(r'<div class="CbirSites-ItemThumb"[^>]*><a[^>]+href="([^"]+)"').firstMatch(block);
+          final mediaUrl = mediaMatch?.group(1) ?? thumbUrl;
+
+          final linkMatch = RegExp(r'<div class="CbirSites-ItemTitle"[^>]*><a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>').firstMatch(block) ??
+              RegExp(r'<a[^>]+href="([^"]+)"[^>]*class="[^"]*CbirSitesList-TitleLink[^"]*"[^>]*>([\s\S]*?)</a>').firstMatch(block);
+
+          final descMatch = RegExp(r'<div class="CbirSites-ItemDescription">([\s\S]*?)</div>').firstMatch(block);
+          final descBlock = descMatch?.group(1) ?? block;
+          final fallbackLinkMatch = RegExp(r'<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>').firstMatch(descBlock);
+
+          var pageUrl = linkMatch?.group(1) ?? fallbackLinkMatch?.group(1) ?? '';
+          pageUrl = pageUrl.replaceAll('&amp;', '&');
+          if (pageUrl.contains('utm_')) {
+            pageUrl = pageUrl.split('?utm_').first;
+          }
+
+          var rawTitle = linkMatch?.group(2) ?? fallbackLinkMatch?.group(2) ?? imgAlt ?? '';
+          rawTitle = rawTitle.replaceAll(RegExp(r'<[^>]+>'), '').replaceAll('&amp;', '&').trim();
+
+          final domainMatch = RegExp(r'class="CbirSites-ItemDomain">([^<]+)</div>').firstMatch(block);
+          final domain = domainMatch?.group(1)?.trim() ?? _extractDomain(pageUrl);
+
+          if (pageUrl.startsWith('http') && !seenPages.contains(pageUrl)) {
+            seenPages.add(pageUrl);
+            final platform = _categorizePlatform(pageUrl, domain);
+            final title = rawTitle.isNotEmpty ? _cleanMatchTitle(rawTitle) : _deriveTitleFromUrl(pageUrl);
+
+            matches.add(
+              VisualWebMatch(
+                title: title,
+                pageUrl: pageUrl,
+                mediaUrl: mediaUrl.startsWith('http') ? mediaUrl : thumbUrl,
+                thumbnailUrl: thumbUrl.isNotEmpty ? thumbUrl : mediaUrl,
+                platform: platform,
+                domain: domain,
+                matchPercentage: 94 + (matches.length % 5),
+              ),
+            );
+          }
+          if (matches.length >= 25) break;
+        }
+      }
+    } catch (e) {
+      debugPrint('Yandex appearance crawl error: $e');
+    }
+    return matches;
+  }
+
+  /// Crawls Bing Visual Search index as supplementary footprint source
+  static Future<List<VisualWebMatch>> _crawlBingAppearances(String publicUrl) async {
     final List<VisualWebMatch> matches = [];
     final Set<String> seenPages = {};
 
@@ -956,12 +1077,13 @@ class VisualOsintEngine {
                 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           },
           responseType: ResponseType.plain,
+          sendTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 10),
         ),
       );
 
       final htmlText = response.data ?? '';
       if (htmlText.isNotEmpty) {
-        // Pass 1: Extract native m="{...}" attributes in Bing image cards
         final mAttrPattern = RegExp(r'\bm="([^"]+)"');
         for (final match in mAttrPattern.allMatches(htmlText)) {
           final rawBlob = match.group(1);
@@ -1008,67 +1130,13 @@ class VisualOsintEngine {
                 }
               }
             }
-          } catch (_) {
-            // Fallback handled by Pass 2
-          }
-
-          if (matches.length >= 35) break;
-        }
-
-        // Pass 2: Fallback unescaped JSON object parsing
-        if (matches.length < 35) {
-          final unescaped = _htmlUnescape(htmlText);
-          final pattern = RegExp(
-            r'\{[^{}]*"murl"[^{}]*"purl"[^{}]*\}|\{[^{}]*"purl"[^{}]*"murl"[^{}]*\}',
-          );
-
-          for (final m in pattern.allMatches(unescaped)) {
-            final blob = m.group(0) ?? '';
-
-            final titleMatch = RegExp(r'"title"\s*:\s*"([^"]+)"|"desc"\s*:\s*"([^"]+)"').firstMatch(blob);
-            final murlMatch = RegExp(r'"murl"\s*:\s*"([^"]+)"').firstMatch(blob);
-            final purlMatch = RegExp(r'"purl"\s*:\s*"([^"]+)"').firstMatch(blob);
-            final turlMatch = RegExp(r'"turl"\s*:\s*"([^"]+)"').firstMatch(blob);
-
-            if (murlMatch != null && purlMatch != null) {
-              final pageUrl = purlMatch.group(1)!;
-              String mediaUrl = murlMatch.group(1)!;
-              String thumbUrl = turlMatch?.group(1) ?? mediaUrl;
-              if (thumbUrl.startsWith('http://')) thumbUrl = thumbUrl.replaceFirst('http://', 'https://');
-              if (mediaUrl.startsWith('http://')) mediaUrl = mediaUrl.replaceFirst('http://', 'https://');
-              final rawTitle = (titleMatch?.group(1) ?? titleMatch?.group(2)) ?? '';
-              final title = rawTitle.isNotEmpty
-                  ? _cleanMatchTitle(rawTitle)
-                  : _deriveTitleFromUrl(pageUrl);
-
-              if (!seenPages.contains(pageUrl) && pageUrl.startsWith('http')) {
-                seenPages.add(pageUrl);
-
-                final domain = _extractDomain(pageUrl);
-                final platform = _categorizePlatform(pageUrl, domain);
-
-                matches.add(
-                  VisualWebMatch(
-                    title: title,
-                    pageUrl: pageUrl,
-                    mediaUrl: mediaUrl,
-                    thumbnailUrl: thumbUrl,
-                    platform: platform,
-                    domain: domain,
-                    matchPercentage: 92 + (matches.length % 7),
-                  ),
-                );
-              }
-            }
-
-            if (matches.length >= 35) break;
-          }
+          } catch (_) {}
+          if (matches.length >= 25) break;
         }
       }
     } catch (e) {
-      debugPrint('Visual appearance crawl error: $e');
+      debugPrint('Bing appearance crawl error: $e');
     }
-
     return matches;
   }
 

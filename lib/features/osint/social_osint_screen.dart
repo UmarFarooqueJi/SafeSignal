@@ -1122,15 +1122,16 @@ Failure to comply will lead to immediate physical property attachment.
         backgroundColor: Colors.transparent,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        leadingWidth: 42,
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new,
             color: isDark ? Colors.white : const Color(0xFF0D1117),
-            size: 22,
+            size: 20,
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        titleSpacing: 4,
+        titleSpacing: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -1139,7 +1140,7 @@ Failure to comply will lead to immediate physical property attachment.
               'Digital OSINT Suite',
               style: TextStyle(
                 fontWeight: FontWeight.w900,
-                fontSize: 18,
+                fontSize: 16,
                 color: isDark ? Colors.white : const Color(0xFF0D1117),
                 letterSpacing: -0.5,
               ),
@@ -1149,9 +1150,9 @@ Failure to comply will lead to immediate physical property attachment.
             Text(
               _activeTab == _OsintTab.username
                   ? 'Public Handles & Profile Intel'
-                  : 'Multi-Engine Visual Recon & OCR',
+                  : 'Visual Recon & OCR',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: FontWeight.w500,
                 color: isDark ? Colors.white54 : Colors.black54,
               ),
@@ -1164,16 +1165,22 @@ Failure to comply will lead to immediate physical property attachment.
         actions: [
           if (_activeTab == _OsintTab.reverseImage && _imageResult != null)
             IconButton(
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               tooltip: 'Export Forensic Evidence Report',
-              icon: const Icon(Icons.share_outlined, color: Color(0xFF00E5FF), size: 21),
+              icon: const Icon(Icons.share_outlined, color: Color(0xFF00E5FF), size: 19),
               onPressed: _exportImageForensicReport,
             ),
           IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             tooltip: 'Clear & Reset',
             icon: Icon(
               Icons.refresh_rounded,
               color: isDark ? Colors.white60 : Colors.black54,
-              size: 22,
+              size: 20,
             ),
             onPressed: () {
               setState(() {
@@ -1193,6 +1200,7 @@ Failure to comply will lead to immediate physical property attachment.
               });
             },
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: SafeArea(
@@ -2160,7 +2168,7 @@ Failure to comply will lead to immediate physical property attachment.
           const SizedBox(width: 4),
           Expanded(
             child: _buildTabItem(
-              title: 'Reverse Image Recon',
+              title: 'Image Recon',
               icon: Icons.image_search_rounded,
               isSelected: _activeTab == _OsintTab.reverseImage,
               isDark: isDark,
@@ -2188,7 +2196,7 @@ Failure to comply will lead to immediate physical property attachment.
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF2979FF) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
@@ -2208,17 +2216,17 @@ Failure to comply will lead to immediate physical property attachment.
           children: [
             Icon(
               icon,
-              size: 15,
+              size: 14,
               color: isSelected
                   ? Colors.white
                   : (isDark ? Colors.white60 : Colors.black54),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             Flexible(
               child: Text(
                 title,
                 style: TextStyle(
-                  fontSize: 11.5,
+                  fontSize: 11,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                   color: isSelected
                       ? Colors.white
@@ -2774,43 +2782,51 @@ Failure to comply will lead to immediate physical property attachment.
                 // Platform Tag & Domain Pill
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                      decoration: BoxDecoration(
-                        color: brandColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: brandColor.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(icon, size: 13, color: brandColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            m.platform.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              color: brandColor,
-                              letterSpacing: 0.5,
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: brandColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: brandColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(icon, size: 12, color: brandColor),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                m.platform.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w900,
+                                  color: brandColor,
+                                  letterSpacing: 0.5,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    if (m.domain.isNotEmpty)
+                    if (m.domain.isNotEmpty) ...[
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           m.domain,
                           style: TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white38 : const Color(0xFF64748B),
                           ),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -2996,14 +3012,16 @@ Failure to comply will lead to immediate physical property attachment.
                   children: [
                     Row(
                       children: [
-                        Flexible(
+                        Expanded(
                           child: Text(
                             'Google Lens Live Recon',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.w900,
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -3016,7 +3034,7 @@ Failure to comply will lead to immediate physical property attachment.
                           child: const Text(
                             'LIVE SESSION',
                             style: TextStyle(
-                              fontSize: 9.5,
+                              fontSize: 9,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF10B981),
                               letterSpacing: 0.5,
@@ -3152,9 +3170,11 @@ Failure to comply will lead to immediate physical property attachment.
                   style: TextStyle(
                     color: color,
                     fontWeight: FontWeight.w900,
-                    fontSize: 14.5,
+                    fontSize: 14,
                     letterSpacing: -0.3,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
@@ -3257,45 +3277,40 @@ Failure to comply will lead to immediate physical property attachment.
           // Header Banner
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: brandColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: brandColor.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, size: 14, color: brandColor),
-                    const SizedBox(width: 5),
-                    Text(
-                      q.engineName.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: brandColor,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  q.specialization,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white54 : Colors.black54,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: brandColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: brandColor.withValues(alpha: 0.3)),
                   ),
-                  overflow: TextOverflow.ellipsis,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 13, color: brandColor),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          q.engineName.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                            color: brandColor,
+                            letterSpacing: 0.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              if (q.isPrimary)
+              if (q.isPrimary) ...[
+                const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -3303,16 +3318,30 @@ Failure to comply will lead to immediate physical property attachment.
                   child: const Text(
                     'CORE',
                     style: TextStyle(
-                      fontSize: 9.5,
+                      fontSize: 9,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFF00E5FF),
                       letterSpacing: 0.5,
                     ),
                   ),
                 ),
+              ],
             ],
           ),
-          const SizedBox(height: 12),
+          if (q.specialization.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              q.specialization,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: 10),
 
           // Description
           Text(

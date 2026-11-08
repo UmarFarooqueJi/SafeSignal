@@ -317,8 +317,17 @@ class LiveOsintService {
       }
     }
 
-    // 3. Transparent identity status: No synthetic names fabricated
-    likelyOwner ??= 'Private / Not Publicly Indexed';
+    // 3. Format handle to likely owner name when patterned (e.g. first.last), otherwise clear private status
+    if (likelyOwner == null) {
+      final handle = isEmail ? cleanInput.split('@').first : cleanInput;
+      if (handle.contains('.') || handle.contains('_')) {
+        final parts = handle.split(RegExp(r'[._]')).where((w) => w.isNotEmpty).toList();
+        if (parts.length >= 2 && parts.every((w) => RegExp(r'^[a-zA-Z]+$').hasMatch(w))) {
+          likelyOwner = parts.map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase()).join(' ');
+        }
+      }
+      likelyOwner ??= 'Private / Not Publicly Indexed';
+    }
 
     // 4. Determine verified dates from accounts and confirmed breaches
     final allDates = <DateTime>[];

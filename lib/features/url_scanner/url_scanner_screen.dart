@@ -214,6 +214,16 @@ class _UrlScannerScreenState extends State<UrlScannerScreen>
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(
+              Icons.vpn_key_outlined,
+              color: Colors.white54,
+              size: 20,
+            ),
+            tooltip: 'Configure VirusTotal API Key',
+            onPressed: _showVirusTotalConfigDialog,
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(
