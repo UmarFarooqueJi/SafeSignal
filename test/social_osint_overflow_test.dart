@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:safesignal/features/osint/social_osint_screen.dart';
 
 void main() {
-  testWidgets('SocialOsintScreen has zero RenderFlex overflows on 360x800 viewport', (WidgetTester tester) async {
+  testWidgets('SocialOsintScreen Phone Recon has zero RenderFlex overflows on 360x800 viewport', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(720, 1600);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() {
@@ -18,27 +18,34 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Test Sample 1: CBI Warrant
-    final cbiChip = find.text('🏛️ CBI Warrant');
-    expect(cbiChip, findsOneWidget);
-    await tester.tap(cbiChip);
+    // Verify Phone Recon tab is selected
+    expect(find.text('Global Telecom & Number OSINT'), findsOneWidget);
+
+    // Test Sample 1: Digital Arrest Scam
+    final digitalArrestChip = find.text('🚨 Digital Arrest Scam');
+    expect(digitalArrestChip, findsOneWidget);
+    await tester.tap(digitalArrestChip);
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    // Scroll through all cards
+    // Scroll through results
     final scrollFinder = find.byType(SingleChildScrollView).first;
     await tester.drag(scrollFinder, const Offset(0, -600));
     await tester.pumpAndSettle();
     await tester.drag(scrollFinder, const Offset(0, -600));
     await tester.pumpAndSettle();
 
-    // Test Sample 2: Catfish Avatar (Biometric Radar card)
+    // Verify UPI Resolution and Spam classification rendered
+    expect(find.text('SPAM & FRAUD CLASSIFICATION RADAR'), findsOneWidget);
+    expect(find.text('NPCI UPI REVERSE IDENTITY RESOLUTION'), findsOneWidget);
+
+    // Test Sample 2: Twilio VoIP Threat
     await tester.drag(scrollFinder, const Offset(0, 1200));
     await tester.pumpAndSettle();
-    final catfishChip = find.text('👤 Catfish Avatar');
-    expect(catfishChip, findsOneWidget);
-    await tester.ensureVisible(catfishChip);
+    final voipChip = find.text('☁️ Twilio VoIP Threat');
+    expect(voipChip, findsOneWidget);
+    await tester.ensureVisible(voipChip);
     await tester.pumpAndSettle();
-    await tester.tap(catfishChip);
+    await tester.tap(voipChip);
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
     await tester.drag(scrollFinder, const Offset(0, -600));
@@ -46,18 +53,19 @@ void main() {
     await tester.drag(scrollFinder, const Offset(0, -600));
     await tester.pumpAndSettle();
 
-    // Test Sample 3: UPI Payment Receipt
+    // Verify VoIP alert rendered
+    expect(find.text('VOIP ALERT'), findsOneWidget);
+
+    // Test Sample 3: Clean Enterprise
     await tester.drag(scrollFinder, const Offset(0, 1200));
     await tester.pumpAndSettle();
-    final upiChip = find.text('💳 UPI Receipt');
-    expect(upiChip, findsOneWidget);
-    await tester.ensureVisible(upiChip);
+    final cleanChip = find.text('🏛️ Clean Enterprise (Jio)');
+    expect(cleanChip, findsOneWidget);
+    await tester.ensureVisible(cleanChip);
     await tester.pumpAndSettle();
-    await tester.tap(upiChip);
+    await tester.tap(cleanChip);
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    await tester.drag(scrollFinder, const Offset(0, -600));
-    await tester.pumpAndSettle();
     await tester.drag(scrollFinder, const Offset(0, -600));
     await tester.pumpAndSettle();
   });

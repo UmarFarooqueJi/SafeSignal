@@ -3,19 +3,15 @@
 // Author: Umar Farooque (https://github.com/UmarFarooqueJi)
 // Copyright (c) 2026 Umar Farooque (https://github.com/UmarFarooqueJi). All rights reserved.
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:share_plus/share_plus.dart';
-import '../../core/services/visual_osint_engine.dart';
-import '../url_scanner/in_app_browser_screen.dart';
+import '../../core/services/phone_breach_service.dart';
 
-enum _OsintTab { username, reverseImage }
+enum _OsintTab { username, phone }
 
 class SocialOsintScreen extends StatefulWidget {
   final int initialTab;
@@ -73,16 +69,13 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
   late _OsintTab _activeTab;
 
   final _controller = TextEditingController();
-  final _imagePicker = ImagePicker();
-  final _imageUrlController = TextEditingController();
-  final _compareHashController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _phoneService = PhoneBreachService();
 
-  bool _isImageAnalyzing = false;
-  String _imageScanStep = '';
-  VisualOsintResult? _imageResult;
-  String? _selectedImagePath;
-  String? _activeImageUrl;
-  double? _comparedSimilarity;
+  bool _isPhoneScanning = false;
+  String _phoneScanStep = '';
+  PhoneIntelligenceResult? _phoneResult;
+  String _selectedCountryCode = '+91';
 
   final _dio = Dio(
     BaseOptions(
@@ -106,376 +99,15 @@ class _SocialOsintScreenState extends State<SocialOsintScreen> {
   @override
   void initState() {
     super.initState();
-    _activeTab = widget.initialTab == 1 ? _OsintTab.reverseImage : _OsintTab.username;
+    _activeTab = widget.initialTab == 1 ? _OsintTab.phone : _OsintTab.username;
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    _imageUrlController.dispose();
-    _compareHashController.dispose();
+    _phoneController.dispose();
     _dio.close();
     super.dispose();
-  }
-
-  void _setImageStep(String step) {
-    if (mounted) setState(() => _imageScanStep = step);
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      HapticFeedback.lightImpact();
-      final picked = await _imagePicker.pickImage(
-        source: source,
-        maxWidth: 2048,
-        maxHeight: 2048,
-        imageQuality: 88,
-      );
-
-      if (picked != null) {
-        setState(() {
-          _selectedImagePath = picked.path;
-          _activeImageUrl = null;
-          _imageResult = null;
-          _comparedSimilarity = null;
-        });
-        await _analyzeLocalFile(picked.path);
-      }
-    } catch (e) {
-      _showToast('Failed to access camera/gallery: $e');
-    }
-  }
-
-  Future<void> _analyzeLocalFile(String filePath) async {
-    setState(() {
-      _isImageAnalyzing = true;
-      _imageScanStep = 'Computing cryptographic hashes & 64-bit dHash...';
-    });
-
-    try {
-      await Future.delayed(const Duration(milliseconds: 100));
-      _setImageStep('Optimizing visual payload & querying reverse web indexes...');
-      final res = await VisualOsintEngine.analyze(localFilePath: filePath);
-      if (mounted) {
-        setState(() {
-          _imageResult = res;
-          _isImageAnalyzing = false;
-          _imageScanStep = '';
-        });
-        HapticFeedback.mediumImpact();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isImageAnalyzing = false;
-          _imageScanStep = '';
-        });
-        _showToast('Analysis error: $e');
-      }
-    }
-  }
-
-  Future<void> _analyzeImageUrl(String url) async {
-    final clean = url.trim();
-    if (clean.isEmpty || (!clean.startsWith('http://') && !clean.startsWith('https://'))) {
-      _showToast('Please enter a valid HTTP/HTTPS image URL');
-      return;
-    }
-
-    HapticFeedback.lightImpact();
-    FocusScope.of(context).unfocus();
-
-    setState(() {
-      _isImageAnalyzing = true;
-      _selectedImagePath = null;
-      _activeImageUrl = clean;
-      _imageResult = null;
-      _comparedSimilarity = null;
-      _imageScanStep = 'Crawling public appearances across global web & social media...';
-    });
-
-    try {
-      final res = await VisualOsintEngine.analyze(imageUrl: clean);
-      if (mounted) {
-        setState(() {
-          _imageResult = res;
-          _isImageAnalyzing = false;
-          _imageScanStep = '';
-        });
-        HapticFeedback.mediumImpact();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isImageAnalyzing = false;
-          _imageScanStep = '';
-        });
-        _showToast('Failed to analyze image: $e');
-      }
-    }
-  }
-
-  void _loadSampleScamNotice() {
-    const sampleText = '''
-CENTRAL BUREAU OF INVESTIGATION (CBI) - CYBER CRIME CELL
-NEW DELHI HEADQUARTERS
-NOTICE OF DIGITAL ARREST & NON-BAILABLE WARRANT
-Case Reference: PMLA/NCB/2026/09428-B
-To: Accused Person
-You are placed under immediate DIGITAL ARREST under Section 420 IPC and IT Act Section 66D.
-Money laundering and illegal narcotics trafficking detected via your Aadhaar linked bank accounts.
-Do not disconnect video call verification. Transfer security clearance deposit to verified RBI vault:
-Target UPI ID: centralvault.clearance@okhdfcbank
-Penalty Amount: ₹98,500
-Failure to comply will lead to immediate physical property attachment.
-    ''';
-
-    setState(() {
-      _selectedImagePath = null;
-      _activeImageUrl = null;
-      _isImageAnalyzing = true;
-      _imageScanStep = 'Emulating forensic sample scan (CBI Arrest Forgery)...';
-    });
-
-    Future.delayed(const Duration(milliseconds: 250), () async {
-      const hashes = VisualHashReport(
-        sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
-        md5: '5d41402abc4b2a76b9719d911017c592',
-        sha1: '2fd4e1c67a2d28fced849ee1bb76e7391b93eb12',
-        dHash: 'F8C0E0E0E0C08000',
-        fileSizeBytes: 245600,
-        width: 1080,
-        height: 1920,
-        mimeType: 'image/jpeg',
-      );
-
-      final ocr = VisualOsintEngine.inspectTextForensics(sampleText);
-      const sampleNoticeImg = 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=1080';
-      final queries = VisualOsintEngine.generateEngineQueries(sampleNoticeImg);
-      final assess = VisualOsintEngine.evaluateThreat(hashes, ocr, sampleNoticeImg);
-      const sampleMatches = [
-        VisualWebMatch(
-          title: 'CBI / Cyber Crime Digital Arrest Fraud Alert Notice',
-          pageUrl: 'https://cybercrime.gov.in',
-          mediaUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600',
-          thumbnailUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600',
-          platform: 'Government Cyber Alert',
-          domain: 'cybercrime.gov.in',
-          matchPercentage: 99,
-        ),
-        VisualWebMatch(
-          title: 'Beware of Fake RBI Clearance Deposit Demands - X (Twitter)',
-          pageUrl: 'https://twitter.com/cyberdost',
-          mediaUrl: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600',
-          thumbnailUrl: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600',
-          platform: 'X (Twitter)',
-          domain: 'twitter.com',
-          matchPercentage: 96,
-        ),
-      ];
-
-      if (mounted) {
-        setState(() {
-          _imageResult = VisualOsintResult(
-            imageUrl: sampleNoticeImg,
-            hashes: hashes,
-            ocrEntities: ocr,
-            exif: const ExifForensicReport(
-              hasExif: false,
-              software: 'Document Manipulation Template',
-              privacyStatus: 'EXIF Metadata Stripped (Suspect Government Forgery)',
-            ),
-            catfish: const CatfishBiometricReport(
-              isPortraitOrAvatar: false,
-              catfishRiskScore: 5,
-              catfishRiskLevel: 'Safe / Non-Catfish',
-              faceClassification: 'Official Document Order',
-              indicators: [
-                'Document layout with judicial extortion clauses and forged stamps.',
-              ],
-            ),
-            engineQueries: queries,
-            webMatches: sampleMatches,
-            assessment: assess,
-            inspectedAt: DateTime.now(),
-          );
-          _isImageAnalyzing = false;
-          _imageScanStep = '';
-        });
-      }
-    });
-  }
-
-  void _loadSampleCatfishAvatar() {
-    setState(() {
-      _selectedImagePath = null;
-      _activeImageUrl = null;
-      _isImageAnalyzing = true;
-      _imageScanStep = 'Scanning portrait biometrics & catfish risk markers...';
-    });
-
-    Future.delayed(const Duration(milliseconds: 250), () async {
-      const hashes = VisualHashReport(
-        sha256: '7c9e3a1f8b4d2e5a6c1b3f9d8e7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a',
-        md5: '8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d',
-        sha1: '1f2e3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e',
-        dHash: '0000FFFF0000FFFF',
-        fileSizeBytes: 68400,
-        width: 640,
-        height: 640,
-        mimeType: 'image/jpeg',
-      );
-
-      const ocr = OcrEntityExtraction(
-        rawText: '',
-        documentCategory: 'Social Portrait Avatar',
-      );
-
-      const exif = ExifForensicReport(
-        hasExif: false,
-        privacyStatus: 'EXIF Metadata Stripped (Consistent with Social Platforms)',
-      );
-
-      const catfish = CatfishBiometricReport(
-        isPortraitOrAvatar: true,
-        catfishRiskScore: 82,
-        catfishRiskLevel: 'High Risk (Likely Catfish / Stolen Profile)',
-        faceClassification: 'Human Portrait / Profile Avatar',
-        indicators: [
-          'Square portrait ratio (1.00) matching dating app & Instagram profile cards.',
-          'Camera EXIF metadata completely stripped: Downloaded from messaging or social platforms.',
-          'Compressed thumbnail resolution (640x640px) typical of harvested profile photos.',
-          'High spatial gradient symmetry commonly observed in stolen model shots.',
-        ],
-        specializedFaceEngines: [
-          'FaceCheck.ID (Scammer & Social Face Matcher)',
-          'PimEyes (Facial Biometric Search)',
-          'Yandex Vision (Faces & Avatars)',
-        ],
-      );
-
-      const sampleCatfishImg = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=640';
-      final queries = VisualOsintEngine.generateEngineQueries(sampleCatfishImg);
-      const assess = VisualThreatAssessment(
-        threatScore: 82,
-        threatLevel: VisualThreatLevel.high,
-        verdictTitle: 'WARNING: Suspect Catfish Persona',
-        primaryThreatType: 'High Catfish & Stolen Persona Risk',
-        findings: [
-          'Suspect social avatar matching known online dating scam patterns.',
-          'Face image appears across unverified social platforms without matching identity.',
-        ],
-        recommendations: [
-          'Verify this individual via live audio-video call before sending funds or sensitive documents.',
-          'Run automated facial recognition on FaceCheck.ID and PimEyes below to discover original identities.',
-        ],
-      );
-
-      const sampleMatches = [
-        VisualWebMatch(
-          title: 'Suspicious Tinder / Dating Profile - Romance Fraud Report',
-          pageUrl: 'https://instagram.com',
-          mediaUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=640',
-          thumbnailUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=640',
-          platform: 'Instagram',
-          domain: 'instagram.com',
-          matchPercentage: 98,
-        ),
-        VisualWebMatch(
-          title: 'Stolen Fashion Influencer Modeling Shot - Reddit Alert',
-          pageUrl: 'https://reddit.com/r/Catfish',
-          mediaUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=640',
-          thumbnailUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=640',
-          platform: 'Reddit',
-          domain: 'reddit.com',
-          matchPercentage: 94,
-        ),
-      ];
-
-      if (mounted) {
-        setState(() {
-          _imageResult = VisualOsintResult(
-            imageUrl: sampleCatfishImg,
-            hashes: hashes,
-            ocrEntities: ocr,
-            exif: exif,
-            catfish: catfish,
-            engineQueries: queries,
-            webMatches: sampleMatches,
-            assessment: assess,
-            inspectedAt: DateTime.now(),
-          );
-          _isImageAnalyzing = false;
-          _imageScanStep = '';
-        });
-      }
-    });
-  }
-
-  void _loadSampleUpiReceipt() {
-    const sampleText = '''
-Transaction Successful
-Paid to: Rohit Sharma Stores
-UPI ID: rohitstores@okhdfcbank
-Amount: ₹45,000.00
-Google Pay Ref No: 409283910283
-Date: 08 Nov 2026, 01:15 PM
-    ''';
-
-    setState(() {
-      _selectedImagePath = null;
-      _activeImageUrl = null;
-      _isImageAnalyzing = true;
-      _imageScanStep = 'Analyzing banking receipt proof & transaction ID...';
-    });
-
-    Future.delayed(const Duration(milliseconds: 250), () async {
-      const hashes = VisualHashReport(
-        sha256: '5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b',
-        md5: '1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e',
-        sha1: '3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c',
-        dHash: 'AAAAAAAA55555555',
-        fileSizeBytes: 154000,
-        width: 1080,
-        height: 2400,
-        mimeType: 'image/png',
-      );
-
-      final ocr = VisualOsintEngine.inspectTextForensics(sampleText);
-      const sampleReceiptImg = 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=1080';
-      final queries = VisualOsintEngine.generateEngineQueries(sampleReceiptImg);
-      final assess = VisualOsintEngine.evaluateThreat(hashes, ocr, sampleReceiptImg);
-
-      if (mounted) {
-        setState(() {
-          _imageResult = VisualOsintResult(
-            imageUrl: sampleReceiptImg,
-            hashes: hashes,
-            ocrEntities: ocr,
-            exif: const ExifForensicReport(
-              hasExif: false,
-              software: 'Mobile Screenshot Editor',
-              privacyStatus: 'Screen Capture (No Camera Hardware EXIF)',
-            ),
-            catfish: const CatfishBiometricReport(
-              isPortraitOrAvatar: false,
-              catfishRiskScore: 10,
-              catfishRiskLevel: 'Safe / Non-Catfish',
-              faceClassification: 'Banking Screenshot Proof',
-              indicators: [
-                'Document screenshot layout with payment transaction metadata.',
-              ],
-            ),
-            engineQueries: queries,
-            webMatches: const [],
-            assessment: assess,
-            inspectedAt: DateTime.now(),
-          );
-          _isImageAnalyzing = false;
-          _imageScanStep = '';
-        });
-      }
-    });
   }
 
   void _showToast(String msg) {
@@ -495,44 +127,101 @@ Date: 08 Nov 2026, 01:15 PM
     _showToast('$label copied to clipboard');
   }
 
-  void _exportImageForensicReport() {
-    if (_imageResult == null) return;
-    final r = _imageResult!;
+  Future<void> _scanPhone([String? sampleNumber]) async {
+    final query = (sampleNumber ?? _phoneController.text).trim();
+    if (query.isEmpty) {
+      _showToast('Please enter a phone number to scan');
+      return;
+    }
+
+    if (sampleNumber != null) {
+      _phoneController.text = sampleNumber;
+    }
+
+    FocusScope.of(context).unfocus();
+    HapticFeedback.mediumImpact();
+
+    setState(() {
+      _isPhoneScanning = true;
+      _phoneResult = null;
+      _phoneScanStep = 'Parsing E.164 syntax & routing telecom telemetry...';
+    });
+
+    try {
+      await Future.delayed(const Duration(milliseconds: 140));
+      if (mounted) setState(() => _phoneScanStep = 'Resolving DoT NNP carrier & circle allocation series...');
+
+      await Future.delayed(const Duration(milliseconds: 140));
+      if (mounted) setState(() => _phoneScanStep = 'Auditing dark-web CAF leaks & breach databases...');
+
+      await Future.delayed(const Duration(milliseconds: 140));
+      if (mounted) setState(() => _phoneScanStep = 'Resolving UPI banking VPAs & fraud radar score...');
+
+      final fullNumber = query.startsWith('+') ? query : '$_selectedCountryCode$query';
+      final res = await _phoneService.scanPhoneNumber(fullNumber);
+
+      if (mounted) {
+        setState(() {
+          _phoneResult = res;
+          _isPhoneScanning = false;
+          _phoneScanStep = '';
+        });
+        HapticFeedback.heavyImpact();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isPhoneScanning = false;
+          _phoneScanStep = '';
+        });
+        _showToast('Phone recon error: $e');
+      }
+    }
+  }
+
+  void _exportPhoneIntelligenceReport() {
+    if (_phoneResult == null) return;
+    final r = _phoneResult!;
     final buffer = StringBuffer();
     buffer.writeln('====================================================');
-    buffer.writeln('SAFESIGNAL TITAN VISUAL OSINT & FORENSIC EVIDENCE REPORT');
-    buffer.writeln('Generated: ${r.inspectedAt.toIso8601String()}');
+    buffer.writeln('SAFESIGNAL TITAN TELECOM & PHONE OSINT INTELLIGENCE REPORT');
+    buffer.writeln('Target Number: ${r.formattedNumber}');
     buffer.writeln('====================================================\n');
-    buffer.writeln('1. CRYPTOGRAPHIC INTEGRITY');
-    buffer.writeln('SHA-256 : ${r.hashes.sha256}');
-    buffer.writeln('MD5     : ${r.hashes.md5}');
-    buffer.writeln('64-dHash: ${r.hashes.dHash}');
-    buffer.writeln('Size    : ${(r.hashes.fileSizeBytes / 1024).toStringAsFixed(1)} KB');
-    buffer.writeln('Format  : ${r.hashes.mimeType} (${r.hashes.width ?? "?"}x${r.hashes.height ?? "?"}px)\n');
-    buffer.writeln('2. THREAT ASSESSMENT');
-    buffer.writeln('Verdict : ${r.assessment.verdictTitle}');
-    buffer.writeln('Score   : ${r.assessment.threatScore}/100 (${r.assessment.threatLevel.name.toUpperCase()})');
-    buffer.writeln('Category: ${r.assessment.primaryThreatType}\n');
-    buffer.writeln('3. DETECTED EXTORTION / FRAUD ENTITIES');
-    buffer.writeln('Authorities  : ${r.ocrEntities.detectedInstitutions.join(", ")}');
-    buffer.writeln('Scam Triggers: ${r.ocrEntities.detectedScamKeywords.join(", ")}');
-    buffer.writeln('Extracted UPI: ${r.ocrEntities.detectedUpiIds.join(", ")}');
-    buffer.writeln('Phone Numbers: ${r.ocrEntities.detectedPhoneNumbers.join(", ")}');
-    buffer.writeln('Amounts      : ${r.ocrEntities.detectedAmounts.join(", ")}\n');
-    buffer.writeln('4. DETECTED WEB APPEARANCES & SOCIAL PROFILES (${r.webMatches.length})');
-    for (final m in r.webMatches) {
-      buffer.writeln('- [${m.platform}] ${m.title} (${m.matchPercentage}%)');
-      buffer.writeln('  Page: ${m.pageUrl}');
-      buffer.writeln('  Image: ${m.mediaUrl}');
+    buffer.writeln('1. TELECOM NETWORK TELEMETRY');
+    buffer.writeln('Carrier    : ${r.carrier} (Allocated: ${r.allocatedCarrier ?? r.carrier})');
+    buffer.writeln('Circle/LSA : ${r.circle}');
+    buffer.writeln('Line Type  : ${r.telemetry.lineType}');
+    buffer.writeln('Series Era : ${r.seriesEraLabel}');
+    buffer.writeln('DND Status : ${r.telemetry.dndStatus}');
+    buffer.writeln('MNC/MCC    : ${r.telemetry.mncMcc}\n');
+    buffer.writeln('2. SPAM & FRAUD CLASSIFICATION');
+    buffer.writeln('Threat Score: ${r.spam.spamScore}/100 (${r.spam.threatLevel})');
+    buffer.writeln('Category    : ${r.spam.category}');
+    buffer.writeln('Abuse Tags  : ${r.spam.tags.join(", ")}');
+    buffer.writeln('Advisory    : ${r.spam.advisorySummary}\n');
+    if (r.upiFootprints.isNotEmpty) {
+      buffer.writeln('3. UPI BANKING RAIL RESOLUTION (REVERSE IDENTITY)');
+      for (final upi in r.upiFootprints) {
+        buffer.writeln('- [${upi.appName}] ${upi.vpa} (${upi.bankName})');
+      }
+      buffer.writeln('');
     }
-    buffer.writeln('\n5. REVERSE ENGINE SOURCES');
-    for (final q in r.engineQueries) {
-      buffer.writeln('- ${q.engineName}: ${q.queryUrl}');
+    buffer.writeln('4. DARK-WEB BREACH EXPOSURES (${r.breaches.length})');
+    for (final b in r.breaches) {
+      buffer.writeln('- [${b.severity}] ${b.title} (${b.breachDate}): ${b.dataClasses.join(", ")}');
+    }
+    if (r.leakedDossier != null) {
+      final d = r.leakedDossier!;
+      buffer.writeln('\n5. LEAKED CAF DOSSIER ARCHIVE');
+      buffer.writeln('Subscriber : ${d.subscriberName}');
+      buffer.writeln('Father     : ${d.fatherName}');
+      buffer.writeln('Billing Add: ${d.rawCafAddress}');
+      buffer.writeln('Alternate  : ${d.alternateNumber}');
     }
     buffer.writeln('\n====================================================');
-    buffer.writeln('Report this evidence to National Cyber Crime Portal (1930)');
+    buffer.writeln('Report this evidence to National Cyber Crime Portal (1930 / cybercrime.gov.in)');
 
-    _copyToClipboard(buffer.toString(), 'Full Forensic Evidence Report');
+    _copyToClipboard(buffer.toString(), 'Phone Intelligence Report');
   }
 
   void _setStep(String step) {
@@ -1337,7 +1026,7 @@ Date: 08 Nov 2026, 01:15 PM
             Text(
               _activeTab == _OsintTab.username
                   ? 'Public Handles & Profile Intel'
-                  : 'Visual Recon & OCR',
+                  : 'Telecom & UPI Intelligence',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
@@ -1350,14 +1039,14 @@ Date: 08 Nov 2026, 01:15 PM
         ),
         centerTitle: false,
         actions: [
-          if (_activeTab == _OsintTab.reverseImage && _imageResult != null)
+          if (_activeTab == _OsintTab.phone && _phoneResult != null)
             IconButton(
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              tooltip: 'Export Forensic Evidence Report',
+              tooltip: 'Export Phone Intelligence Report',
               icon: const Icon(Icons.share_outlined, color: Color(0xFF00E5FF), size: 19),
-              onPressed: _exportImageForensicReport,
+              onPressed: _exportPhoneIntelligenceReport,
             ),
           IconButton(
             visualDensity: VisualDensity.compact,
@@ -1377,12 +1066,9 @@ Date: 08 Nov 2026, 01:15 PM
                   _foundProfiles.clear();
                   _unconfirmedLinks.clear();
                 } else {
-                  _imageUrlController.clear();
-                  _compareHashController.clear();
-                  _selectedImagePath = null;
-                  _activeImageUrl = null;
-                  _imageResult = null;
-                  _comparedSimilarity = null;
+                  _phoneController.clear();
+                  _phoneResult = null;
+                  _isPhoneScanning = false;
                 }
               });
             },
@@ -1484,15 +1170,15 @@ Date: 08 Nov 2026, 01:15 PM
                 ],
               ],
 
-              // Reverse Image Recon Tab
-              if (_activeTab == _OsintTab.reverseImage) ...[
-                _buildImageSearchCard(isDark),
+              // Phone Number OSINT Tab
+              if (_activeTab == _OsintTab.phone) ...[
+                _buildPhoneSearchCard(isDark),
                 const SizedBox(height: 16),
 
-                if (_isImageAnalyzing) _buildImageScanningProgress(isDark),
+                if (_isPhoneScanning) _buildPhoneScanningProgress(isDark),
 
-                if (_imageResult != null) ...[
-                  _buildVisualResultsSection(_imageResult!, isDark),
+                if (_phoneResult != null) ...[
+                  _buildPhoneResultsSection(_phoneResult!, isDark),
                   const SizedBox(height: 40),
                 ],
               ],
@@ -2355,13 +2041,13 @@ Date: 08 Nov 2026, 01:15 PM
           const SizedBox(width: 4),
           Expanded(
             child: _buildTabItem(
-              title: 'Image Recon',
-              icon: Icons.image_search_rounded,
-              isSelected: _activeTab == _OsintTab.reverseImage,
+              title: 'Phone Recon',
+              icon: Icons.contact_phone_rounded,
+              isSelected: _activeTab == _OsintTab.phone,
               isDark: isDark,
               onTap: () {
                 HapticFeedback.selectionClick();
-                setState(() => _activeTab = _OsintTab.reverseImage);
+                setState(() => _activeTab = _OsintTab.phone);
               },
             ),
           ),
@@ -2429,16 +2115,23 @@ Date: 08 Nov 2026, 01:15 PM
     );
   }
 
-  Widget _buildImageSearchCard(bool isDark) {
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ─── ULTRA-LEVEL PHONE NUMBER OSINT & TELECOM RECON WIDGETS ────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  Widget _buildPhoneSearchCard(bool isDark) {
+    final cardBg = isDark ? const Color(0xFF131926) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0);
+    final inputBg = isDark ? const Color(0xFF0A0E17) : const Color(0xFFF8FAFC);
+    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSecondary = isDark ? Colors.white60 : Colors.black54;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF131926) : Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
-          width: 1.2,
-        ),
+        border: Border.all(color: borderColor, width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -2450,6 +2143,7 @@ Date: 08 Nov 2026, 01:15 PM
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Row(
             children: [
               Container(
@@ -2459,7 +2153,7 @@ Date: 08 Nov 2026, 01:15 PM
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(
-                  Icons.image_search_rounded,
+                  Icons.phone_in_talk_rounded,
                   color: Color(0xFF00E5FF),
                   size: 22,
                 ),
@@ -2470,19 +2164,19 @@ Date: 08 Nov 2026, 01:15 PM
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Visual Reverse Search & Forensics',
+                      'Global Telecom & Number OSINT',
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 15.5,
-                        color: isDark ? Colors.white : const Color(0xFF0D1117),
+                        color: textPrimary,
                         letterSpacing: -0.3,
                       ),
                     ),
                     Text(
-                      'Detect fake warrants, scammers & web appearances',
+                      'E.164 parsing, DoT NNP routing, UPI reverse identity & threat radar',
                       style: TextStyle(
                         fontSize: 11.5,
-                        color: isDark ? Colors.white54 : Colors.black54,
+                        color: textSecondary,
                       ),
                     ),
                   ],
@@ -2490,293 +2184,286 @@ Date: 08 Nov 2026, 01:15 PM
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
 
-          // Upload Options
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionBtn(
-                  icon: Icons.photo_library_rounded,
-                  label: 'Gallery',
-                  color: const Color(0xFF2979FF),
-                  isDark: isDark,
-                  onTap: () => _pickImage(ImageSource.gallery),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildActionBtn(
-                  icon: Icons.camera_alt_rounded,
-                  label: 'Camera',
-                  color: const Color(0xFF00E5FF),
-                  isDark: isDark,
-                  onTap: () => _pickImage(ImageSource.camera),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildActionBtn(
-                  icon: Icons.face_retouching_natural_rounded,
-                  label: 'Catfish DP',
-                  color: const Color(0xFFEC4899),
-                  isDark: isDark,
-                  onTap: _loadSampleCatfishAvatar,
-                ),
-              ),
-            ],
+          // Country Code Selector Chips
+          Text(
+            'SELECT JURISDICTION / COUNTRY CODE',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              color: isDark ? Colors.white38 : Colors.black45,
+            ),
           ),
-          const SizedBox(height: 12),
-
-          // Quick Forensic Test Samples Row
+          const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                Text(
-                  'SAMPLES:',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
-                    color: isDark ? Colors.white38 : Colors.black38,
-                  ),
-                ),
+                _buildCountryChip('+91', '🇮🇳 India', isDark),
                 const SizedBox(width: 8),
-                _buildQuickSampleChip(
-                  label: '🏛️ CBI Warrant',
-                  color: const Color(0xFFFF5252),
-                  isDark: isDark,
-                  onTap: _loadSampleScamNotice,
-                ),
-                const SizedBox(width: 6),
-                _buildQuickSampleChip(
-                  label: '👤 Catfish Avatar',
-                  color: const Color(0xFFEC4899),
-                  isDark: isDark,
-                  onTap: _loadSampleCatfishAvatar,
-                ),
-                const SizedBox(width: 6),
-                _buildQuickSampleChip(
-                  label: '💳 UPI Receipt',
-                  color: const Color(0xFF10B981),
-                  isDark: isDark,
-                  onTap: _loadSampleUpiReceipt,
-                ),
+                _buildCountryChip('+1', '🇺🇸 US/CA', isDark),
+                const SizedBox(width: 8),
+                _buildCountryChip('+44', '🇬🇧 UK', isDark),
+                const SizedBox(width: 8),
+                _buildCountryChip('+971', '🇦🇪 UAE', isDark),
+                const SizedBox(width: 8),
+                _buildCountryChip('+92', '🇵🇰 PK', isDark),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Divider
-          Row(
-            children: [
-              Expanded(
-                child: Divider(
-                  color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+          // Phone Number Text Field
+          TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (_) => _scanPhone(),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: textPrimary,
+              letterSpacing: 0.5,
+            ),
+            decoration: InputDecoration(
+              hintText: _selectedCountryCode == '+91'
+                  ? '98765 43210 or +919876543210'
+                  : 'Enter phone number...',
+              hintStyle: TextStyle(
+                fontSize: 13.5,
+                color: isDark ? Colors.white38 : Colors.black38,
+                fontWeight: FontWeight.normal,
+              ),
+              prefixIcon: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _selectedCountryCode,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Color(0xFF00E5FF),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 1,
+                      height: 20,
+                      color: isDark ? Colors.white24 : Colors.black26,
+                    ),
+                  ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  'OR SCAN REMOTE URL',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
-                    color: isDark ? Colors.white38 : Colors.black38,
-                  ),
+              suffixIcon: _phoneController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _phoneController.clear();
+                        setState(() {});
+                      },
+                    )
+                  : IconButton(
+                      icon: const Icon(
+                        Icons.arrow_forward_rounded,
+                        color: Color(0xFF00E5FF),
+                      ),
+                      onPressed: () => _scanPhone(),
+                    ),
+              filled: true,
+              fillColor: inputBg,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: borderColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: borderColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Color(0xFF00E5FF),
+                  width: 1.8,
                 ),
               ),
-              Expanded(
-                child: Divider(
-                  color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
-                ),
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 14),
 
-          // URL Input
-          Row(
+          // Investigative Presets / Sample Numbers
+          Text(
+            'INVESTIGATIVE BENCHMARKS / THREAT SAMPLES',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              color: isDark ? Colors.white38 : Colors.black45,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _imageUrlController,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'https://example.com/scam-notice.jpg',
-                    hintStyle: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? Colors.white24 : Colors.black26,
-                    ),
-                    prefixIcon: const Icon(Icons.link_rounded, size: 18),
-                    filled: true,
-                    fillColor: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  ),
-                  onSubmitted: _analyzeImageUrl,
-                ),
+              _buildPhoneQuickSampleChip(
+                '🚨 Digital Arrest Scam',
+                '9876543210',
+                const Color(0xFFFF5252),
+                isDark,
+                countryCode: '+91',
               ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFF00E5FF),
-                  padding: const EdgeInsets.all(12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                onPressed: () => _analyzeImageUrl(_imageUrlController.text),
+              _buildPhoneQuickSampleChip(
+                '☁️ Twilio VoIP Threat',
+                '+12025550199',
+                const Color(0xFFFF9100),
+                isDark,
+                countryCode: '+1',
+              ),
+              _buildPhoneQuickSampleChip(
+                '🏛️ Clean Enterprise (Jio)',
+                '9820012345',
+                const Color(0xFF00E676),
+                isDark,
+                countryCode: '+91',
               ),
             ],
           ),
+          const SizedBox(height: 16),
 
-          // Selected Image Preview if local or remote
-          if (_selectedImagePath != null && File(_selectedImagePath!).existsSync()) ...[
-            const SizedBox(height: 14),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.file(
-                File(_selectedImagePath!),
-                height: 140,
-                width: double.infinity,
-                fit: BoxFit.cover,
+          // Action Scan Button
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _isPhoneScanning ? null : () => _scanPhone(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00E5FF),
+                foregroundColor: const Color(0xFF06090F),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  SharePlus.instance.share(
-                    ShareParams(
-                      files: [XFile(_selectedImagePath!)],
-                      text: 'SafeSignal Visual OSINT Forensics & Google Lens Recon',
+              child: _isPhoneScanning
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF06090F),
+                      ),
+                    )
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.radar_rounded, size: 18),
+                        SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Trace Telecom & Threat Identity',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  );
-                },
-                icon: const Icon(Icons.share_rounded, size: 16),
-                label: const Text(
-                  'Search via Native Google Lens / Share',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4285F4),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
             ),
-          ] else if (_activeImageUrl != null && _activeImageUrl!.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                _activeImageUrl!,
-                height: 140,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  SharePlus.instance.share(
-                    ShareParams(
-                      text: _activeImageUrl!,
-                      subject: 'SafeSignal Visual OSINT Forensics',
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.share_rounded, size: 16),
-                label: const Text(
-                  'Share / Send Image to Device Google Lens',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4285F4),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickSampleChip({
-    required String label,
-    required Color color,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildCountryChip(String code, String label, bool isDark) {
+    final isSelected = _selectedCountryCode == code;
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedCountryCode = code);
+      },
       borderRadius: BorderRadius.circular(10),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
+          color: isSelected
+              ? const Color(0xFF00E5FF).withValues(alpha: 0.15)
+              : (isDark ? const Color(0xFF1E2638) : const Color(0xFFE2E8F0)),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF00E5FF) : Colors.transparent,
+            width: 1.2,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
+            fontSize: 11.5,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected
+                ? const Color(0xFF00E5FF)
+                : (isDark ? Colors.white70 : Colors.black87),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildActionBtn({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required bool isDark,
-    required VoidCallback onTap,
+  Widget _buildPhoneQuickSampleChip(
+    String label,
+    String number,
+    Color color,
+    bool isDark, {
+    required String countryCode,
   }) {
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedCountryCode = countryCode);
+        _scanPhone(number);
+      },
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(14),
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
-        child: Column(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w800,
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white70 : const Color(0xFF0F172A),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -2785,7 +2472,7 @@ Date: 08 Nov 2026, 01:15 PM
     );
   }
 
-  Widget _buildImageScanningProgress(bool isDark) {
+  Widget _buildPhoneScanningProgress(bool isDark) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -2793,514 +2480,113 @@ Date: 08 Nov 2026, 01:15 PM
         color: isDark ? const Color(0xFF131926) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
+          color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
         ),
       ),
       child: Column(
         children: [
-          const LinearProgressIndicator(
-            backgroundColor: Color(0xFF0D1117),
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E5FF)),
-          ),
-          const SizedBox(height: 14),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(
-                width: 14,
-                height: 14,
+                width: 18,
+                height: 18,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E5FF)),
+                  strokeWidth: 2.2,
+                  color: Color(0xFF00E5FF),
                 ),
               ),
-              const SizedBox(width: 10),
-              Flexible(
+              const SizedBox(width: 12),
+              Expanded(
                 child: Text(
-                  _imageScanStep.isEmpty ? 'Processing image...' : _imageScanStep,
-                  style: TextStyle(
-                    fontSize: 12,
+                  _phoneScanStep.isNotEmpty
+                      ? _phoneScanStep
+                      : 'Querying telecom registries & financial rails...',
+                  style: const TextStyle(
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white70 : Colors.black87,
+                    color: Color(0xFF00E5FF),
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: const LinearProgressIndicator(
+              backgroundColor: Color(0xFF1E293B),
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E5FF)),
+              minHeight: 4,
+            ),
+          ),
         ],
       ),
-    ).animate().fadeIn();
+    );
   }
 
-  Widget _buildVisualResultsSection(VisualOsintResult r, bool isDark) {
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ─── PHONE RESULTS COMPREHENSIVE VIEW ─────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  Widget _buildPhoneResultsSection(PhoneIntelligenceResult res, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Threat Assessment Header
-        _buildVisualThreatHeader(r.assessment, isDark),
-        const SizedBox(height: 18),
+        // 1. Executive Telemetry Overview Banner
+        _buildExecutiveOverviewBanner(res, isDark),
+        const SizedBox(height: 16),
 
-        // Catfish & Biometric Forensics Card
-        _buildCatfishForensicsCard(r.catfish, isDark),
-        const SizedBox(height: 18),
+        // 2. Fraud & Spam Classification Radar Card
+        _buildSpamRadarCard(res, isDark),
+        const SizedBox(height: 16),
 
-        // Camera & Hardware EXIF Metadata Card
-        _buildExifMetadataCard(r.exif, isDark),
-        const SizedBox(height: 18),
-
-        // Google Lens Live Interactive Recon Session Card
-        if (r.googleLensSessionUrl != null && r.googleLensSessionUrl!.isNotEmpty) ...[
-          _buildGoogleLensHeroCard(r.googleLensSessionUrl!, isDark),
-          const SizedBox(height: 22),
+        // 3. NPCI UPI Financial Rail Reverse Identity Card
+        if (res.upiFootprints.isNotEmpty) ...[
+          _buildUpiResolutionCard(res.upiFootprints, isDark),
+          const SizedBox(height: 16),
         ],
 
-        // Live Crawled Web Appearances & Social Media Posts
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'DETECTED WEB APPEARANCES & SOCIAL PROFILES',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                  color: isDark ? Colors.white54 : const Color(0xFF475569),
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2979FF).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '${r.webMatches.length}',
-                style: const TextStyle(
-                  color: Color(0xFF2979FF),
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
+        // 4. Telecom Telemetry & Infrastructure Card
+        _buildTelecomTelemetryCard(res, isDark),
+        const SizedBox(height: 16),
 
-        if (r.webMatches.isEmpty)
-          _buildNoWebMatchesFoundCard(isDark)
-        else
-          ...r.webMatches.map((m) => _buildVisualWebMatchCard(m, isDark)),
+        // 5. Live Communication & Investigation Probes
+        _buildMessagingProbesCard(res.formattedNumber, isDark),
+        const SizedBox(height: 16),
 
-        const SizedBox(height: 22),
+        // 6. Investigative OSINT Dorks
+        _buildOsintDorksCard(res.formattedNumber, isDark),
+        const SizedBox(height: 16),
 
-        // Global Reverse Search Engines
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'GLOBAL REVERSE SEARCH ENGINES & DEEP RECON',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                  color: isDark ? Colors.white54 : const Color(0xFF475569),
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '${r.engineQueries.length}',
-                style: const TextStyle(
-                  color: Color(0xFF00E5FF),
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-
-        // Engine Cards
-        ...r.engineQueries.map((q) => _buildVisualEngineCard(q, isDark)),
-        const SizedBox(height: 22),
-
-        // OCR Extortion findings if detected
-        if (r.ocrEntities.isFraudulentDocument || r.ocrEntities.rawText.isNotEmpty) ...[
-          _buildOcrFindingsCard(r.ocrEntities, isDark),
-          const SizedBox(height: 22),
-        ],
-
-        // Hashes Card
-        _buildHashesCard(r.hashes, isDark),
-        const SizedBox(height: 22),
-
-        // Clone / Perceptual Hash Comparator Card
-        _buildCloneComparatorCard(r.hashes.dHash, isDark),
+        // 7. Dark-Web Breach & CAF Dossier Archive
+        _buildBreachAndDossierCard(res, isDark),
       ],
     );
   }
 
-  Widget _buildVisualWebMatchCard(VisualWebMatch m, bool isDark) {
-    final (Color brandColor, IconData icon) = switch (m.platform) {
-      'Instagram' => (const Color(0xFFE4405F), Icons.camera_alt_rounded),
-      'X (Twitter)' => (const Color(0xFF1DA1F2), Icons.alternate_email_rounded),
-      'Reddit' => (const Color(0xFFFF4500), Icons.forum_rounded),
-      'Facebook' => (const Color(0xFF1877F2), Icons.facebook_rounded),
-      'Pinterest' => (const Color(0xFFE60023), Icons.push_pin_rounded),
-      'TikTok' => (const Color(0xFF00F2FE), Icons.music_note_rounded),
-      'Tumblr' => (const Color(0xFF36465D), Icons.article_rounded),
-      'Behance' => (const Color(0xFF1769FF), Icons.brush_rounded),
-      'Dribbble' => (const Color(0xFFEA4C89), Icons.palette_rounded),
-      'YouTube' => (const Color(0xFFFF0000), Icons.play_circle_fill_rounded),
-      'LinkedIn' => (const Color(0xFF0A66C2), Icons.badge_rounded),
-      'Telegram' => (const Color(0xFF0088CC), Icons.send_rounded),
-      'Threads' => (isDark ? Colors.white : Colors.black87, Icons.tag_rounded),
-      'Discord' => (const Color(0xFF5865F2), Icons.chat_bubble_rounded),
-      'Quora' => (const Color(0xFFB92B27), Icons.question_answer_rounded),
-      'Medium' => (const Color(0xFF00AB6C), Icons.menu_book_rounded),
-      'GitHub' => (isDark ? Colors.white : const Color(0xFF24292E), Icons.code_rounded),
-      'Snapchat' => (const Color(0xFFFFFC00), Icons.camera_rounded),
-      'Pexels' || 'Unsplash' || 'Flickr' => (const Color(0xFF00BCD4), Icons.photo_library_rounded),
-      _ => (const Color(0xFF2979FF), Icons.public_rounded),
-    };
+  // ─── 1. Executive Banner ───────────────────────────────────────────────────
 
-    final cardBg = isDark ? const Color(0xFF131926) : Colors.white;
-    final cardBorder = isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0);
-    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final effectiveThumbnail = m.thumbnailUrl.isNotEmpty ? m.thumbnailUrl : m.mediaUrl;
+  Widget _buildExecutiveOverviewBanner(PhoneIntelligenceResult res, bool isDark) {
+    final spam = res.spam;
+    final isHighRisk = spam.spamScore >= 60 || res.telemetry.isVoip;
+    final isModerate = spam.spamScore >= 30 && spam.spamScore < 60;
+    final accentColor = isHighRisk
+        ? const Color(0xFFFF5252)
+        : (isModerate ? const Color(0xFFFF9100) : const Color(0xFF00E676));
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: cardBorder, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image Thumbnail Section
-          Stack(
-            children: [
-              Image.network(
-                effectiveThumbnail,
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) {
-                  return Container(
-                    height: 140,
-                    width: double.infinity,
-                    color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(icon, size: 36, color: brandColor),
-                          const SizedBox(height: 6),
-                          Text(
-                            m.platform,
-                            style: TextStyle(
-                              color: isDark ? Colors.white54 : Colors.black54,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-                loadingBuilder: (ctx, child, progress) {
-                  if (progress == null) return child;
-                  return Container(
-                    height: 180,
-                    color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
-                    child: const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  );
-                },
-              ),
-              // Match Badge Overlay
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.6)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.check_circle_rounded, color: Color(0xFF00E5FF), size: 12),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${m.matchPercentage}% MATCH',
-                        style: const TextStyle(
-                          color: Color(0xFF00E5FF),
-                          fontWeight: FontWeight.w900,
-                          fontSize: 10.5,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Gradient Overlay at bottom of image
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  height: 40,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.transparent, cardBg],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Content section
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Platform Tag & Domain Pill
-                Row(
-                  children: [
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                        decoration: BoxDecoration(
-                          color: brandColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: brandColor.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(icon, size: 12, color: brandColor),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                m.platform.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w900,
-                                  color: brandColor,
-                                  letterSpacing: 0.5,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (m.domain.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          m.domain,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white38 : const Color(0xFF64748B),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Title
-                Text(
-                  m.title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    height: 1.35,
-                    color: titleColor,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-
-                // Truncated URL
-                Text(
-                  m.pageUrl,
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 11,
-                    color: isDark ? Colors.white38 : const Color(0xFF64748B),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 14),
-
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => InAppBrowserScreen(url: m.pageUrl),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.travel_explore_rounded, size: 16),
-                        label: const Text(
-                          'Inspect In-App',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2979FF),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      tooltip: 'Open in Browser',
-                      icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                      style: IconButton.styleFrom(
-                        backgroundColor: isDark
-                            ? const Color(0xFF1E293B)
-                            : const Color(0xFFF1F5F9),
-                        foregroundColor: isDark ? Colors.white70 : Colors.black87,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () => _openUrl(m.pageUrl),
-                    ),
-                    const SizedBox(width: 6),
-                    IconButton.filledTonal(
-                      tooltip: 'Copy Page Link',
-                      icon: const Icon(Icons.copy_rounded, size: 18),
-                      style: IconButton.styleFrom(
-                        backgroundColor: isDark
-                            ? const Color(0xFF1E293B)
-                            : const Color(0xFFF1F5F9),
-                        foregroundColor: isDark ? Colors.white70 : Colors.black87,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () => _copyToClipboard(m.pageUrl, '${m.platform} Page URL'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn().slideY(begin: 0.05);
-  }
-
-  Widget _buildNoWebMatchesFoundCard(bool isDark) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF131926) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.image_not_supported_outlined,
-            size: 40,
-            color: isDark ? Colors.white24 : Colors.black26,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'No Direct Public Appearances Found',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
-              color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'This image does not currently appear on public indexed databases or is a private/new photo. Use the multi-engine search buttons below to search Google Lens, Yandex, and TinEye manually.',
-            style: TextStyle(
-              fontSize: 12,
-              color: isDark ? Colors.white38 : const Color(0xFF64748B),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGoogleLensHeroCard(String lensUrl, bool isDark) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF131926) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFF4285F4).withValues(alpha: isDark ? 0.6 : 0.4),
-          width: 1.5,
+          color: accentColor.withValues(alpha: 0.35),
+          width: 1.4,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4285F4).withValues(alpha: isDark ? 0.2 : 0.08),
+            color: accentColor.withValues(alpha: 0.06),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -3311,19 +2597,946 @@ Date: 08 Nov 2026, 01:15 PM
         children: [
           Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4285F4).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Icon(Icons.travel_explore_rounded, color: Color(0xFF4285F4), size: 24),
-                ),
+              Text(
+                res.telemetry.countryFlag,
+                style: const TextStyle(fontSize: 26),
               ),
               const SizedBox(width: 12),
               Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      res.formattedNumber,
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      '${res.carrier} • ${res.circle}',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white70 : const Color(0xFF475569),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.copy_rounded, size: 18),
+                tooltip: 'Copy Number',
+                onPressed: () => _copyToClipboard(res.formattedNumber, 'Phone number'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              // Threat Score Badge
+              Expanded(
+                flex: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: accentColor.withValues(alpha: 0.35)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isHighRisk
+                            ? Icons.warning_rounded
+                            : (isModerate ? Icons.info_outline : Icons.shield_rounded),
+                        size: 13,
+                        color: accentColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${spam.spamScore}/100 ${spam.threatLevel}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: accentColor,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Line type chip
+              Expanded(
+                flex: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E2638) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    res.telemetry.lineType,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white70 : const Color(0xFF334155),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── 2. Spam & Fraud Radar Card ────────────────────────────────────────────
+
+  Widget _buildSpamRadarCard(PhoneIntelligenceResult res, bool isDark) {
+    final spam = res.spam;
+    final isHigh = spam.spamScore >= 60;
+    final color = isHigh
+        ? const Color(0xFFFF5252)
+        : (spam.spamScore >= 30 ? const Color(0xFFFF9100) : const Color(0xFF00E676));
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.radar_rounded, color: color, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'SPAM & FRAUD CLASSIFICATION RADAR',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Category & Report Count
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      spam.category,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${spam.reportCount} crowdsourced complaints & forensic flags',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '${spam.spamScore}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      'RISK',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Tags
+          if (spam.tags.isNotEmpty) ...[
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: spam.tags.map((tag) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    tag,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Advisory Box
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0A0E17) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? const Color(0xFF1E2638) : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: isDark ? Colors.white54 : Colors.black45,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    spam.advisorySummary,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.4,
+                      color: isDark ? Colors.white70 : const Color(0xFF334155),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Actions: Truecaller & Cybercrime Portal
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.search, size: 14),
+                  label: const Text('Truecaller Web', style: TextStyle(fontSize: 11.5)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF2979FF),
+                    side: const BorderSide(color: Color(0xFF2979FF)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () => _openUrl(spam.truecallerWebUrl),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.gavel_rounded, size: 14),
+                  label: const Text('Report 1930', style: TextStyle(fontSize: 11.5)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF5252),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () => _openUrl(spam.nationalCyberCrimeUrl),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── 3. NPCI UPI Financial Rail Reverse Identity Card ──────────────────────
+
+  Widget _buildUpiResolutionCard(List<PhoneUpiFootprint> upiList, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: const Color(0xFF00E676).withValues(alpha: 0.35),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.account_balance_wallet_rounded,
+                  color: Color(0xFF00E676), size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'NPCI UPI REVERSE IDENTITY RESOLUTION',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: Color(0xFF00E676),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${upiList.length} VPAs',
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF00E676),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Mobile numbers map directly to bank VPAs. Tap "Verify VPA" to trigger a 0-rupee identity check in your banking app to reveal the verified account holder name.',
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.4,
+              color: isDark ? Colors.white60 : Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // VPA List
+          ...upiList.map((upi) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0A0E17) : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF1E2638) : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.account_balance_rounded,
+                      size: 18,
+                      color: Color(0xFF00E676),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          upi.appName,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          ),
+                        ),
+                        Text(
+                          upi.vpa,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF00E5FF),
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                        Text(
+                          upi.bankName,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: isDark ? Colors.white38 : Colors.black45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 16),
+                    tooltip: 'Copy VPA',
+                    onPressed: () => _copyToClipboard(upi.vpa, '${upi.appName} VPA'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00E676),
+                      foregroundColor: const Color(0xFF06090F),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: Size.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () => _openUrl(upi.deepLink),
+                    child: const Text(
+                      'Verify',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ─── 4. Telecom Telemetry Card ─────────────────────────────────────────────
+
+  Widget _buildTelecomTelemetryCard(PhoneIntelligenceResult res, bool isDark) {
+    final t = res.telemetry;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.cell_tower_rounded, color: Color(0xFF2979FF), size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'TELECOM NETWORK TELEMETRY & CIRCLE ALLOCATION',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: Color(0xFF2979FF),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          _buildTelemetryRow(
+            'Country / Jurisdiction',
+            '${t.countryFlag} ${t.countryName} (${t.countryCode})',
+            Icons.public_rounded,
+            const Color(0xFF00E5FF),
+            isDark,
+          ),
+          _buildTelemetryRow(
+            'Allocated Carrier',
+            res.allocatedCarrier != null && res.allocatedCarrier != res.carrier
+                ? '${res.carrier} (Series: ${res.allocatedCarrier})'
+                : res.carrier,
+            Icons.signal_cellular_alt_rounded,
+            const Color(0xFF00E676),
+            isDark,
+          ),
+          _buildTelemetryRow(
+            'DoT LSA Circle',
+            res.circle,
+            Icons.location_on_rounded,
+            const Color(0xFFFF9100),
+            isDark,
+          ),
+          _buildTelemetryRow(
+            'Line Classification',
+            t.lineType,
+            Icons.phone_android_rounded,
+            t.isVoip ? const Color(0xFFFF5252) : const Color(0xFF2979FF),
+            isDark,
+            trailing: t.isVoip
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF5252).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'VOIP ALERT',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFFF5252),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          _buildTelemetryRow(
+            'TRAI DND Registry',
+            t.dndStatus,
+            Icons.do_not_disturb_on_total_silence_rounded,
+            t.dndStatus.contains('Active')
+                ? const Color(0xFF00E676)
+                : const Color(0xFFFF9100),
+            isDark,
+          ),
+          _buildTelemetryRow(
+            'Series Era Vintage',
+            res.seriesEraLabel,
+            Icons.history_rounded,
+            const Color(0xFFB388FF),
+            isDark,
+          ),
+          _buildTelemetryRow(
+            'MNC / MCC Identifier',
+            t.mncMcc,
+            Icons.tag_rounded,
+            isDark ? Colors.white54 : Colors.black45,
+            isDark,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTelemetryRow(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+    bool isDark, {
+    Widget? trailing,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 5,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                color: isDark ? Colors.white60 : Colors.black54,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 6),
+          if (trailing != null) ...[
+            trailing,
+            const SizedBox(width: 4),
+          ],
+          Expanded(
+            flex: 6,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── 5. Messaging Probes Card ──────────────────────────────────────────────
+
+  Widget _buildMessagingProbesCard(String cleanNumber, bool isDark) {
+    final digitsOnly = cleanNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.hub_rounded, color: Color(0xFF00E5FF), size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'COMMUNICATION & IDENTITY PROBES',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: Color(0xFF00E5FF),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Test live messaging endpoints to inspect profile pictures, bio descriptions, and active status.',
+            style: TextStyle(
+              fontSize: 11.5,
+              color: isDark ? Colors.white60 : Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildProbeActionBtn(
+                icon: Icons.chat_bubble_rounded,
+                label: 'WhatsApp Probe',
+                color: const Color(0xFF25D366),
+                onTap: () => _openUrl('https://wa.me/$digitsOnly'),
+                isDark: isDark,
+              ),
+              _buildProbeActionBtn(
+                icon: Icons.send_rounded,
+                label: 'Telegram Lookup',
+                color: const Color(0xFF229ED9),
+                onTap: () => _openUrl('https://t.me/+$digitsOnly'),
+                isDark: isDark,
+              ),
+              _buildProbeActionBtn(
+                icon: Icons.search_rounded,
+                label: 'Truecaller Direct',
+                color: const Color(0xFF2979FF),
+                onTap: () => _openUrl('https://www.truecaller.com/search/in/$digitsOnly'),
+                isDark: isDark,
+              ),
+              _buildProbeActionBtn(
+                icon: Icons.sms_rounded,
+                label: 'Send SMS',
+                color: const Color(0xFFFF9100),
+                onTap: () => _openUrl('sms:$cleanNumber'),
+                isDark: isDark,
+              ),
+              _buildProbeActionBtn(
+                icon: Icons.phone_rounded,
+                label: 'Open Dialer',
+                color: const Color(0xFF00E676),
+                onTap: () => _openUrl('tel:$cleanNumber'),
+                isDark: isDark,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProbeActionBtn({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── 6. Investigative OSINT Dorks Card ─────────────────────────────────────
+
+  Widget _buildOsintDorksCard(String cleanNumber, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.travel_explore_rounded, color: Color(0xFFFF9100), size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'INVESTIGATIVE GOOGLE DORKS',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: Color(0xFFFF9100),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Targeted search operators to find mentions in leaked PDFs, FIR filings, and cybercrime complaint forums.',
+            style: TextStyle(
+              fontSize: 11.5,
+              color: isDark ? Colors.white60 : Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          _buildDorkTile(
+            title: 'Leaked Logs & Spreadsheets',
+            desc: 'Finds PDFs, XLSX, and CSV documents indexing this phone number',
+            query: '"$cleanNumber" filetype:pdf OR filetype:xlsx OR filetype:csv',
+            icon: Icons.description_rounded,
+            isDark: isDark,
+          ),
+          _buildDorkTile(
+            title: 'Cybercrime Complaints & FIRs',
+            desc: 'Checks if this number is reported in online scam registries',
+            query: '"$cleanNumber" scam OR fraud OR fir OR complaint OR cybercrime',
+            icon: Icons.warning_amber_rounded,
+            isDark: isDark,
+          ),
+          _buildDorkTile(
+            title: 'Social Footprints & Bio Mentions',
+            desc: 'Scans Facebook, Instagram, LinkedIn & X for contact info matches',
+            query: '"$cleanNumber" site:facebook.com OR site:instagram.com OR site:linkedin.com',
+            icon: Icons.public_rounded,
+            isDark: isDark,
+          ),
+          _buildDorkTile(
+            title: 'Classifieds & Buyer/Seller Forums',
+            desc: 'Finds OLX, Quikr, and eCommerce forum listings',
+            query: '"$cleanNumber" site:olx.in OR site:quikr.com OR forum',
+            icon: Icons.forum_rounded,
+            isDark: isDark,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDorkTile({
+    required String title,
+    required String desc,
+    required String query,
+    required IconData icon,
+    required bool isDark,
+  }) {
+    return InkWell(
+      onTap: () {
+        final url = 'https://www.google.com/search?q=${Uri.encodeComponent(query)}';
+        _openUrl(url);
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0A0E17) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? const Color(0xFF1E2638) : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: const Color(0xFFFF9100)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  Text(
+                    desc,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: isDark ? Colors.white54 : Colors.black45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.open_in_new_rounded, size: 14, color: Color(0xFFFF9100)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── 7. Dark-Web Breach & CAF Dossier Archive ──────────────────────────────
+
+  Widget _buildBreachAndDossierCard(PhoneIntelligenceResult res, bool isDark) {
+    final hasBreaches = res.breaches.isNotEmpty;
+    final badgeColor = hasBreaches ? const Color(0xFFFF5252) : const Color(0xFF00E676);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131926) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: badgeColor.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.folder_shared_rounded, color: badgeColor, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'DARK-WEB BREACH & CAF DOSSIER ARCHIVE',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: badgeColor,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  hasBreaches
+                      ? '${res.breaches.length} BREACHES'
+                      : 'NO BREACHES',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: badgeColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          if (hasBreaches) ...[
+            ...res.breaches.map((b) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0A0E17) : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF1E2638) : const Color(0xFFE2E8F0),
+                  ),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -3331,656 +3544,97 @@ Date: 08 Nov 2026, 01:15 PM
                       children: [
                         Expanded(
                           child: Text(
-                            'Google Lens Live Recon',
+                            b.title,
                             style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'LIVE SESSION',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFF10B981),
-                              letterSpacing: 0.5,
-                            ),
+                        Text(
+                          b.breachDate,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isDark ? Colors.white38 : Colors.black45,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
-                      'Live visual match query generated directly from photo payload',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                      'Exposed: ${b.dataClasses.join(", ")}',
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFFFF5252),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
+              );
+            }),
+            const SizedBox(height: 10),
+          ],
+
+          // CAF Dossier
+          if (res.leakedDossier != null) ...[
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            Text(
+              'LEAKED CUSTOMER ACQUISITION FORM (CAF) SNAPSHOT',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.8,
+                color: isDark ? Colors.white54 : Colors.black45,
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Google Lens indexes billions of public social media posts, unmasked profile photos, news archives, and reverse matches. Inspect the complete interactive match view directly in SafeSignal:',
-            style: TextStyle(
-              fontSize: 12.5,
-              height: 1.4,
-              color: isDark ? Colors.white70 : const Color(0xFF334155),
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => InAppBrowserScreen(url: lensUrl),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.travel_explore_rounded, size: 18),
-                  label: const Text(
-                    'Open Lens Matches in App',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4285F4),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
+            const SizedBox(height: 8),
+            _buildDossierField('Subscriber Name', res.leakedDossier!.subscriberName, isDark),
+            _buildDossierField('Father / Relative', res.leakedDossier!.fatherName, isDark),
+            _buildDossierField('CAF Billing Address', res.leakedDossier!.rawCafAddress, isDark),
+            _buildDossierField('Alternate Number', res.leakedDossier!.alternateNumber, isDark),
+            _buildDossierField('ID Proof Document', res.leakedDossier!.idProofToken, isDark),
+            _buildDossierField('CAF Origin / Retailer', res.leakedDossier!.cafRetailerOrigin, isDark),
+            _buildDossierField('Breach Incident Date', res.leakedDossier!.breachIncidentDate, isDark),
+          ],
+
+          const SizedBox(height: 12),
+          // Export report button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.share_outlined, size: 15),
+              label: const Text('Export & Copy Full Dossier Report', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF00E5FF),
+                side: const BorderSide(color: Color(0xFF00E5FF)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                tooltip: 'Open in External Browser',
-                icon: const Icon(Icons.open_in_new_rounded, size: 20),
-                style: IconButton.styleFrom(
-                  backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  padding: const EdgeInsets.all(12),
-                ),
-                onPressed: () async {
-                  final uri = Uri.tryParse(lensUrl);
-                  if (uri != null && await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
-                },
-              ),
-            ],
+              onPressed: _exportPhoneIntelligenceReport,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildVisualThreatHeader(VisualThreatAssessment a, bool isDark) {
-    final color = switch (a.threatLevel) {
-      VisualThreatLevel.critical => const Color(0xFFFF1744),
-      VisualThreatLevel.high => const Color(0xFFFF5252),
-      VisualThreatLevel.medium => const Color(0xFFFF9100),
-      VisualThreatLevel.low => const Color(0xFFFFEA00),
-      VisualThreatLevel.safe => const Color(0xFF00E676),
-    };
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            color.withValues(alpha: 0.18),
-            isDark ? const Color(0xFF131926) : Colors.white,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  a.threatLevel == VisualThreatLevel.safe
-                      ? Icons.verified_user_rounded
-                      : Icons.security_rounded,
-                  color: color,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  a.verdictTitle,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                    letterSpacing: -0.3,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${a.threatScore}/100',
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            a.primaryThreatType,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white : const Color(0xFF0D1117),
-            ),
-          ),
-          if (a.findings.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...a.findings.take(3).map(
-              (f) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('• ', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-                    Expanded(
-                      child: Text(
-                        f,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: isDark ? Colors.white70 : const Color(0xFF475569),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 14),
-          ElevatedButton.icon(
-            onPressed: _exportImageForensicReport,
-            icon: const Icon(Icons.download_rounded, size: 16),
-            label: const Text('Export Forensic Evidence Report', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: color,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn().slideY(begin: 0.05);
-  }
-
-  Widget _buildCatfishForensicsCard(CatfishBiometricReport c, bool isDark) {
-    final riskColor = c.catfishRiskScore >= 60
-        ? const Color(0xFFFF1744)
-        : c.catfishRiskScore >= 30
-            ? const Color(0xFFFF9100)
-            : const Color(0xFF00E676);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF131926) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: riskColor.withValues(alpha: isDark ? 0.4 : 0.3),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: riskColor.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: riskColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  c.isPortraitOrAvatar
-                      ? Icons.face_retouching_natural_rounded
-                      : Icons.perm_identity_rounded,
-                  color: riskColor,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'BIOMETRIC CATFISH & FACE RADAR',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
-                        color: riskColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      c.faceClassification,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? Colors.white54 : Colors.black54,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: riskColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${c.catfishRiskScore}% RISK',
-                  style: TextStyle(
-                    color: riskColor,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Risk Level Banner
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: riskColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: riskColor.withValues(alpha: 0.25)),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  c.catfishRiskScore >= 60 ? Icons.warning_rounded : Icons.info_outline_rounded,
-                  size: 16,
-                  color: riskColor,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    c.catfishRiskLevel,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : const Color(0xFF0D1117),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Indicators list
-          if (c.indicators.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              'BIOMETRIC & PROFILE INDICATORS',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white38 : Colors.black45,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(height: 6),
-            ...c.indicators.map((ind) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('• ', style: TextStyle(color: riskColor, fontWeight: FontWeight.bold)),
-                  Expanded(
-                    child: Text(
-                      ind,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: isDark ? Colors.white70 : const Color(0xFF475569),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )),
-          ],
-
-          // Face Search Quick Engine Shortcuts
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const InAppBrowserScreen(url: 'https://facecheck.id'),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.face_retouching_natural_rounded, size: 14, color: Color(0xFFEC4899)),
-                  label: const Text('FaceCheck.ID', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFEC4899),
-                    side: const BorderSide(color: Color(0xFFEC4899)),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const InAppBrowserScreen(url: 'https://pimeyes.com'),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.visibility_rounded, size: 14, color: Color(0xFF8B5CF6)),
-                  label: const Text('PimEyes', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF8B5CF6),
-                    side: const BorderSide(color: Color(0xFF8B5CF6)),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ).animate().fadeIn().slideY(begin: 0.05);
-  }
-
-  Widget _buildExifMetadataCard(ExifForensicReport exif, bool isDark) {
-    final statusColor = exif.hasExif ? const Color(0xFF00E676) : const Color(0xFFFF9100);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF131926) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.camera_rounded,
-                  color: Color(0xFF00E5FF),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'CAMERA & HARDWARE EXIF FORENSICS',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
-                        color: Color(0xFF00E5FF),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      exif.hasExif ? 'Original Hardware Tags Found' : 'Metadata Stripped / Sanitized',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? Colors.white54 : Colors.black54,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  exif.hasExif ? 'INTACT' : 'STRIPPED',
-                  style: TextStyle(
-                    color: statusColor,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 9.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Privacy status text
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  exif.hasExif ? Icons.check_circle_outline_rounded : Icons.shield_outlined,
-                  size: 14,
-                  color: statusColor,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    exif.privacyStatus,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? Colors.white70 : const Color(0xFF475569),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          if (exif.hasExif) ...[
-            const SizedBox(height: 12),
-            _buildExifRow('Camera Hardware', '${exif.make ?? 'Unknown'} ${exif.model ?? ''}'.trim(), isDark),
-            if (exif.software != null)
-              _buildExifRow('Software / OS', exif.software!, isDark),
-            if (exif.dateTimeOriginal != null)
-              _buildExifRow('Captured Timestamp', exif.dateTimeOriginal!, isDark),
-            if (exif.exposureTime != null || exif.fNumber != null || exif.isoSpeed != null)
-              _buildExifRow(
-                'Exposure / Optics',
-                '${exif.exposureTime ?? ''} ${exif.fNumber ?? ''} ${exif.isoSpeed != null ? 'ISO ${exif.isoSpeed}' : ''}'.trim(),
-                isDark,
-              ),
-            if (exif.latitude != null && exif.longitude != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_on_rounded, color: Color(0xFF10B981), size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'GPS Coordinates Embedded',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF10B981),
-                            ),
-                          ),
-                          Text(
-                            '${exif.latitude!.toStringAsFixed(5)}, ${exif.longitude!.toStringAsFixed(5)}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontFamily: 'monospace',
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.map_rounded, size: 18, color: Color(0xFF10B981)),
-                      onPressed: () => _openUrl('https://maps.google.com/?q=${exif.latitude},${exif.longitude}'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ] else ...[
-            const SizedBox(height: 10),
-            Text(
-              'No EXIF hardware tags detected. Most messaging platforms (WhatsApp, Telegram) and social media (Instagram, Twitter) automatically strip metadata for user privacy. To inspect compression tampering, run FotoForensics Error Level Analysis (ELA) below.',
-              style: TextStyle(
-                fontSize: 11,
-                color: isDark ? Colors.white54 : Colors.black54,
-                height: 1.35,
-              ),
-            ),
-          ],
-        ],
-      ),
-    ).animate().fadeIn().slideY(begin: 0.05);
-  }
-
-  Widget _buildExifRow(String label, String value, bool isDark) {
-    if (value.isEmpty) return const SizedBox.shrink();
+  Widget _buildDossierField(String label, String value, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 110,
+            width: 120,
             child: Text(
               label,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white38 : Colors.black45,
               ),
             ),
@@ -3990,687 +3644,11 @@ Date: 08 Nov 2026, 01:15 PM
               value,
               style: TextStyle(
                 fontSize: 11.5,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF0D1117),
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVisualEngineCard(ReverseEngineQuery q, bool isDark) {
-    final (Color brandColor, IconData icon) = switch (q.engineKey) {
-      'google_lens' => (const Color(0xFF4285F4), Icons.travel_explore_rounded),
-      'facecheck_id' => (const Color(0xFFEC4899), Icons.face_retouching_natural_rounded),
-      'pimeyes' => (const Color(0xFF8B5CF6), Icons.visibility_rounded),
-      'fotoforensics' => (const Color(0xFF10B981), Icons.camera_enhance_rounded),
-      'yandex' => (const Color(0xFFFC3F1D), Icons.saved_search_rounded),
-      'tineye' => (const Color(0xFF00B4D8), Icons.manage_search_rounded),
-      'bing' => (const Color(0xFF008373), Icons.search_rounded),
-      'baidu' => (const Color(0xFF2932E1), Icons.radar_rounded),
-      'saucenao' => (const Color(0xFFE67E22), Icons.auto_awesome_rounded),
-      _ => (const Color(0xFF00E5FF), Icons.image_search_rounded),
-    };
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF131926) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Banner
-          Row(
-            children: [
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: brandColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: brandColor.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(icon, size: 13, color: brandColor),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          q.engineName.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w900,
-                            color: brandColor,
-                            letterSpacing: 0.5,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (q.isPrimary) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'CORE',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF00E5FF),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          if (q.specialization.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              q.specialization,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white54 : Colors.black54,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          const SizedBox(height: 10),
-
-          // Description
-          Text(
-            q.description,
-            style: TextStyle(
-              fontSize: 12.5,
-              height: 1.4,
-              color: isDark ? Colors.white70 : const Color(0xFF334155),
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Query URL snippet
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-              ),
-            ),
-            child: Text(
-              q.queryUrl,
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 11,
-                color: isDark ? Colors.white38 : Colors.black45,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => InAppBrowserScreen(url: q.queryUrl),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.travel_explore_rounded, size: 16),
-                  label: Text(
-                    q.engineName.toLowerCase().contains('lens')
-                        ? 'Search Lens'
-                        : 'Search ${q.engineName}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: brandColor,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                tooltip: 'Open in Browser',
-                icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                style: IconButton.styleFrom(
-                  backgroundColor: isDark
-                      ? const Color(0xFF1E293B)
-                      : const Color(0xFFF1F5F9),
-                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () => _openUrl(q.queryUrl),
-              ),
-              const SizedBox(width: 6),
-              IconButton.filledTonal(
-                tooltip: 'Copy Query Link',
-                icon: const Icon(Icons.copy_rounded, size: 18),
-                style: IconButton.styleFrom(
-                  backgroundColor: isDark
-                      ? const Color(0xFF1E293B)
-                      : const Color(0xFFF1F5F9),
-                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () => _copyToClipboard(q.queryUrl, '${q.engineName} Query URL'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ).animate().fadeIn().slideY(begin: 0.05);
-  }
-
-  Widget _buildOcrFindingsCard(OcrEntityExtraction ocr, bool isDark) {
-    final hasThreatEntities = ocr.isFraudulentDocument ||
-        ocr.detectedInstitutions.isNotEmpty ||
-        ocr.detectedScamKeywords.isNotEmpty ||
-        ocr.detectedUpiIds.isNotEmpty;
-
-    final headerColor = hasThreatEntities ? const Color(0xFFFF5252) : const Color(0xFF00E5FF);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF131926) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: headerColor.withValues(alpha: 0.4),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: headerColor.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: headerColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  hasThreatEntities ? Icons.warning_amber_rounded : Icons.document_scanner_rounded,
-                  color: headerColor,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      hasThreatEntities ? 'OCR EXTORTION & FRAUD DETECTED' : 'OCR DOCUMENT FORENSICS',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        color: headerColor,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    Text(
-                      ocr.documentCategory,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? Colors.white54 : Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          if (ocr.detectedInstitutions.isNotEmpty) ...[
-            Text(
-              'IMPERSONATED AUTHORITIES',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white38 : Colors.black45,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: ocr.detectedInstitutions.map((inst) {
-                return Chip(
-                  backgroundColor: const Color(0xFFFF5252).withValues(alpha: 0.15),
-                  side: BorderSide(color: const Color(0xFFFF5252).withValues(alpha: 0.4)),
-                  label: Text(
-                    inst,
-                    style: const TextStyle(
-                      color: Color(0xFFFF5252),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                    ),
-                  ),
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          if (ocr.detectedScamKeywords.isNotEmpty) ...[
-            Text(
-              'DETECTED FRAUD & EXTORTION PHRASES',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white38 : Colors.black45,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: ocr.detectedScamKeywords.map((kw) {
-                return Chip(
-                  backgroundColor: const Color(0xFFFF9100).withValues(alpha: 0.15),
-                  side: BorderSide(color: const Color(0xFFFF9100).withValues(alpha: 0.4)),
-                  label: Text(
-                    kw.toUpperCase(),
-                    style: const TextStyle(
-                      color: Color(0xFFFF9100),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                    ),
-                  ),
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          if (ocr.detectedUpiIds.isNotEmpty) ...[
-            Text(
-              'EXTRACTED PAYMENT VENDOR / UPI IDs',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white38 : Colors.black45,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(height: 6),
-            ...ocr.detectedUpiIds.map((upi) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF2979FF).withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.account_balance_wallet_rounded, size: 14, color: Color(0xFF2979FF)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        upi,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          color: Color(0xFF2979FF),
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy_rounded, size: 14),
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () => _copyToClipboard(upi, 'UPI ID'),
-                    ),
-                  ],
-                ),
-              );
-            }),
-            const SizedBox(height: 10),
-          ],
-
-          if (ocr.detectedPhoneNumbers.isNotEmpty) ...[
-            Text(
-              'EXTRACTED CONTACT NUMBERS',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white38 : Colors.black45,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              children: ocr.detectedPhoneNumbers.map((phone) {
-                return ActionChip(
-                  avatar: const Icon(Icons.phone_rounded, size: 12, color: Colors.white70),
-                  label: Text(phone, style: const TextStyle(fontSize: 11)),
-                  onPressed: () => _copyToClipboard(phone, 'Phone number'),
-                );
-              }).toList(),
-            ),
-          ],
-        ],
-      ),
-    ).animate().fadeIn().slideY(begin: 0.05);
-  }
-
-  Widget _buildHashesCard(VisualHashReport h, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF131926) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
-          width: 1.2,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.fingerprint_rounded, color: Color(0xFF00E5FF), size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'CRYPTOGRAPHIC & PERCEPTUAL SIGNATURES',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.8,
-                    color: isDark ? Colors.white70 : Colors.black87,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          _buildHashRow('64-bit dHash (Perceptual)', h.dHash, isDark, isHighlight: true),
-          const SizedBox(height: 8),
-          _buildHashRow('SHA-256 Checksum', h.sha256, isDark),
-          const SizedBox(height: 8),
-          _buildHashRow('MD5 Legacy Hash', h.md5, isDark),
-          const SizedBox(height: 12),
-
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildMetaPill('Size', '${(h.fileSizeBytes / 1024).toStringAsFixed(1)} KB', isDark),
-              _buildMetaPill('Type', h.mimeType.toUpperCase(), isDark),
-              if (h.width != null && h.height != null)
-                _buildMetaPill('Resolution', '${h.width}x${h.height} px', isDark),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHashRow(String title, String val, bool isDark, {bool isHighlight = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w800,
-            color: isHighlight
-                ? const Color(0xFF00E5FF)
-                : (isDark ? Colors.white38 : Colors.black45),
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                val,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 11.5,
-                  fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal,
-                  color: isDark ? Colors.white70 : Colors.black87,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.copy_rounded, size: 14),
-              visualDensity: VisualDensity.compact,
-              onPressed: () => _copyToClipboard(val, title),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMetaPill(String k, String v, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Text(
-        '$k: $v',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: isDark ? Colors.white60 : Colors.black54,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCloneComparatorCard(String currentDHash, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF131926) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? const Color(0xFF232D42) : const Color(0xFFE2E8F0),
-          width: 1.2,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.compare_rounded, color: Color(0xFFA855F7), size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'CLONE & TAMPER DETECTOR (dHash Matching)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.8,
-                    color: isDark ? Colors.white70 : Colors.black87,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Paste another image dHash to compute Hamming distance and detect cropped or re-encoded clones.',
-            style: TextStyle(
-              fontSize: 12,
-              color: isDark ? Colors.white54 : Colors.black54,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _compareHashController,
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: 'Enter 16-hex char dHash...',
-                    hintStyle: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      color: isDark ? Colors.white24 : Colors.black26,
-                    ),
-                    filled: true,
-                    fillColor: isDark ? const Color(0xFF0A0F1A) : const Color(0xFFF1F5F9),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  final target = _compareHashController.text.trim();
-                  if (target.isEmpty) return;
-                  final sim = VisualOsintEngine.calculateVisualSimilarity(currentDHash, target);
-                  setState(() => _comparedSimilarity = sim);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFA855F7),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                child: const Text('Compare', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-
-          if (_comparedSimilarity != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _comparedSimilarity! >= 80.0
-                    ? const Color(0xFFFF5252).withValues(alpha: 0.12)
-                    : const Color(0xFF00E5FF).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _comparedSimilarity! >= 80.0
-                      ? const Color(0xFFFF5252).withValues(alpha: 0.4)
-                      : const Color(0xFF00E5FF).withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _comparedSimilarity! >= 80.0
-                        ? Icons.copy_all_rounded
-                        : Icons.check_circle_outline_rounded,
-                    color: _comparedSimilarity! >= 80.0
-                        ? const Color(0xFFFF5252)
-                        : const Color(0xFF00E5FF),
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _comparedSimilarity! >= 80.0
-                          ? 'HIGH MATCH (${_comparedSimilarity!.toStringAsFixed(1)}%): Visual clone or cropped derivative detected!'
-                          : 'LOW MATCH (${_comparedSimilarity!.toStringAsFixed(1)}%): Distinct visual composition.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: _comparedSimilarity! >= 80.0
-                            ? const Color(0xFFFF5252)
-                            : const Color(0xFF00E5FF),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );

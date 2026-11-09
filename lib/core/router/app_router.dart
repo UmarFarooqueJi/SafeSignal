@@ -154,9 +154,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/social-osint',
         builder: (context, state) {
           final tabParam = state.uri.queryParameters['tab'];
-          final initialTab = (tabParam == '1' || tabParam == 'image') ? 1 : 0;
+          final initialTab =
+              (tabParam == '1' || tabParam == 'phone' || tabParam == 'image')
+                  ? 1
+                  : 0;
           return SocialOsintScreen(initialTab: initialTab);
         },
+      ),
+      GoRoute(
+        path: '/phone-osint',
+        builder: (context, state) => const SocialOsintScreen(initialTab: 1),
       ),
       GoRoute(
         path: '/image-osint',

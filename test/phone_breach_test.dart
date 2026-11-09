@@ -250,4 +250,56 @@ void main() {
       },
     );
   });
+
+  group('PhoneBreachService - Ultra-Level UPI, Spam & Telecom Telemetry', () {
+    late PhoneBreachService service;
+
+    setUp(() {
+      service = PhoneBreachService();
+    });
+
+    test('generates valid UPI financial reverse identity footprints with deep links', () async {
+      final res = await service.scanPhoneNumber('+919876543210');
+
+      expect(res.upiFootprints, isNotEmpty);
+      expect(res.upiFootprints.length, greaterThanOrEqualTo(4));
+
+      final gpay = res.upiFootprints.firstWhere((u) => u.appName.contains('Google Pay'));
+      expect(gpay.vpa, equals('9876543210@okaxis'));
+      expect(gpay.deepLink, contains('upi://pay?pa=9876543210@okaxis'));
+      expect(gpay.bankName, contains('Axis Bank'));
+
+      final phonepe = res.upiFootprints.firstWhere((u) => u.appName.contains('PhonePe'));
+      expect(phonepe.vpa, equals('9876543210@ybl'));
+      expect(phonepe.deepLink, contains('upi://pay?pa=9876543210@ybl'));
+
+      final paytm = res.upiFootprints.firstWhere((u) => u.appName.contains('Paytm'));
+      expect(paytm.vpa, equals('9876543210@paytm'));
+    });
+
+    test('classifies Digital Arrest scam with high threat score and official portal reporting', () async {
+      final res = await service.scanPhoneNumber('9876543210');
+
+      expect(res.spam.spamScore, greaterThanOrEqualTo(90));
+      expect(res.spam.threatLevel, contains('CRITICAL THREAT'));
+      expect(res.spam.category, contains('Digital Arrest'));
+      expect(res.spam.isKnownScamPattern, isTrue);
+      expect(res.spam.tags.any((t) => t.contains('CBI') || t.contains('Digital Arrest')), isTrue);
+      expect(res.spam.truecallerWebUrl, contains('truecaller.com'));
+      expect(res.spam.nationalCyberCrimeUrl, contains('cybercrime.gov.in'));
+      expect(res.spam.advisorySummary, contains('CBI'));
+    });
+
+    test('detects US Twilio / TextNow virtual VoIP gateway extortion numbers', () async {
+      final res = await service.scanPhoneNumber('+1 202 555 0199');
+
+      expect(res.isValid, isTrue);
+      expect(res.telemetry.isVoip, isTrue);
+      expect(res.telemetry.countryCode, equals('+1'));
+      expect(res.telemetry.countryName, equals('United States / Canada'));
+      expect(res.carrier, contains('Twilio'));
+      expect(res.spam.category, contains('VoIP'));
+      expect(res.spam.threatLevel, contains('HIGH FRAUD SUSPICION'));
+    });
+  });
 }
