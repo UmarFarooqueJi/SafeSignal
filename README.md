@@ -8,7 +8,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)](https://dart.dev)
 [![Official Website](https://img.shields.io/badge/Website-safesignal--dx8.pages.dev-0284c7?style=flat&logo=cloudflare)](https://safesignal-dx8.pages.dev)
-[![Download APK](https://img.shields.io/badge/Download-Release%20v1.4.2%20APK-22c55e?style=flat&logo=android)](https://safesignal-dx8.pages.dev)
+[![Download APK](https://img.shields.io/badge/Download-Release%20v1.4.0%20APK-22c55e?style=flat&logo=android)](https://safesignal-dx8.pages.dev)
 [![Architecture](https://img.shields.io/badge/Architecture-100%25%20On--Device-10B981?style=flat&logo=shield)](https://github.com/UmarFarooqueJi/SafeSignal)
 [![Telemetry](https://img.shields.io/badge/Telemetry-Zero%20Tracking-blueviolet?style=flat&logo=privacyguides)](https://github.com/UmarFarooqueJi/SafeSignal)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -122,6 +122,14 @@ Most cybersecurity and antivirus apps today behave exactly like the spyware they
 - Aggregates live public cyber safety alerts, scam warnings, and vulnerability advisories via open keyless RSS feeds (Google News India Cyber Crimes & The Hacker News).
 - Fully cached for offline reading with bilingual support (English / Hindi).
 
+### 7. 📬 Email Breach & Dark Web Security Analyzer
+- Dedicated breach exposure scanner querying compromised credential disclosures and dark web breach archives.
+- Computes comprehensive risk scores, categorized data compromise classes (passwords, physical addresses, IP addresses), and prioritized remediation protocols.
+
+### 8. 🕵️ Digital OSINT Footprint Recon Engine
+- High-concurrency username reconnaissance across 20+ major developer, community, coding, and social networks (GitHub, Reddit, X/Twitter, Telegram, Instagram, etc.).
+- Direct client-side HTTP probing with response validation, avatar resolution, and zero third-party telemetry.
+
 ---
 
 ## 🏗️ Architecture: Pure On-Device Defense
@@ -142,6 +150,10 @@ Most cybersecurity and antivirus apps today behave exactly like the spyware they
 │  │ Hardware KeyStore     │       │ Client-Side Smishing  │  │
 │  │ (AES-256-GCM Vault)   │       │ (Offline Regex/NLP)   │  │
 │  └───────────────────────┘       └───────────────────────┘  │
+│  ┌───────────────────────┐       ┌───────────────────────┐  │
+│  │ Dark Web Breach Radar │       │ Digital OSINT Recon   │  │
+│  │ (Email Leak Vault)    │       │ (Username Probes)     │  │
+│  └───────────────────────┘       └───────────────────────┘  │
 └──────────────────────────────┬──────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
@@ -157,7 +169,7 @@ Most cybersecurity and antivirus apps today behave exactly like the spyware they
 ### 📥 Direct APK Download (No Build Required)
 Get the pre-compiled, signed production release APK directly from our official portal:
 - 🌐 **Web Portal:** [safesignal-dx8.pages.dev](https://safesignal-dx8.pages.dev)
-- 📦 **Download Link:** [SafeSignal-v1.4.2-Universal.apk](https://safesignal-dx8.pages.dev)
+- 📦 **Download Link:** [SafeSignal-v1.4.0.apk](https://huggingface.co/datasets/ufAJI/safesignal-releases/resolve/main/SafeSignal-v1.4.0.apk)
 
 ---
 
