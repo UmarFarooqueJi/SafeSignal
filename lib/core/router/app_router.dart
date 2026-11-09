@@ -143,8 +143,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/phone-breach',
-        builder: (context, state) =>
-            const EmailBreachScreen(initialPhoneMode: true),
+        builder: (context, state) => const EmailBreachScreen(),
       ),
       GoRoute(
         path: '/qr-scanner',

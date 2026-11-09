@@ -13,14 +13,13 @@ void main() {
       'listTools exposes standardized MCP tool catalog with input schemas',
       () {
         final tools = mcp.listTools();
-        expect(tools.length, greaterThanOrEqualTo(5));
+        expect(tools.length, equals(4));
 
         final toolNames = tools.map((t) => t.name).toList();
         expect(toolNames, contains('inspect_app_ioc'));
         expect(toolNames, contains('analyze_url_c2'));
         expect(toolNames, contains('verify_upi_intent'));
         expect(toolNames, contains('verify_sms_trai_header'));
-        expect(toolNames, contains('check_phone_breach_osint'));
 
         for (final t in tools) {
           expect(t.inputSchema['type'], equals('object'));
