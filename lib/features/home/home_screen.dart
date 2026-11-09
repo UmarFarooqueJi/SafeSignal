@@ -320,7 +320,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
       _CardData(
         title: 'Digital OSINT Footprint',
-        subtitle: 'Username & Phone Recon',
+        subtitle: 'Username Identity Recon',
         icon: Icons.person_search_rounded,
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
