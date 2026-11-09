@@ -5,7 +5,7 @@ description: "100% on-device air-gapped cyber defense and anti-fraud suite for A
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
-version: 1.3.0+13
+version: 1.4.0+14
 
 environment:
   sdk: ^3.10.7
